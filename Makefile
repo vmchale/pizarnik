@@ -8,7 +8,7 @@ moddeps.svg: $(HS_SRC)
 
 clean:
 	make -C tex
-	rm -rf dist-newstyle tags tags.mtime moddeps.svg
+	rm -rf dist-newstyle *.prof tags tags.mtime moddeps.svg
 
 install:
 	cabal install
