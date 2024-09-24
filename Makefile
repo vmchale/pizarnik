@@ -7,7 +7,7 @@ moddeps.svg: $(HS_SRC)
 	graphmod -i src | dot -Tsvg -o $@
 
 clean:
-	make -C clean
+	make -C tex
 	rm -rf dist-newstyle tags tags.mtime moddeps.svg
 
 install:
