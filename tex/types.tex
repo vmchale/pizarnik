@@ -30,26 +30,17 @@ A stack variable $A$ is a sequence of type variables $\alpha_1,\alpha_2,\ldots,\
 
 \inferrule
 {\Gamma \vdash x : A -- B}
-{\Gamma \vdash x : C~A -- C~B}
-\quad(\textsc{Generalize})
-
-\inferrule
-{\Gamma \vdash x : A -- B}
 {\Gamma \vdash [x] : -- [A -- B]}
 \quad(\textsc{Quote})
 
 \inferrule
 {\\}
-{\Gamma \vdash \textrm{apply} : A~[A -- B] -- B}
+{\Gamma \vdash \texttt{apply} : A~[A -- B] -- B}
 \quad(\textsc{Apply})
 
 \end{mathpar}
 
-This is not algorithmic typing; one could go awry by applying $(\textsc{Generalize})$ spuriously.
-
-% stack variable is always leftmost (hence inconvenient ordering of apply)
-
-% unlike most general unifier, we wish to have the most specific disjuctive type
+Note that stack variables are always leftmost, hence the inconvenient (from the perspective of the programmer) ordering of {\tt apply}.
 
 \section{Judgments II}
 
@@ -65,13 +56,13 @@ This is not algorithmic typing; one could go awry by applying $(\textsc{Generali
 
   \inferrule
   {\Judge x : -- \alpha}
-  {\Judge x : \alpha^\bot --}
+  {\Judge x^{-1} : \alpha --}
   \quad(\textsc{Inv})
 
   \inferrule
   {\Judge x : -- \alpha}
   {\Judge x : -- \alpha \oplus \beta}
-  \quad(\textsc{Disjunction})
+  \quad(\textsc{Conjunction})
   % cut? modus ponens
 
 \inferrule
@@ -81,12 +72,20 @@ This is not algorithmic typing; one could go awry by applying $(\textsc{Generali
 
 \end{mathpar}
 
+Note that this is not algorithmic typing, one could go awry in applying \textsc{Conjunction} spuriously.
+
 \section{Unification}
+
+In the presence of conjunctions,
+% https://web.cecs.pdx.edu/~mpj/thih/thih.pdf
+
+\subsection{Monomorphization}
+% unlike Diggins, we also want monomorphization, hence mgu, match approach
+
+% unlike most general unifier, we wish to have the most specific disjuctive type
 
 % "right permeable" girard uses
 
-% stack variables must only at leftmost (check programmer-supplied function definitions)
-% unlike Diggins, we also want monomorphization, hence mgu, match approach
 % http://lambda-the-ultimate.org/node/4394#comment-68007
 
 \end{document}
