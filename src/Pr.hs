@@ -11,10 +11,8 @@ import           Prettyprinter (Doc, Pretty (pretty), hardline, vsep, (<+>))
 infixr 6 <#>
 infixr 6 <##>
 
-(<#>) :: Doc ann -> Doc ann -> Doc ann
+(<#>), (<##>) :: Doc ann -> Doc ann -> Doc ann
 x <#> y = x <> hardline <> y
-
-(<##>) :: Doc ann -> Doc ann -> Doc ann
 x <##> y = x <> hardline <> hardline <> y
 
 pB :: (Pretty c, Pretty b) => (c, b) -> Doc a
