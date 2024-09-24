@@ -1,0 +1,63 @@
+%-
+
+# from kempe, via mirth
+id : a -- a
+   := [ ]
+
+drop : a --
+     := [ _ ]
+
+trip : a -- a a a
+     := [ dup dup ]
+
+# swapd in factor
+rotr : a b c -- c a b
+     := [ swap [ swap ] dip ]
+
+rotl : a b c -- c b a
+     := [ rotr swap ]
+
+# https://docs.factorcode.org/content/word-rot%2Ckernel.html
+rot : a b c -- b c a
+    := [ [swap] dip swap ]
+
+# from https://docs.factorcode.org/content/word-pick%2Ckernel.html
+pick : a b c -- a b c a
+     := [ [[dup] dip] dip [swap] dip swap ]
+
+over : a b -- a b a
+     := [ [dup] dip swap ]
+
+tuck : a b -- b a b
+     := [ dup [swap] dip ]
+
+nip : a b -- b
+    := [ [drop] dip ]
+
+dup2 : a b -- a b a b
+     := [ over over ]
+
+dup3 : a b c -- a b c a b c
+     := [ [dup2] dip dup [rotr] dip ]
+
+drop2 : a b --
+      := [ drop drop ]
+
+drop3 : a b c --
+      := [ drop drop drop ]
+
+# inspired by Joy
+# choice : a a Bool -- a
+       # := [ { False⁻¹ drop & True⁻¹ nip } ]
+
+sip : 'A x ['A x -- 'B] -- 'B x
+    := [ [dup] dip swap [$] dip ]
+
+dip2 : 'A a b ['A -- 'B] -- 'B a b
+     := [ swap [dip] dip ]
+
+dip3 : 'A a b c ['A -- 'B] -- 'B a b c
+     := [ swap [dip2] dip ]
+
+both : [a -- b] a a -- b b
+     := [ [dup] dip2 [swap] dip [swap $] dip2 rotl [$] dip swap ]

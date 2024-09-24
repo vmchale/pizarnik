@@ -1,0 +1,14 @@
+@i prelude/fn
+
+%-
+
+type B = `t ⊕ `f;
+
+if : a a `t -- a
+   := [ `t⁻¹ drop ]
+
+else : a a `f -- a
+     := [ `f⁻¹ nip ]
+
+choice : a a B -- a
+       := [ { if & else } ]

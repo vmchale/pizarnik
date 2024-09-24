@@ -1,0 +1,92 @@
+cabal-version:      2.2
+name:               pizarnik
+version:            0.1.0.0
+-- synopsis:
+-- description:
+license:            AGPL-3.0-or-later
+license-file:       LICENSE
+author:             Vanessa McHale
+maintainer:         vamchale@gmail.com
+-- copyright:
+category:           Language
+build-type:         Simple
+extra-doc-files:    CHANGELOG.md
+-- extra-source-files:
+
+common warnings
+    ghc-options: -Wall
+        -Wincomplete-uni-patterns -Wincomplete-record-updates
+        -Wredundant-constraints -Widentities -Wcpp-undef
+        -Wmissing-export-lists -Wunused-packages
+        -Wno-missing-signatures -Wno-x-partial
+
+library
+    import:           warnings
+    exposed-modules:  Dbg
+                      P
+                      A
+                      M
+                      Ty
+    other-modules:    B
+                      Nm
+                      E
+                      Imp
+                      L
+                      Parse
+                      R
+                      Ty.Clone
+                      TS
+                      Pr
+    other-extensions: DeriveFunctor
+                      OverloadedStrings
+                      RankNTypes
+    build-tool-depends: alex:alex, happy:happy >=1.17.1
+    build-depends:    base >=4.16.0.0
+                    , array
+                    , bytestring
+                    , containers >=0.6.2.1
+                    , directory
+                    , extra
+                    , filepath
+                    , microlens
+                    , mtl
+                    , prettyprinter >=1.7.0
+                    , text
+                    , transformers
+    hs-source-dirs:   src
+    default-language: Haskell2010
+
+executable pc
+    import:           warnings
+    default-language: Haskell2010
+    hs-source-dirs:   run
+    main-is:          Opt.hs
+    build-depends:    base
+                    , pizarnik
+                    , bytestring
+                    , optparse-applicative
+                    , prettyprinter
+
+test-suite pizarnik-test
+    import:           warnings
+    default-language: Haskell2010
+    -- other-modules:
+    other-extensions: OverloadedStrings
+    type:             exitcode-stdio-1.0
+    hs-source-dirs:   test
+    main-is:          Spec.hs
+    ghc-options:      -threaded -rtsopts "-with-rtsopts=-N -k1k"
+    build-depends:    base
+                    , pizarnik
+                    , tasty
+                    , tasty-hunit
+
+benchmark pizarnik-bench
+    import:             warnings
+    default-language:   Haskell2010
+    type:               exitcode-stdio-1.0
+    hs-source-dirs:     bench
+    main-is:            Bench.hs
+    build-depends:      base
+                      , pizarnik
+                      , criterion

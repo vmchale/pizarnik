@@ -1,0 +1,9 @@
+@i prelude/fn
+
+%-
+
+gcd : Int Int -- Int
+    := [ dup 0 = { True⁻¹ drop & False⁻¹ dup [%] dip swap gcd } ]
+
+divides : Int Int -- Bool
+        := [ % 0 = ]

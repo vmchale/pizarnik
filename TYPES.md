@@ -1,0 +1,13 @@
+- row types
+- structural sum types (exhaustiveness = ordering/type-inverse)
+- quotation
+# Features
+- [ ] Structural sum types
+  - [ ] ``(`a `b)⁻¹ = `b⁻¹`a⁻¹``
+  - [ ] higher-kinded types idk
+  - [ ] stack variables in type declarations?
+- [ ] generic modules
+  - [ ] `absty` keyword
+  - [ ] `@g` to import generic module `gmod { ... }`
+- [ ] JIT/compiler
+- [ ] cycle notation literals

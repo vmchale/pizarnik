@@ -1,0 +1,12 @@
+%-
+
+type K = `e ⊕ `a ⊕ `b ⊕ `c;
+
+# https://mathworld.wolfram.com/Vierergruppe.html
+mult : K K -- K
+     := [ { `e⁻¹ &
+            `a⁻¹ { `e⁻¹ `a & `a⁻¹ `e & `b⁻¹ `c & `c⁻¹ `b } &
+            `b⁻¹ { `e⁻¹ `b & `a⁻¹ `c & `b⁻¹ `e & `c⁻¹ `a } &
+            `c⁻¹ { `e⁻¹ `c & `a⁻¹ `b & `b⁻¹ `a & `c⁻¹ `e }
+          }
+        ]

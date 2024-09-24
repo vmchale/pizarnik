@@ -1,0 +1,165 @@
+%! TeX program = lualatex
+
+\documentclass{article}
+
+\usepackage{hyperref}
+\usepackage{fontspec}
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{Pattern Matching in Pizarnik}
+\author {V. E. McHale}
+\maketitle
+
+\tableofcontents
+
+\setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
+
+% $(G \oplus H)^\bot=G^\bot \& H^\bot$.
+
+\section{Introduction}
+
+Pizarnik's approach to pattern-matching is original, based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$).
+
+\section{Structural Sum Types}
+
+Tags such as \verb|`true| are Pizarnik atoms, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|. It can also be said to have type $-- \mathtt{`true}~\oplus~\mathtt{`false}$. To see why we would wish to admit $\mathtt{`true}~\oplus~\mathtt{`false}$, consider
+
+% even then, we should only generalize on the left.
+% negative polarity <-> "left permeable"
+% insisting on specificity on the right=pattern-match exhaustiveness checking
+
+\begin{verbatim}
+type Bool = `true ⊕ `false;
+
+not : Bool -- Bool
+    := [ { `false⁻¹ `true & `true⁻¹ `false } ]
+\end{verbatim}
+
+\verb|`false⁻¹| has type \verb|`false --| and hence \verb|`false⁻¹ `true| has type \verb|`false -- `true|; \verb|`true⁻¹ `false| has type \verb|`true -- `false|.
+% inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
+% true inverse
+
+Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts.
+
+To invert a sum type, we supply a product of its inverses (pattern match clauses). This is precisely the de Morgan laws.
+
+% one can match a term of type `true against a type signature of type `true+`false, though one cannot match a term of type 1 against a type signature a
+% Idea: types like row types {σ : σ -> Nil} "hasVariant" like row types idk
+
+% $\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required.
+% pattern matches are a product too...
+% maybe Dhall does this with merge? lexical scoping..
+% TypeScript: 1 has type 1 | String so pattern-match exhaustiveness checking is bunk.
+
+\subsection{Reusing Pattern-Match Arms}
+
+With tags, we could define a function
+
+\begin{verbatim}
+if : a a `true -- a
+   := [ `true⁻¹ drop ]
+\end{verbatim}
+
+This is not so useful on its own---it requires the programmer to supply exactly one value and then discards it---but see how it unifies:
+
+\begin{verbatim}
+else : a a `false -- a
+     := [ `false⁻¹ nip ]
+
+choice : a a Bool -- a
+       := [ { if & else } ]
+\end{verbatim}
+
+Pattern-match arms are defined just as functions and can be reused. % referenced
+% one can even "cut" two in a row...
+% desugar to a narrower ast (convenient)
+
+% true inverses! `true⁻¹ is inverse to `true and has type `true --
+% we get the de Morgan laws
+
+\subsection{Wildcards}
+
+\verb|drop : a --| is one of the building blocks of stack programming. We denote it as \verb|_| as it functions like a wildcard in pattern-matching.
+
+\begin{verbatim}
+isZero : Int -- Bool
+       := [ 0⁻¹ `true & _ `false ]
+\end{verbatim}
+
+\subsection{Typesafe Head}
+
+\begin{verbatim}
+type List a = `nil ⊕ List(a) a `cons;
+
+type NE a = List(a) a `cons;
+
+head : NE a -- a
+     := [ `cons⁻¹ nip ]
+\end{verbatim}
+
+Any nonempty list can be supplied as an argument to a function on lists. This is far more fluent than the situation in Haskell, in which \verb|foldr| \&c. for \verb|NonEmpty| must be defined separately.
+% row types give us ->1 etc., "sigma types" give us
+
+\subsection{Or-Patterns}
+
+Suppose we have
+
+\begin{verbatim}
+type Ord = `lt ⊕ `eq ⊕ `gt;
+\end{verbatim}
+
+Then we can define
+
+\begin{verbatim}
+lte : `lt ⊕ `eq --
+    := [ `lt⁻¹ & `eq⁻¹ ]
+\end{verbatim}
+
+So we get or-patterns for free and they are reusable as functions.
+
+\subsection{Nominal Typing}
+
+One can define
+
+\begin{verbatim}
+type Maybe a = a `just ⊕ `nothing;
+\end{verbatim}
+
+\section{Expression Problem}
+
+The expression problem
+
+\begin{verbatim}
+type Expr = `int Int ⊕ `add Expr Expr;
+
+eval : Expr -- Int
+     := [ { `int⁻¹ & `add⁻¹ [eval] dip eval + } ]
+\end{verbatim}
+
+% matthias blume already did this: http://lambda-the-ultimate.org/node/4394
+
+% basically same as Haskell but without the globality of typeclasses
+% more "natural"; don't have to change approach entirely/start out w/ right approach
+
+% also emphasizes duality
+
+% { 0⁻¹ `true & _ `false }
+% type rewriting/expansion rules... Int + a = a for a universal, inv
+% insight: wildcard is drop
+% inverse of a type: swap left/right on stack
+
+% negation of types (constructive)
+% inspired by linear logic?
+
+% "right permeable" girard uses
+
+% stack variables must only at leftmost (check programmer-supplied function definitions)
+% unlike Diggins, we also want monomorphization, hence mgu, match approach
+% http://lambda-the-ultimate.org/node/4394#comment-68007
+
+\bibliographystyle{plain}
+\bibliography{bib.bib}
+
+\end{document}

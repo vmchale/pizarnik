@@ -1,0 +1,8 @@
+---
+- ignore: {name: Replace case with fromMaybe, within: [Ty]}
+
+- fixity: infixr 6 <#>
+- fixity: infixr 1 <=<
+- fixity: infixr 5 @~
+- fixity: infixr 6 @>
+- fixity: infixr 6 @@

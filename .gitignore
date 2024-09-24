@@ -1,0 +1,14 @@
+dist-newstyle
+*.prof
+moddeps.svg
+tags
+tags.mtime
+*.log
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc

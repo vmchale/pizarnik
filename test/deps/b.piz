@@ -1,0 +1,6 @@
+@i a
+
+%-
+
+dist2 : Int Int -- Int
+      := [ square [ square ] dip + ]
