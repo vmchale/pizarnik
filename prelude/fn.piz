@@ -50,8 +50,12 @@ drop3 : a b c --
 # choice : a a Bool -- a
        # := [ { False⁻¹ drop & True⁻¹ nip } ]
 
+# https://github.com/mirth-lang/mirth/blob/main/lib/std/prelude.mth
 sip : 'A x ['A x -- 'B] -- 'B x
     := [ [dup] dip swap [$] dip ]
+
+sip2 : 'A x y ['A x y -- 'B] -- 'B x y
+     := [ [dup2] dip rotr [$] dip2 ]
 
 dip2 : 'A a b ['A -- 'B] -- 'B a b
      := [ swap [dip] dip ]
