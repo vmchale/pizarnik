@@ -94,6 +94,10 @@ sepBy(p,q)
     : sepBy(p,q) q p { $3 : $1 }
     | p { [$1] }
 
+sepTup(p,q)
+    : sepTup(p,q) q p { $3 : $1 }
+    | p q p { [$3, $1] }
+
 brackets(p)
     : lbracket p rbracket { ($1, $2) }
 
