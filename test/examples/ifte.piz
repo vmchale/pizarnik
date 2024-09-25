@@ -4,11 +4,11 @@
 
 type B = `t ⊕ `f;
 
-if : a a `t -- a
+if : a b `t -- a
    := [ `t⁻¹ drop ]
 
-else : a a `f -- a
+else : a b `f -- b
      := [ `f⁻¹ nip ]
 
-choice : a a B -- a
+choice : a b B -- a ⊕ b
        := [ { if & else } ]
