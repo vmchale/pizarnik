@@ -5,6 +5,7 @@ module Ty ( TE, Ext (..), tM ) where
 import           A
 import           Control.Monad.Except       (throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
+import           Data.Bifunctor             (first)
 import           Data.Foldable              (traverse_)
 import           Data.Function              (on)
 import           Data.Functor               (($>))
@@ -104,52 +105,55 @@ s @* (TS l r) = TS (s@@l) (s@@r)
 (@>) _ t@SV{} = error ("Internal error: (@>) applied to stack variable " ++ show t)
 
 {-# SCC usc #-}
-usc :: Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-usc s = uas s `on` (s@@)
+usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+usc f s = uas f s `on` (s@@)
 
 {-# SCC uas #-}
-uas :: Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-uas s [] [] = pure s
-uas s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
+uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+uas _ s [] [] = pure ([], s)
+uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in usc (iSV sn1 uws s) t1d res
+              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in usc (iSV sn0 uws s) t0d res
-uas s t0@((SV _ sn0):t0d) t1 =
+             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
+uas f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
-        GT -> throwError $ USF t0 t1
+        GT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in usc (iSV sn0 uws s) t0d res
-uas s t0 t1@((SV _ sn1):t1d) =
+             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
+uas f s t0 t1@((SV _ sn1):t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
-        LT -> throwError $ USF t0 t1
+        LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
-             in usc (iSV sn1 uws s) t1d res
-uas s (t0:ts0) (t1:ts1) = do
-    s' <- ua s t0 t1
-    usc s' ts0 ts1
-uas _ t0 [] = throwError $ USF t0 []
-uas _ [] t1 = throwError $ USF t1 []
+             in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+uas f s (t0:ts0) (t1:ts1) = do
+    (tϵ, s') <- ua f s t0 t1
+    first (tϵ:) <$> usc f s' ts0 ts1
+uas f _ t0 [] = throwError $ USF t0 [] f
+uas f _ [] t1 = throwError $ USF t1 [] f
 
 {-# SCC uac #-}
-uac :: Subst a -> T a -> T a -> TM a (Subst a)
-uac s = ua s `on` (s@>)
+uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+uac f s = ua f s `on` (s@>)
 
 {-# SCC ua #-}
-ua :: Subst a -> T a -> T a -> TM a (Subst a)
-ua s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure s
-                               | otherwise = throwError $ UF t0 t1
-ua s (TV _ n0) (TV _ n1) | n0 == n1 = pure s
-ua s t0 (TV _ n) = pure $ iTV n t0 s
-ua s (TV _ n) t1 = pure $ iTV n t1 s
-ua s (TA _ t0 t1) (TA _ t0' t1') = do
-    s0 <- ua s t0 t0'
-    uac s0 t1 t1'
-ua s (QT _ t0) (QT _ t1) = us s t0 t1
+ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
+ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
+ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
+ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
+ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
+ua f s (TA x t0 t1) (TA _ t0' t1') = do
+    (t0ϵ, s0) <- ua f s t0 t0'
+    (t1ϵ, s1) <- uac f s0 t1 t1'
+    pure (TA x t0ϵ t1ϵ, s1)
+ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
+ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
+ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well!
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms l0 l1; msc s r0 r1}
@@ -185,8 +189,8 @@ ma t0@QT{} t1 = throwError $ MF t0 t1
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig = mSig (s@*asig)
 
-us :: Subst a -> TS a -> TS a -> TM a (Subst a)
-us s (TS l0 r0) (TS l1 r1) = do {s' <- usc s l0 l1; usc s' r0 r1}
+us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
+us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
@@ -244,7 +248,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 -- (pass focus to ua while stitching)
 cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat s (TS l0 r0) (TS l1 r1) = do
-    s' <- usc s r0 l1
+    (_, s') <- usc LF s r0 l1 -- narrow supplied arguments (NE where list is expected)
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
@@ -282,3 +286,21 @@ ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b
 ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
 ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
+ta b s (Pat _ as)     = do
+    (as', s') <- tS b s (aas as)
+    let sigs=aLs<$>as'
+        rights=trights<$>sigs; lefts=tlefts<$>sigs
+    (pRight, s'') <- succUnify RF s' rights
+    (pLeft, s''') <- succUnify LF s'' lefts
+    pure (Pat (TS pLeft pRight) (SL undefined as'), s''') -- unify rs, unify with different focus (left, `true & `false -> `true ⊕ `false
+
+succUnify :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
+succUnify _ s [ts]       = pure (ts, s)
+succUnify f s (t0:t1:ts) = do {(tϵ, s') <- usc f s t0 t1; succUnify f s' (tϵ:ts)}
+
+tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
+tS _ s []     = pure ([], s)
+tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
+
+-- PROBLEM: when do we add the ⊕ ?
+-- I think doing it in ua is too early. We want sequences of types to be ⊕ together...
