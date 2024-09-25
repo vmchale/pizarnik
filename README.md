@@ -17,3 +17,14 @@ else : a a `f -- a
 choice : a a Bool -- a
        := [ { if & else } ]
 ```
+
+```
+@i prelude/fn
+
+type List a = `nil ⊕ List(a) a `cons;
+
+type NE a = List(a) a `cons;
+
+head : NE(a) -- a
+     := [ `cons⁻¹ nip ]
+```
