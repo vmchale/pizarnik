@@ -27,18 +27,17 @@ data Ext a = Ext { fns :: IM.IntMap (TS a)
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
 
-data TE a = UF (T a) (T a) F | MF (T a) (T a) | Ind (TSeq a)
-          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a)
+data TE a = UF (T a) (T a) F | MF (T a) (T a) F
+          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F
 
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
     pretty (UF t0 t1 _)    = tc t0 $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
-    pretty (Ind ts)      = tsc ts $ "Stack variables are only permitted at the leftmost" <+> squotes (hsep(pretty<$>ts))
     pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (hsep (pretty<$>ts0)) <+> "with" <+> squotes (hsep (pretty<$>ts1))
-    pretty (MF t0 t1)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
-    pretty (MSF ts0 ts1) = tsc ts0 $ "Failed to match" <+> hsep (pretty<$>ts0) <+> "against" <+> hsep (pretty<$>ts1)
+    pretty (MF t0 t1 _)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
+    pretty (MSF ts0 ts1 _) = tsc ts0 $ "Failed to match" <+> hsep (pretty<$>ts0) <+> "against" <+> hsep (pretty<$>ts1)
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -158,35 +157,41 @@ ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well!
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms l0 l1; msc s r0 r1}
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1}
 
-msc :: Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-msc s = ms `on` (s@@)
+msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+msc f s = ms f `on` (s@@)
 
--- FIXME: 54:26: Failed to match 'C 'B a against 'B x
-ms :: TSeq a -> TSeq a -> TM a (Subst a)
-ms t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
+ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
+ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
     case compare n0 n1 of
-        GT -> throwError $ MSF t0e t1e
+        -- FIXME: disparate lengths on the right
+        GT -> throwError $ MSF t0e t1e f
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in msc (ising sn1 uws) t0 res
-ms t0e@(SV _ v0:t0) t1 =
+             in msc f (ising sn1 uws) t0 res
+ms f t0e@(SV _ v0:t0) t1 =
     let n0=length t0; n1=length t1
-    in if n0>n1 then throwError $ MSF t0e t1 else let (uws, res) = splitFromLeft n0 t1 in msc (ising v0 uws) t0 res
-ms (t0:ts0) (t1:ts1) = do {s' <- ma t0 t1; msc s' ts0 ts1}
-ms [] [] = pure mempty
-ms ts0 [] = throwError$ MSF ts0 []
-ms [] ts1 = throwError$ MSF ts1 []
+    in if n0>n1 then throwError $ MSF t0e t1 f else let (uws, res) = splitFromLeft n0 t1 in msc f (ising v0 uws) t0 res
+ms f (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
+ms _ [] [] = pure mempty
+ms f ts0 [] = throwError$ MSF ts0 [] f
+ms f [] ts1 = throwError$ MSF ts1 [] f
 
 {-# SCC ma #-}
-ma :: T a -> T a -> TM a (Subst a)
-ma (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
-ma (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
-ma (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-ma (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
-ma (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
-ma t0@QT{} t1 = throwError $ MF t0 t1
+ma :: F -> T a -> T a -> TM a (Subst a)
+ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
+ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
+ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
+ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
+ma f t0@QT{} t1 = throwError $ MF t0 t1 f
+ma f t0@(Σ _ σ0) t1@(Σ _ σ1) = mT f mempty σ0 σ1
+ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
+
+mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
+mT _ s [] []             = pure s
+mT f s (t0:ts0) (t1:ts1) = do {s' <- msc f s t0 t1; mT f s' ts0 ts1}
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig = mSig (s@*asig)
@@ -295,7 +300,7 @@ ta b s (Pat _ as)     = do
     (pRight, s'') <- succUnify RF s' rights
     (pLeft, s''') <- succUnify LF s'' lefts
     let t=TS pLeft pRight
-    pure (Pat t (SL t as'), s''') -- unify rs, unify with different focus (left, `true & `false -> `true ⊕ `false
+    pure (Pat t (SL t as'), s''')
 
 succUnify :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 succUnify _ s [ts]       = pure (ts, s)
