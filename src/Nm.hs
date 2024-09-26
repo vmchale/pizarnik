@@ -1,4 +1,6 @@
+{-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveTraversable #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Nm ( U (..), Nm (..), MN (..) ) where
@@ -13,7 +15,7 @@ import           Prettyprinter      (Doc, Pretty (..))
 newtype U = U { unU :: Int } deriving (Eq, Ord)
 
 data MN = MN { mN :: NonEmpty T.Text, mU :: !U }
-data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving Functor
+data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving (Functor, Foldable, Traversable)
 
 intercalate :: Doc a -> [Doc a] -> Doc a
 intercalate x = mconcat . intersperse x

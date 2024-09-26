@@ -9,10 +9,11 @@ module A ( A (..)
          , D (..)
          , M (..)
          , SL (..), ASeq
-         , faseq
+         , taseq
          , mapTS
          ) where
 
+import           Data.Foldable (fold)
 import qualified Data.Text     as T
 import           Nm
 import           Pr
@@ -50,12 +51,28 @@ data A a = B { aL :: a, builtin :: !B }
 faseq :: (a -> b) -> ASeq a -> ASeq b
 faseq f (SL x xs) = SL (f x) (map (f<$>) xs)
 
+maseq :: Monoid m => ASeq m -> m
+maseq (SL x xs) = x<>foldMap fold xs
+
+taseq :: Applicative m => (a -> m b) -> ASeq a -> m (ASeq b)
+taseq f (SL x xs) = SL <$> f x <*> f2 f xs where f2 g = traverse (traverse g)
+
 instance Functor A where
     fmap f (B x b) = B (f x) b; fmap f (L x l) = L (f x) l
     fmap f (C x n) = C (f x) (f<$>n); fmap f (V x n) = V (f x) (f<$>n)
     fmap f (Q x as) = Q (f x) (faseq f as)
     fmap f (Pat x (SL y ys)) = Pat (f x) (SL (f y) (map (faseq f) ys))
     fmap f (Inv x a) = Inv (f x) (f<$>a)
+
+instance Foldable A where
+    foldMap f (B x _) = f x
+
+instance Traversable A where
+    traverse f (B x b) = B <$> f x <*> pure b; traverse f (L x l) = L <$> f x <*> pure l
+    traverse f (C x n) = C <$> f x <*> traverse f n; traverse f (V x n) = V <$> f x <*> traverse f n
+    traverse f (Q x as) = Q <$> f x <*> taseq f as
+    traverse f (Pat x (SL y ys)) = Pat <$> f x <*> (SL <$> f y <*> traverse (taseq f) ys)
+    traverse f (Inv x a) = Inv <$> f x <*> traverse f a
 
 data Prim = Int | Bool | String | Unit deriving Eq -- TODO: array?
 

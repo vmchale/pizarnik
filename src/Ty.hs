@@ -83,40 +83,45 @@ iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
 
-(@*) :: Subst a -> TS a -> TS a
-s @* (TS l r) = TS (s@@l) (s@@r)
+(@*) :: Subst a -> TS a -> TM a (TS a)
+s @* (TS l r) = TS <$> s@@l <*> s@@r
 
 {-# SCC (@@) #-}
-(@@) :: Subst a -> TSeq a -> TSeq a
-(@@) _ []          = []
-(@@) s (SV _ n:ts) = s@~>n++s@@ts
-(@@) s (t:ts)      = (s@>t):s@@ts
+(@@) :: Subst a -> TSeq a -> TM a (TSeq a)
+(@@) _ []          = pure []
+(@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
+(@@) s (t:ts)      = do {t' <- s@> t; (t':)<$>s@@ts}
 
-(@~>) :: Subst a -> Nm a -> TSeq a
+(@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
     case IM.lookup i (svs s) of
         Just ts -> mapSV (IM.delete i) s @@ ts
-        Nothing -> [SV x v]
+        Nothing -> pure [SV x v]
 
 {-# SCC (@>) #-}
-(@>) :: Subst a -> T a -> T a
-(@>) _ t@TP{}          = t
-(@>) _ t@TT{}          = t
-(@>) s (TA x t0 t1)    = TA x (s@>t0) (s@>t1)
-(@>) s (QT x (TS l r)) = QT x (TS (s@@l) (s@@r))
-(@>) s (TI x t)        = TI x (s@>t)
+(@>) :: Subst a -> T a -> TM a (T a)
+(@>) _ t@TP{}          = pure t
+(@>) _ t@TT{}          = pure t
+(@>) s t@(TA x TC{} _) = do
+    cs <- gets (tds.lo)
+    s@>(tCtx cs t)
+(@>) s t@TC{} = do
+    cs <- gets (tds.lo)
+    s@>(tCtx cs t)
+(@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
+(@>) s (QT x sig)      = QT x<$>s@*sig
+(@>) s (TI x t)        = TI x <$> s@>t
 (@>) s t@(TV _ n)      =
     let u=unU (un n) in
     case IM.lookup u (tvs s) of
-        Nothing -> t
+        Nothing -> pure t
         Just t' -> mapTV (IM.delete u) s@>t'
-(@>) s (Σ x ts) = Σ x ((s@@)<$>ts)
+(@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
--- FIXME: expand type synonyms here
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-usc f s = uas f s `on` (s@@)
+usc f s = uas f s `onM` (s@@)
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -148,7 +153,7 @@ uas f _ [] t1 = throwError $ USF t1 [] f
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-uac f s = ua f s `on` (s@>)
+uac f s = ua f s `onM` (s@>)
 
 {-# SCC ua #-}
 ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -169,7 +174,7 @@ mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-msc f s = ms f `on` (s@@)
+msc f s = ms f `onM` (s@@)
 
 ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
@@ -208,7 +213,7 @@ mT _ s [] []             = pure s
 mT f s (t0:ts0) (t1:ts1) = do {s' <- msc f s t0 t1; mT f s' ts0 ts1}
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig = mSig (s@*asig)
+mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
@@ -243,7 +248,7 @@ tD1 _ (TD x n vs t)         = pure (TD x n vs t)
 tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
     s' <- mtsc s (aLs as') ts
-    let as''=faseq (s'@*) as'
+    as''<-taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
@@ -311,18 +316,21 @@ ta b s (Pat _ as)     = do
     (as', s') <- tS b s (aas as)
     let sigs=aLs<$>as'
         rights=trights<$>sigs; lefts=tlefts<$>sigs
-    (pRight, s'') <- succUnify RF s' rights
-    (pLeft, s''') <- succUnify LF s'' lefts
+    (pRight, s'') <- dU RF s' rights
+    (pLeft, s''') <- dU LF s'' lefts
     let t=TS pLeft pRight
     pure (Pat t (SL t as'), s''')
 
-succUnify :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
-succUnify _ s [ts]       = pure (ts, s)
-succUnify f s (t0:t1:ts) = do {(tϵ, s') <- usc f s t0 t1; succUnify f s' (tϵ:ts)}
+dU :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
+dU _ s [ts]       = pure (ts, s)
+dU f s (t0:t1:ts) = do {(tϵ, s') <- usc f s t0 t1; dU f s' (tϵ:ts)}
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
 tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
+
+onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
+onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 
 -- PROBLEM: when do we add the ⊕ ?
 -- I think doing it in ua is too early. We want sequences of types to be ⊕ together...
