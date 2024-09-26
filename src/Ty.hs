@@ -176,6 +176,7 @@ ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (ts++[[t1]]), s)
+ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (ts++[[t1]]), s)
 ua _ _ t0 t1 = error (show (t0,t1))
 
 mSig :: TS a -> TS a -> TM a (Subst a)
@@ -215,7 +216,6 @@ ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
--- FIXME: on the left: intersection? (type annotation must be narrower than what it accepts)
 ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
@@ -228,6 +228,7 @@ ma f t0 (TA _ TC{} _) = do
     t1' <- lΒ cs t0
     ma f t0 t1'
 
+-- FIXME: on the left: intersection? (type annotation must be narrower than what it accepts)
 mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
 mT _ s [] []             = pure s
 mT f s (t0:ts0) (t1:ts1) = do {s' <- msc f s t0 t1; mT f s' ts0 ts1}
