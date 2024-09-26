@@ -87,6 +87,7 @@ Pattern-match arms are defined just as functions and can be reused. % referenced
 isZero : Int -- Bool
        := [ 0⁻¹ `true & _ `false ]
 \end{verbatim}
+% narrowing: we can narrow supplied arguments, but not ⊕-generalize
 
 \subsection{Typesafe Head}
 
@@ -99,7 +100,8 @@ head : NE a -- a
      := [ `cons⁻¹ nip ]
 \end{verbatim}
 
-Any nonempty list can be supplied as an argument to a function on lists. This is far more fluent than the situation in Haskell, in which \verb|foldr| \&c. for \verb|NonEmpty| must be defined separately.
+Any nonempty list can be supplied as an argument to a function on lists.
+% This is far more fluent than the situation in Haskell, in which \verb|foldr| \&c. for \verb|NonEmpty| must be defined separately.
 % row types give us ->1 etc., "sigma types" give us
 
 \subsection{Or-Patterns}
@@ -129,16 +131,15 @@ type Maybe a = a `just ⊕ `nothing;
 
 \section{Expression Problem}
 
-The expression problem
-
 \begin{verbatim}
-type Expr = `int Int ⊕ `add Expr Expr;
+type Expr = Int `int ⊕ Expr Expr `add;
 
 eval : Expr -- Int
      := [ { `int⁻¹ & `add⁻¹ [eval] dip eval + } ]
 \end{verbatim}
 
 % matthias blume already did this: http://lambda-the-ultimate.org/node/4394
+% http://lambda-the-ultimate.org/node/4394#comment-68007
 
 % basically same as Haskell but without the globality of typeclasses
 % more "natural"; don't have to change approach entirely/start out w/ right approach
@@ -155,9 +156,12 @@ eval : Expr -- Int
 
 % "right permeable" girard uses
 
-% stack variables must only at leftmost (check programmer-supplied function definitions)
+% convince myself that "always unify everything" and putting stack variables everywhere works (greedy but also we put them everywhere soooo probably yeah)
 % unlike Diggins, we also want monomorphization, hence mgu, match approach
-% http://lambda-the-ultimate.org/node/4394#comment-68007
+
+\section{Error Hierarchies}
+
+% https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}

@@ -1,2 +1,3 @@
 # https://hypercubed.github.io/joy/html/j05cmp.html
-fac := [ 0 = { False⁻¹ dup 1 - fac * & True⁻¹ drop 1 } ]
+fac : Int -- Int
+    := [ 0 = { False⁻¹ dup 1 - fac * & True⁻¹ drop 1 } ]
