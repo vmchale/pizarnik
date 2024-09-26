@@ -10,7 +10,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , taseq
-         , mapTS
+         , tTS
          ) where
 
 import qualified Data.Text     as T
@@ -84,7 +84,7 @@ instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="
 data TS a = TS { tlefts, trights :: TSeq a }
 type TSeq a = [T a]
 
-mapTS f (TS l r) = TS (map f l) (map f r)
+tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
 data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }

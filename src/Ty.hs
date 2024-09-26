@@ -4,11 +4,10 @@ module Ty ( TE, Ext (..), tM ) where
 
 import           A
 import           B
-import           Control.Monad.Except       (throwError)
+import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
-import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
@@ -27,7 +26,7 @@ instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
 
 data TE a = UF (T a) (T a) F | MF (T a) (T a) F
-          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F
+          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
@@ -37,6 +36,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (hsep (pretty<$>ts0)) <+> "with" <+> squotes (hsep (pretty<$>ts1))
     pretty (MF t0 t1 _)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
     pretty (MSF ts0 ts1 _) = tsc ts0 $ "Failed to match" <+> hsep (pretty<$>ts0) <+> "against" <+> hsep (pretty<$>ts1)
+    pretty (BE e)          = pretty e
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -72,10 +72,13 @@ tun :: T a -> (Nm a, [T a])
 tun (TC _ n)     = (n, [])
 tun (TA _ t0 t1) = second (++[t1]) (tun t0)
 
-tCtx :: Cs a -> T a -> T a
+lΒ :: Cs a -> T a -> TM a (T a)
+lΒ c = liftEither . first BE . tCtx c
+
+tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
 tCtx c t@TA{} = uncurry (β c) (tun t)
-tCtx _ t      = t
+tCtx _ t      = Right t
 
 iFn :: Nm a -> TS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
@@ -102,12 +105,12 @@ s @* (TS l r) = TS <$> s@@l <*> s@@r
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
-(@>) s t@(TA x TC{} _) = do
+(@>) s t@(TA _ TC{} _) = do
     cs <- gets (tds.lo)
-    s@>(tCtx cs t)
+    (s@>) =<< lΒ cs t
 (@>) s t@TC{} = do
     cs <- gets (tds.lo)
-    s@>(tCtx cs t)
+    (s@>) =<< lΒ cs t
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
 (@>) s (QT x sig)      = QT x<$>s@*sig
 (@>) s (TI x t)        = TI x <$> s@>t
@@ -171,7 +174,7 @@ ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well (on the right)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1}
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f `onM` (s@@)
@@ -205,11 +208,11 @@ ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0@TC{} t1 = do
     cs <- gets (tds.lo)
-    let t0'=tCtx cs t0
-    ma f t0 t1
+    t0' <- lΒ cs t0
+    ma f t0' t1
 ma f t0 t1@TC{} = do
     cs <- gets (tds.lo)
-    let t1'=tCtx cs t0
+    t1' <- lΒ cs t0
     ma f t0 t1'
 
 mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
