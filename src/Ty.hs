@@ -215,6 +215,7 @@ ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
+-- FIXME: on the left: intersection? (type annotation must be narrower than what it accepts)
 ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
