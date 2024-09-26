@@ -85,6 +85,13 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | TI { tL :: a, tI :: T a }
 
+instance Eq (T a) where
+
+instance Ord (T a) where
+    compare (TV _ n0) (TV _ n1) = compare n0 n1
+    compare TV{} _ = GT; compare _ TV{} = LT
+    compare (TP _ p0) (TP _ p1) = compare p0 p1
+
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
 instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
