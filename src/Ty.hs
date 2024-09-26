@@ -11,7 +11,6 @@ import           Data.Foldable              (traverse_)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -69,17 +68,17 @@ mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 ising n t = Subst IM.empty (IM.singleton (unU$un n) t)
 
+tCtx :: Cs a -> T a -> Either (BE a) (T a)
+tCtx c t@TC{} = uncurry (β c) (tun t)
+tCtx c t@TA{} = uncurry (β c) (tun t)
+tCtx _ t      = Right t
+
+tun :: T a -> (Nm a, [T a])
+tun (TC _ n)     = (n, [])
+tun (TA _ t0 t1) = second (++[t1]) (tun t0)
+
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
-  where
-    tCtx :: Cs a -> T a -> Either (BE a) (T a)
-    tCtx c t@TC{} = uncurry (β c) (tun t)
-    tCtx c t@TA{} = uncurry (β c) (tun t)
-    tCtx _ t      = Right t
-
-    tun :: T a -> (Nm a, [T a])
-    tun (TC _ n)     = (n, [])
-    tun (TA _ t0 t1) = second (++[t1]) (tun t0)
 
 iFn :: Nm a -> TS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
@@ -220,9 +219,9 @@ ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1@TC{} = do
     cs <- gets (tds.lo)
-    t1' <- lΒ cs t0
+    t1' <- lΒ cs t1
     ma f t0 t1'
-ma f t0 t1@(TA _ TC{} _) = do
+ma f t0 (TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
