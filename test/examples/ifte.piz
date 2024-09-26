@@ -10,5 +10,8 @@ if : a b `t -- a
 else : a b `f -- b
      := [ `f⁻¹ nip ]
 
-choice : a b B -- a ⊕ b
+choice : a a B -- a
        := [ { if & else } ]
+
+ifte : a b B -- {a ⊕ b}
+     := [ { if & else } ]
