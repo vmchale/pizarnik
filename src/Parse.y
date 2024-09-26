@@ -124,6 +124,7 @@ T :: { T AlexPosn }
   | tag { TT (Nm.loc $1) $1 }
   | lbracket TS rbracket { QT $1 $2 }
   | T parens(sepBy(T,comma)) { troll $1 (reverse $2) }
+  | braces(sepBy(some(T),oplus)) { let tΣs = reverse (fmap reverse (snd $1)) in Σ (tL (head$head tΣs)) tΣs }
 
 A :: { A AlexPosn }
   : dip { B $1 A.Dip } | swap { B $1 A.Swap }
