@@ -19,3 +19,4 @@ bS st (TI x t) = TI x (bS st t)
 bS _ t@TT{} = t; bS _ t@TP{} = t
 bS st (Σ x tss) = Σ x (map (map (bS st)) tss)
 bS st (QT x sig) = QT x (mapTS (bS st) sig)
+-- TODO: renamer for nested application

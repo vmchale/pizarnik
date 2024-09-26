@@ -12,7 +12,6 @@ import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -22,9 +21,7 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-data Ext a = Ext { fns :: IM.IntMap (TS a)
-                 , tds :: Cs a
-                 }
+data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
@@ -80,11 +77,8 @@ tCtx c t@TC{} = uncurry (β c) (tun t)
 tCtx c t@TA{} = uncurry (β c) (tun t)
 tCtx _ t      = t
 
-sigCtx :: Cs a -> TS a -> TS a
-sigCtx c = mapTS (tCtx c)
-
 iFn :: Nm a -> TS b -> TM b ()
-iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i (sigCtx c ts) f) c))
+iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
@@ -118,7 +112,7 @@ s @* (TS l r) = TS (s@@l) (s@@r)
         Just t' -> mapTV (IM.delete u) s@>t'
 (@>) s (Σ x ts) = Σ x ((s@@)<$>ts)
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
-(@>) _ t@TC{} = error ("Internal error: type synonym not replaced: " ++ show t)
+-- FIXME: expand type synonyms here
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -169,7 +163,7 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well!
+ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well (on the right)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1}
@@ -203,6 +197,11 @@ ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
+ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
+ma f t0@TC{} t1 = do
+    cs <- gets (tds.lo)
+    let t0'=tCtx cs t0
+    ma f t0 t1
 
 mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
 mT _ s [] []             = pure s
@@ -243,11 +242,9 @@ tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
 tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
-    cs <- gets (tds.lo)
-    let ts'=sigCtx cs ts
-    s' <- mtsc s (aLs as') ts'
+    s' <- mtsc s (aLs as') ts
     let as''=faseq (s'@*) as'
-    pure (F ts (n$>ts) ts' as'')
+    pure (F ts (n$>ts) ts as'')
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
