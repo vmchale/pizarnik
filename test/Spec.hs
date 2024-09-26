@@ -14,10 +14,10 @@ main = defaultMain $
       , tFile ["."] "test/examples/bool.piz"
       , rFile ["."] "test/examples/mutual.piz"
       , tFile ["."] "test/examples/maybe.piz"
-      , rFile [] "examples/vierergruppe.piz"
+      , tFile [] "examples/vierergruppe.piz"
       , tFile [] "prelude/fn.piz"
       , tFile ["."] "test/examples/ifte.piz"
-      , tErr ["."] "test/data/pmfail.piz" "8:17: Failed to match '`just' against 'a `just ⊕ `nil'"
+      , tErr ["."] "test/data/pmfail.piz" "8:17: ⦠ Failed to match '`just' against '{a `just ⊕ `nil}'"
       ]
 
 rFile :: [FilePath] -> FilePath -> TestTree

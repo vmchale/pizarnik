@@ -148,9 +148,8 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-uas LF _ t0 t1 | length t0 /= length t1 = error (show (t0,t1))
--- stitch starting at the right
--- {a `r ⊕ a `g} is a {`r ⊕ `g}
+uas RF s t0 t1 | length t0 > length t1 = pure ([Σ (tLs t0) [t0,t1]], s) -- FIXME don't include prefix-up-to-unfication in arms
+               | length t1 > length t0 = pure ([Σ (tLs t1) [t0,t1]], s)
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -174,7 +173,10 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
+ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
+ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
+ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (ts++[[t1]]), s)
+ua _ _ t0 t1 = error (show (t0,t1))
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
@@ -182,14 +184,11 @@ mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f `onM` (s@@)
 
--- FIXME: lΒ before checking length
--- Failed to match 'A a a `nothing ⊕ `just against Maybe (a)
 ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
     if n0>n1
         then throwError $ MSF t0e t1e f
-        -- FIXME: disparate lengths on the right
         else let (uws, res) = splitFromLeft n0 t1
              in msc f (ising sn1 uws) t0 res
 ms f t0e@(SV _ v0:t0) t1 = do
@@ -201,6 +200,8 @@ ms f t0e@(SV _ v0:t0) t1 = do
         else let (uws, res) = splitFromLeft n0 t1ϵ
              in msc f (ising v0 uws) t0 res
 ms f (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
+-- stitch starting at the right
+-- {a `r ⊕ a `g} is a {`r ⊕ `g}
 ms _ [] [] = pure mempty
 ms f ts0 [] = throwError$ MSF ts0 [] f
 ms f [] ts1 = throwError$ MSF ts1 [] f
@@ -334,7 +335,7 @@ ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (fmap pare.(s0@*).aLs) as'
     let rights=trights<$>sigs; lefts=tlefts<$>sigs
-    (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU LF s1 lefts
+    (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU RF s1 lefts
     let t=TS pLeft pRight
     pure (Pat t (SL t as'), s2)
 
