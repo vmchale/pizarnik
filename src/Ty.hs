@@ -3,14 +3,16 @@
 module Ty ( TE, Ext (..), tM ) where
 
 import           A
+import           B
 import           Control.Monad.Except       (throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
-import           Data.Bifunctor             (first)
+import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
 import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
+import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -21,7 +23,7 @@ infixl 6 @@
 infixr 6 @*
 
 data Ext a = Ext { fns :: IM.IntMap (TS a)
-                 , tds :: IM.IntMap ([Nm a], T a)
+                 , tds :: Cs a
                  }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
@@ -69,8 +71,20 @@ mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 ising n t = Subst IM.empty (IM.singleton (unU$un n) t)
 
+tun :: T a -> (Nm a, [T a])
+tun (TC _ n)     = (n, [])
+tun (TA _ t0 t1) = second (++[t1]) (tun t0)
+
+tCtx :: Cs a -> T a -> T a
+tCtx c t@TC{} = uncurry (β c) (tun t)
+tCtx c t@TA{} = uncurry (β c) (tun t)
+tCtx _ t      = t
+
+sigCtx :: Cs a -> TS a -> TS a
+sigCtx c = mapTS (tCtx c)
+
 iFn :: Nm a -> TS b -> TM b ()
-iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
+iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i (sigCtx c ts) f) c))
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
@@ -103,7 +117,8 @@ s @* (TS l r) = TS (s@@l) (s@@r)
         Nothing -> t
         Just t' -> mapTV (IM.delete u) s@>t'
 (@>) s (Σ x ts) = Σ x ((s@@)<$>ts)
-(@>) _ t@SV{} = error ("Internal error: (@>) applied to stack variable " ++ show t)
+(@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
+(@>) _ t@TC{} = error ("Internal error: type synonym not replaced: " ++ show t)
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -228,9 +243,11 @@ tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
 tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
-    s' <- mtsc s (aLs as') ts
+    cs <- gets (tds.lo)
+    let ts'=sigCtx cs ts
+    s' <- mtsc s (aLs as') ts'
     let as''=faseq (s'@*) as'
-    pure (F ts (n$>ts) ts as'')
+    pure (F ts (n$>ts) ts' as'')
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
