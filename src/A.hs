@@ -51,9 +51,6 @@ data A a = B { aL :: a, builtin :: !B }
 faseq :: (a -> b) -> ASeq a -> ASeq b
 faseq f (SL x xs) = SL (f x) (map (f<$>) xs)
 
-maseq :: Monoid m => (a -> m) -> ASeq a -> m
-maseq f (SL x xs) = f x <> foldMap (foldMap f) xs
-
 taseq :: Applicative m => (a -> m b) -> ASeq a -> m (ASeq b)
 taseq f (SL x xs) = SL <$> f x <*> f2 f xs where f2 g = traverse (traverse g)
 
@@ -65,11 +62,6 @@ instance Functor A where
     fmap f (Inv x a) = Inv (f x) (f<$>a)
 
 instance Foldable A where
-    foldMap f (B x _) = f x; foldMap f (L x _) = f x
-    foldMap f (C x n) = f x<>foldMap f n; foldMap f (V x n) = f x<>foldMap f n
-    foldMap f (Q x as) = f x<>maseq f as
-    foldMap f (Pat x (SL y ys)) = f x<>f y<>foldMap (maseq f) ys
-    foldMap f (Inv x a) = f x<>foldMap f a
 
 instance Traversable A where
     traverse f (B x b) = B <$> f x <*> pure b; traverse f (L x l) = L <$> f x <*> pure l
