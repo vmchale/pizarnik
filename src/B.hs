@@ -1,25 +1,19 @@
 module B ( β ) where
 
 import           A
-import           Control.Monad.State.Strict (StateT, runStateT)
-import           Data.Bifunctor             (second)
 import qualified Data.IntMap                as IM
 import           Nm
-import           Ty.Clone
 
-type Cs a=IM.IntMap ([Nm a], T a)
-type Β a=IM.IntMap (T a)
-data BSt a=Bs { maxb :: !Int, bb :: Β a }
+type Cs a=IM.IntMap ([Nm a], T a); type Β a=IM.IntMap (T a)
 
-data BE a
+β :: Cs a -> Nm a -> [T a] -> T a
+β c n bs = let (vs,t) = lC n c in bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
 
-type BM a = StateT (BSt a) (Either (BE a))
+lC :: Nm a -> Cs a -> ([Nm a], T a)
+lC (Nm _ (U i) _) = IM.findWithDefault (error "Internal error. Constructor not in scope?") i
 
-β :: Int -> Cs a -> T a -> [T a] -> Either (BE a) (T a, Int)
-β i c t bs = runBM i (bM c t bs) -- undefined
-
-runBM :: Int -> BM a x -> Either (BE a) (x, Int)
-runBM i = fmap (second maxb).flip runStateT (Bs i IM.empty)
-
-bM :: Cs a -> T a -> [T a] -> BM a (T a)
-bM = undefined
+bS :: Β a -> T a -> T a
+bS st (TV _ (Nm _ (U j) _)) = IM.findWithDefault (error "Type constructor not fully applied?") j st
+bS st (TA x t0 t1) = TA x (bS st t0) (bS st t1)
+bS st (TI x t) = TI x (bS st t)
+bS _ t@TT{} = t; bS _ t@TP{} = t

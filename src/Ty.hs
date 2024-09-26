@@ -186,7 +186,7 @@ ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
-ma f t0@(Σ _ σ0) t1@(Σ _ σ1) = mT f mempty σ0 σ1
+ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 
 mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
