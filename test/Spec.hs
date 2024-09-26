@@ -9,11 +9,11 @@ import           Test.Tasty.HUnit (Assertion, assertFailure, testCase, (@?=))
 main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
-      [ rFile ["."] "lib/list.piz"
-      , rFile ["."] "prelude/ord.piz"
-      , rFile ["."] "test/examples/bool.piz"
+      [ tFile ["."] "lib/list.piz"
+      , tFile ["."] "prelude/ord.piz"
+      , tFile ["."] "test/examples/bool.piz"
       , rFile ["."] "test/examples/mutual.piz"
-      , rFile ["."] "test/examples/maybe.piz"
+      , tFile ["."] "test/examples/maybe.piz"
       , rFile [] "examples/vierergruppe.piz"
       , tFile [] "prelude/fn.piz"
       , tFile ["."] "test/examples/ifte.piz"

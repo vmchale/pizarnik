@@ -5,11 +5,11 @@
 type Ord = `lt ⊕ `eq ⊕ `gt;
 
 # from Kempe, from Mirth
-cmpInt : Int Int -- Ord
-       := [ dup2 = { False⁻¹ drop2 `eq & True⁻¹ < { False⁻¹ `lt & True⁻¹ `gt } } ]
+# cmpInt : Int Int -- Ord
+       # := [ dup2 = { False⁻¹ drop2 `eq & True⁻¹ < { False⁻¹ `lt & True⁻¹ `gt } } ]
 
-lte : `lt ⊕ `eq --
+lte : { `lt ⊕ `eq } --
     := [ { `lt⁻¹ & `eq⁻¹ } ]
 
-gte : `eq ⊕ `gt --
+gte : { `eq ⊕ `gt } --
     := [ { `eq⁻¹ & `gt⁻¹ } ]
