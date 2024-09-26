@@ -33,9 +33,9 @@ tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
     pretty (UF t0 t1 _)    = tc t0 $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
-    pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (hsep (pretty<$>ts0)) <+> "with" <+> squotes (hsep (pretty<$>ts1))
+    pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (pSeq ts0) <+> "with" <+> squotes (pSeq ts1)
     pretty (MF t0 t1 _)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
-    pretty (MSF ts0 ts1 _) = tsc ts0 $ "Failed to match" <+> hsep (pretty<$>ts0) <+> "against" <+> hsep (pretty<$>ts1)
+    pretty (MSF ts0 ts1 _) = tsc ts0 $ "Failed to match" <+> squotes (pSeq ts0) <+> "against" <+> squotes (pSeq ts1)
     pretty (BE e)          = pretty e
 
 tc t p = pretty (tL t) <> ":" <+> p
@@ -179,6 +179,8 @@ mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f `onM` (s@@)
 
+-- FIXME: expand before checking length
+-- Failed to match 'A a a `nothing ⊕ `just against Maybe (a)
 ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
@@ -206,11 +208,11 @@ ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
-ma f t0@TC{} t1 = do
-    cs <- gets (tds.lo)
-    t0' <- lΒ cs t0
-    ma f t0' t1
 ma f t0 t1@TC{} = do
+    cs <- gets (tds.lo)
+    t1' <- lΒ cs t0
+    ma f t0 t1'
+ma f t0 t1@(TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
@@ -320,13 +322,12 @@ ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs 
 ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
 ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
-    (as', s') <- tS b s (aas as)
+    (as', s0) <- tS b s (aas as)
     let sigs=aLs<$>as'
         rights=trights<$>sigs; lefts=tlefts<$>sigs
-    (pRight, s'') <- dU RF s' rights
-    (pLeft, s''') <- dU LF s'' lefts
+    (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU LF s1 lefts
     let t=TS pLeft pRight
-    pure (Pat t (SL t as'), s''')
+    pure (Pat t (SL t as'), s2)
 
 dU :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 dU _ s [ts]       = pure (ts, s)

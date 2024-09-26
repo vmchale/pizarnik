@@ -11,6 +11,7 @@ module A ( A (..)
          , SL (..), ASeq
          , taseq
          , tTS
+         , pSeq
          ) where
 
 import qualified Data.Text     as T
@@ -97,8 +98,8 @@ data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
 
 instance Pretty (D a b) where
-    pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (hsep (pretty<$>aas as)))
-    pretty (TD _ n vs t) = "type" <+> pretty n <+> hsep (pretty<$>vs) <+> "=" <+> pretty t <> ";"
+    pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
+    pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
 
 data M a b = M [MN] [D a b]
 
@@ -110,9 +111,8 @@ pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
 instance Pretty (TS a) where
-    pretty (TS [] tr) = "--" <+> hsep (pretty<$>tr)
-    pretty (TS tl []) = hsep (pretty<$>tl) <+> "--"
-    pretty (TS tl tr) = hsep (pretty<$>tl) <+> "--" <+> hsep (pretty<$>tr)
+    pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
+    pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
 
 instance Show (TS a) where show=show.pretty
 
@@ -136,8 +136,11 @@ instance Pretty (A a) where
     pretty (L _ l) = pretty l; pretty (Pat _ as) = group (braces (align (pA (map pASeq (aas as)))))
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
 
+pSeq :: Pretty a => [a] -> Doc ann
+pSeq = hsep.fmap pretty
+
 pASeq :: ASeq a -> Doc ann
-pASeq = hsep.fmap pretty.aas
+pASeq = pSeq.aas
 
 pA = concatWith (\x y -> x <+> "&" <> line <> y)
 
