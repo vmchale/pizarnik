@@ -70,9 +70,9 @@ instance Traversable A where
     traverse f (Pat x (SL y ys)) = Pat <$> f x <*> (SL <$> f y <*> traverse (taseq f) ys)
     traverse f (Inv x a) = Inv <$> f x <*> traverse f a
 
-data Prim = Int | Bool | String | Unit deriving Eq -- TODO: array?
+data Prim = Int | Bool | String deriving (Eq, Ord)
 
-instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"; pretty Unit="𝟙"
+instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
 data TS a = TS { tlefts, trights :: TSeq a }
 type TSeq a = [T a]
