@@ -27,16 +27,16 @@ data Ext a = Ext { fns :: IM.IntMap (TS a)
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
 
-data TE a = UF (T a) (T a) | MF (T a) (T a) | Ind (TSeq a)
-          | USF (TSeq a) (TSeq a) | MSF (TSeq a) (TSeq a)
+data TE a = UF (T a) (T a) F | MF (T a) (T a) | Ind (TSeq a)
+          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (UF t0 t1)    = tc t0 $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
+    pretty (UF t0 t1 _)    = tc t0 $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
     pretty (Ind ts)      = tsc ts $ "Stack variables are only permitted at the leftmost" <+> squotes (hsep(pretty<$>ts))
-    pretty (USF ts0 ts1) = tsc ts0 $ "Failed to unify" <+> squotes (hsep (pretty<$>ts0)) <+> "with" <+> squotes (hsep (pretty<$>ts1))
+    pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (hsep (pretty<$>ts0)) <+> "with" <+> squotes (hsep (pretty<$>ts1))
     pretty (MF t0 t1)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
     pretty (MSF ts0 ts1) = tsc ts0 $ "Failed to match" <+> hsep (pretty<$>ts0) <+> "against" <+> hsep (pretty<$>ts1)
 
@@ -45,9 +45,11 @@ tsc t p = pretty (tLs t) <> ":" <+> p
 
 instance Pretty a => Show (TE a) where show=show.pretty
 
-data Focus = LF | RF
+data F = LF | RF
 
-instance Pretty Focus where pretty LF="⦠"; pretty RF="∢"
+instance Pretty F where pretty LF="⦠"; pretty RF="∢"
+
+instance Show F where show=show.pretty
 
 data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 
