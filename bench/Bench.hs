@@ -9,6 +9,6 @@ main = defaultMain
         , bench "lib/list.piz" $ whnfIO $ rMs ["."] "lib/list.piz"
         ]
     , bgroup "t"
-        [ bench "prelude/fn.piz" $ whnfIO $ tMs [] "prelude/fn.piz"
+        [ bench "prelude/fn.piz" $ whnfIO $ tMs ["."] "test/examples/ifte.piz"
         ]
     ]
