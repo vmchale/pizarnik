@@ -207,6 +207,10 @@ ma f t0@TC{} t1 = do
     cs <- gets (tds.lo)
     let t0'=tCtx cs t0
     ma f t0 t1
+ma f t0 t1@TC{} = do
+    cs <- gets (tds.lo)
+    let t1'=tCtx cs t0
+    ma f t0 t1'
 
 mT :: F -> Subst a -> [TSeq a] -> [TSeq a] -> TM a (Subst a)
 mT _ s [] []             = pure s
