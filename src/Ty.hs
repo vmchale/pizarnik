@@ -11,6 +11,7 @@ import           Data.Foldable              (traverse_)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
+import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -32,14 +33,14 @@ tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (UF t0 t1 _)    = tc t0 $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
-    pretty (USF ts0 ts1 _) = tsc ts0 $ "Failed to unify" <+> squotes (pSeq ts0) <+> "with" <+> squotes (pSeq ts1)
-    pretty (MF t0 t1 _)    = tc t0 $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
-    pretty (MSF ts0 ts1 _) = tsc ts0 $ "Failed to match" <+> squotes (pSeq ts0) <+> "against" <+> squotes (pSeq ts1)
+    pretty (UF t0 t1 f)    = tc t0 f $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
+    pretty (USF ts0 ts1 f) = tsc ts0 f $ "Failed to unify" <+> squotes (pSeq ts0) <+> "with" <+> squotes (pSeq ts1)
+    pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
+    pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> squotes (pSeq ts0) <+> "against" <+> squotes (pSeq ts1)
     pretty (BE e)          = pretty e
 
-tc t p = pretty (tL t) <> ":" <+> p
-tsc t p = pretty (tLs t) <> ":" <+> p
+tc t f p = pretty (tL t) <> ":" <+> pretty f <+> p
+tsc t f p = pretty (tLs t) <> ":" <+> pretty f <+> p
 
 instance Pretty a => Show (TE a) where show=show.pretty
 
@@ -68,17 +69,17 @@ mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 ising n t = Subst IM.empty (IM.singleton (unU$un n) t)
 
-tun :: T a -> (Nm a, [T a])
-tun (TC _ n)     = (n, [])
-tun (TA _ t0 t1) = second (++[t1]) (tun t0)
-
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
+  where
+    tCtx :: Cs a -> T a -> Either (BE a) (T a)
+    tCtx c t@TC{} = uncurry (β c) (tun t)
+    tCtx c t@TA{} = uncurry (β c) (tun t)
+    tCtx _ t      = Right t
 
-tCtx :: Cs a -> T a -> Either (BE a) (T a)
-tCtx c t@TC{} = uncurry (β c) (tun t)
-tCtx c t@TA{} = uncurry (β c) (tun t)
-tCtx _ t      = Right t
+    tun :: T a -> (Nm a, [T a])
+    tun (TC _ n)     = (n, [])
+    tun (TA _ t0 t1) = second (++[t1]) (tun t0)
 
 iFn :: Nm a -> TS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
@@ -148,6 +149,9 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+uas LF _ t0 t1 | length t0 /= length t1 = error (show (t0,t1))
+-- stitch starting at the right
+-- {a `r ⊕ a `g} is a {`r ⊕ `g}
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -171,7 +175,7 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: tseq... unifies different length sequences as well (on the right)
+ua LF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
@@ -179,19 +183,24 @@ mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f `onM` (s@@)
 
--- FIXME: expand before checking length
+-- FIXME: lΒ before checking length
 -- Failed to match 'A a a `nothing ⊕ `just against Maybe (a)
 ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
-    case compare n0 n1 of
+    if n0>n1
+        then throwError $ MSF t0e t1e f
         -- FIXME: disparate lengths on the right
-        GT -> throwError $ MSF t0e t1e f
-        _ -> let (uws, res) = splitFromLeft n0 t1
+        else let (uws, res) = splitFromLeft n0 t1
              in msc f (ising sn1 uws) t0 res
-ms f t0e@(SV _ v0:t0) t1 =
-    let n0=length t0; n1=length t1
-    in if n0>n1 then throwError $ MSF t0e t1 f else let (uws, res) = splitFromLeft n0 t1 in msc f (ising v0 uws) t0 res
+ms f t0e@(SV _ v0:t0) t1 = do
+    cs <- gets (tds.lo)
+    t1ϵ <- traverse (lΒ cs) t1
+    let n0=length t0; n1=length t1ϵ
+    if n0>n1
+        then throwError $ MSF t0e t1ϵ f
+        else let (uws, res) = splitFromLeft n0 t1ϵ
+             in msc f (ising v0 uws) t0 res
 ms f (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
 ms _ [] [] = pure mempty
 ms f ts0 [] = throwError$ MSF ts0 [] f
@@ -203,6 +212,7 @@ ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
+ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 ma f (Σ _ σ0) (Σ _ σ1) = mT f mempty σ0 σ1
@@ -257,7 +267,7 @@ tD1 _ (TD x n vs t)         = pure (TD x n vs t)
 tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
     s' <- mtsc s (aLs as') ts
-    as''<-taseq (s'@*) as'
+    as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
@@ -323,11 +333,14 @@ ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (In
 ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
-    let sigs=aLs<$>as'
-        rights=trights<$>sigs; lefts=tlefts<$>sigs
+    sigs <- traverse (fmap pare.(s0@*).aLs) as'
+    let rights=trights<$>sigs; lefts=tlefts<$>sigs
     (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU LF s1 lefts
     let t=TS pLeft pRight
     pure (Pat t (SL t as'), s2)
+
+pare :: TS a -> TS a
+pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
 dU :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 dU _ s [ts]       = pure (ts, s)
