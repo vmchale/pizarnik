@@ -294,7 +294,8 @@ ta b s (Pat _ as)     = do
         rights=trights<$>sigs; lefts=tlefts<$>sigs
     (pRight, s'') <- succUnify RF s' rights
     (pLeft, s''') <- succUnify LF s'' lefts
-    pure (Pat (TS pLeft pRight) (SL undefined as'), s''') -- unify rs, unify with different focus (left, `true & `false -> `true ⊕ `false
+    let t=TS pLeft pRight
+    pure (Pat t (SL t as'), s''') -- unify rs, unify with different focus (left, `true & `false -> `true ⊕ `false
 
 succUnify :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 succUnify _ s [ts]       = pure (ts, s)
