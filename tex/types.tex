@@ -72,7 +72,7 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 \quad(\textsc{Pattern-Match})
 
 \inferrule
-{\Judge x : A -- \withmany{\alpha}{m}~B \\ y : A~\withmany{\alpha}{n} -- B }
+{\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\withmany{\beta}{m} \\ \Judge y : B~\withmany{\alpha}{n} -- C}
 {\Judge xy : A -- B }
 \quad(\textsc{Narrow})
 
