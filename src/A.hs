@@ -14,6 +14,8 @@ module A ( A (..)
          , pSeq
          ) where
 
+import           Data.Foldable (toList)
+import qualified Data.Sequence as Seq
 import qualified Data.Text     as T
 import           Nm
 import           Pr
@@ -75,7 +77,7 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
 data TS a = TS { tlefts, trights :: TSeq a }
-type TSeq a = [T a]
+type TSeq a = Seq.Seq (T a)
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
@@ -103,8 +105,9 @@ pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
 instance Pretty (TS a) where
-    pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
-    pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
+    pretty (TS tl tr) | Seq.null tl = "--" <+> pSeq tr
+                      | Seq.null tr = pSeq tl <+> "--"
+                      | otherwise = pSeq tl <+> "--" <+> pSeq tr
 
 instance Show (TS a) where show=show.pretty
 
@@ -115,7 +118,7 @@ tunroll t           = [t]
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>ts))
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (pSeq<$>ts))
     pretty (TA _ t t') = pretty t <+> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
 
@@ -128,8 +131,8 @@ instance Pretty (A a) where
     pretty (L _ l) = pretty l; pretty (Pat _ as) = group (braces (align (pA (map pASeq (aas as)))))
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
 
-pSeq :: Pretty a => [a] -> Doc ann
-pSeq = hsep.fmap pretty
+pSeq :: (Pretty a, Functor t, Foldable t) => t a -> Doc ann
+pSeq = hsep.toList.fmap pretty
 
 pASeq :: ASeq a -> Doc ann
 pASeq = pSeq.aas

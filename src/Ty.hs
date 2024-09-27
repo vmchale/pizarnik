@@ -10,6 +10,7 @@ import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
+import           Data.Sequence              (ViewL ((:<)), viewl)
 import qualified Data.Text                  as T
 import           Nm
 import           Pr
@@ -340,7 +341,7 @@ ta b s (Pat _ as)     = do
     pure (Pat t (SL t as'), s2)
 
 pare :: TS a -> TS a
-pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
+pare (TS le re) | (SV _ ᴀ :< l) <- viewl le, (SV _ ᴄ :< r) <- viewl re, ᴀ==ᴄ = TS l r; pare t=t
 
 dU :: F -> Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 dU _ s [ts]       = pure (ts, s)
