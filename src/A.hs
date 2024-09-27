@@ -88,9 +88,20 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
 instance Eq (T a) where
 
 instance Ord (T a) where
+    compare (TT _ tt0) (TT _ tt1) = compare tt0 tt1
+    compare TT{} _ = GT; compare _ TT{} = LT
     compare (TV _ n0) (TV _ n1) = compare n0 n1
     compare TV{} _ = GT; compare _ TV{} = LT
     compare (TP _ p0) (TP _ p1) = compare p0 p1
+    compare TP{} _ = GT; compare _ TP{} = LT
+    compare (SV _ n0) (SV _ n1) = compare n0 n1
+    compare SV{} _ = GT; compare _ SV{} = LT
+    compare (TC _ c0) (TC _ c1) = compare c0 c1
+    compare TC{} _ = GT; compare _ TC{} = LT
+    compare (TA _ t0 t0') (TA _ t1 t1') = case compare t0 t1 of {EQ -> compare t0' t1'; o -> o}
+    compare TA{} _ = GT; compare _ TA{} = LT
+    compare (TI _ t0) (TI _ t1) = compare t0 t1
+    compare TI{} _ = GT; compare _ TI{} = LT
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
