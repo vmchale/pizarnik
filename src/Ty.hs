@@ -322,7 +322,7 @@ exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ:l) (ᴀ:r))}
 
 tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
 tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "c"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
-tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS [a] [b])] [b]) Doll, s)}
+tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS (Seq.singleton a) (S.singleton b))] (S.singleton b)) Doll, s)}
 tae b s a = do
     (a',s') <- ta b s a
     let t=aL a'
