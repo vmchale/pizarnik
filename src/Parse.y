@@ -11,6 +11,7 @@ import Control.Exception (Exception)
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
 import Control.Monad.Trans.Class (lift)
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Sequence as Seq
 import qualified Data.Text as T
 import L
 import qualified Nm
@@ -108,11 +109,11 @@ parens(p)
     : lparen p rparen { $2 }
 
 TDef :: { T AlexPosn }
-     : sepBy(some(T),oplus) { let tΣs = reverse (fmap reverse $1) in Σ (tL (head$head tΣs)) tΣs }
+     : sepBy(some(T),oplus) { let tΣs = reverse (fmap (Seq.reverse . Seq.fromList) $1) in Σ (tL (Seq.index (head tΣs) 0)) tΣs }
      | T { $1 }
 
 TS :: { TS AlexPosn }
-   : many(T) sig many(T) { TS (reverse $1) (reverse $3) }
+   : many(T) sig many(T) { TS (Seq.reverse (Seq.fromList $1)) (Seq.reverse (Seq.fromList $3)) }
 
 T :: { T AlexPosn }
   : name { TV (Nm.loc $1) $1 }
@@ -124,7 +125,7 @@ T :: { T AlexPosn }
   | tag { TT (Nm.loc $1) $1 }
   | lbracket TS rbracket { QT $1 $2 }
   | T parens(sepBy(T,comma)) { troll $1 (reverse $2) }
-  | braces(sepBy(some(T),oplus)) { let tΣs = reverse (fmap reverse (snd $1)) in Σ (tL (head$head tΣs)) tΣs }
+  | braces(sepBy(some(T),oplus)) { let tΣs = reverse (fmap (Seq.reverse . Seq.fromList) (snd $1)) in Σ (tL (Seq.index (head tΣs) 0)) tΣs }
 
 A :: { A AlexPosn }
   : dip { B $1 A.Dip } | swap { B $1 A.Swap }

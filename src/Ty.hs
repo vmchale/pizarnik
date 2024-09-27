@@ -61,7 +61,7 @@ runTM u = fmap (\(x, TSt m st) -> (x, st, m)).flip runStateT (TSt u (Ext IM.empt
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
 
-instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
+-- instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
 
 instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
 instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
@@ -130,10 +130,10 @@ usc f s = uas f s `onM` (s@@)
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-uas _ s seq0 seq1 
+uas _ s seq0 seq1
     | EmptyL <- viewl seq0
-    , EmptyL <- viewl seq1 
-    = pure ([], s)
+    , EmptyL <- viewl seq1
+    = pure (Seq.empty, s)
 uas f s t0 t1
     | (SV _ sn0 :< t0d) <- viewl t0
     , (SV _ sn1 :< t1d) <- viewl t1
@@ -144,25 +144,29 @@ uas f s t0 t1
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws><) <$> usc f (iSV sn0 uws s) t0d res
 uas f s t0 t1
-    | SV _ sn0 :< t0d <- viewl t0 
+    | SV _ sn0 :< t0d <- viewl t0
     = let n0=Seq.length t0d; n1=Seq.length t1 in
     case compare n0 n1 of
         GT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws><) <$> usc f (iSV sn0 uws s) t0d res
-uas f s t0 t1@((SV _ sn1):t1d) =
-    let n0=Seq.length t0; n1=Seq.length t1d in
+uas f s t0 t1
+    | SV _ sn1 :< t1d <- viewl t1
+    = let n0=Seq.length t0; n1=Seq.length t1d in
     case compare n0 n1 of
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws><) <$> usc f (iSV sn1 uws s) t1d res
-uas RF s t0 t1 | Seq.length t0 > Seq.length t1 = pure ([Σ (tLs t0) [t0,t1]], s) -- FIXME don't include prefix-up-to-unfication in arms
-               | Seq.length t1 > Seq.length t0 = pure ([Σ (tLs t1) [t0,t1]], s)
-uas f s (t0:ts0) (t1:ts1) = do
+uas RF s t0 t1 | Seq.length t0 > Seq.length t1 = pure ((Seq.singleton (Σ (tLs t0) [t0,t1])), s) -- FIXME don't include prefix-up-to-unfication in arms
+               | Seq.length t1 > Seq.length t0 = pure ((Seq.singleton (Σ (tLs t1) [t0,t1])), s)
+uas f s t0e t1e 
+    | t0 :< ts0 <- viewl t0e
+    , t1 :< ts1 <- viewl t1e = do
     (tϵ, s') <- ua f s t0 t1
-    first (tϵ:) <$> usc f s' ts0 ts1
-uas f _ t0 [] = throwError $ USF t0 [] f
-uas f _ [] t1 = throwError $ USF t1 [] f
+    first (tϵ<|) <$> usc f s' ts0 ts1
+uas f s t0 t1 | Seq.null t0 && Seq.null t1 = pure (Seq.empty, s)
+uas f _ t0 t1 | Seq.null t1 = throwError $ USF t0 Seq.empty f
+uas f _ t0 t1 | Seq.null t0 = throwError $ USF t1 Seq.empty f
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -181,10 +185,10 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [[t0],[t1]], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
+ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x [Seq.singleton t0,Seq.singleton t1], s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
-ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (ts++[[t1]]), s)
-ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (ts++[[t1]]), s)
+ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (ts++[Seq.singleton t1]), s)
+ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (ts++[Seq.singleton t1]), s)
 ua _ _ t0 t1 = error (show (t0,t1))
 
 mSig :: TS a -> TS a -> TM a (Subst a)
@@ -194,26 +198,32 @@ msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f `onM` (s@@)
 
 ms :: F -> TSeq a -> TSeq a -> TM a (Subst a)
-ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
-    let n0=length t0; n1=length t1 in
+ms f t0e t1e
+    | SV{} :< t0 <- viewl t0e
+    , (SV _ sn1 :< t1) <- viewl t1e 
+    = let n0=length t0; n1=length t1 in
     if n0>n1
         then throwError $ MSF t0e t1e f
         else let (uws, res) = splitFromLeft n0 t1
              in msc f (ising sn1 uws) t0 res
-ms f t0e@(SV _ v0:t0) t1 = do
+ms f t0e t1 
+    | SV _ v0 :< t0 <- viewl t0e = do
     cs <- gets (tds.lo)
     t1ϵ <- traverse (lΒ cs) t1
-    let n0=length t0; n1=length t1ϵ
+    let n0=Seq.length t0; n1=Seq.length t1ϵ
     if n0>n1
         then throwError $ MSF t0e t1ϵ f
         else let (uws, res) = splitFromLeft n0 t1ϵ
              in msc f (ising v0 uws) t0 res
-ms f (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
+ms f t0e t1e 
+    | t0 :< ts0 <- viewl t0e
+    , t1 :< ts1 <- viewl t1e
+    = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
 -- stitch starting at the right
 -- {a `r ⊕ a `g} is a {`r ⊕ `g}
-ms _ [] [] = pure mempty
-ms f ts0 [] = throwError$ MSF ts0 [] f
-ms f [] ts1 = throwError$ MSF ts1 [] f
+ms _ ts0 ts1 | Seq.null ts0 && Seq.null ts1 = pure mempty
+ms f ts0 ts1 | Seq.null ts1 = throwError$ MSF ts0 Seq.empty f
+ms f ts0 ts1 | Seq.null ts0 = throwError$ MSF ts1 Seq.empty f
 
 {-# SCC ma #-}
 ma :: F -> T a -> T a -> TM a (Subst a)
@@ -281,7 +291,7 @@ tD1 b (F _ n ts as) = do
     pure (F ts (n$>ts) ts as'')
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
-tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
+tseq _ s (SL l [])     = do {ᴀ <- fsv l "A"; pure (SL (TS (Seq.singleton ᴀ) (Seq.singleton ᴀ)) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
@@ -317,12 +327,13 @@ ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
 exps :: a -> TS a -> TM a (TS a)
-exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t
-exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ:l) (ᴀ:r))}
+exps _ t@(TS l _) | (SV{} :< _) <- viewl l = pure t
+exps _ t@(TS _ r) | (SV{} :< _) <- viewl r = pure t
+exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ<|l) (ᴀ<|r))}
 
 tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "c"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
-tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS (Seq.singleton a) (S.singleton b))] (S.singleton b)) Doll, s)}
+tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "c"; pure (B (TS (Seq.fromList [a, b, QT l (TS (Seq.singleton a) (Seq.singleton c))]) (Seq.fromList [c,b])) Dip, s)}
+tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS (Seq.fromList [a, QT l (TS (Seq.singleton a) (Seq.singleton b))]) (Seq.singleton b)) Doll, s)}
 tae b s a = do
     (a',s') <- ta b s a
     let t=aL a'
