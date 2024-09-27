@@ -291,11 +291,9 @@ splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
--- we can only generalize a to a⊕b on the right, i.e. r0
--- (pass focus to ua while stitching)
 cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- usc LF s r0 l1 -- narrow supplied arguments (NE where list is expected)
+    (_, s') <- usc LF s r0 l1 -- narrow supplied arguments
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
