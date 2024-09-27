@@ -1,5 +1,7 @@
 %-
 
+# TODO: False should have type False for pattern match
+
 not : Bool -- Bool
     := [ { False⁻¹ True & True⁻¹ False } ]
 

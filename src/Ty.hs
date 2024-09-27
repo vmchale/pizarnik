@@ -10,7 +10,8 @@ import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
-import           Data.Sequence              (ViewL ((:<)), viewl)
+import qualified Data.Sequence as Seq
+import           Data.Sequence              (ViewL (..), viewl, (<|), (><))
 import qualified Data.Text                  as T
 import           Nm
 import           Pr
@@ -30,7 +31,7 @@ data TE a = UF (T a) (T a) F | MF (T a) (T a) F
           | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
 
 tLs :: TSeq a -> a
-tLs = tL.head
+tLs = tL . (`Seq.index` 0)
 
 instance Pretty a => Pretty (TE a) where
     pretty (UF t0 t1 f)    = tc t0 f $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
@@ -92,15 +93,15 @@ s @* (TS l r) = TS <$> s@@l <*> s@@r
 
 {-# SCC (@@) #-}
 (@@) :: Subst a -> TSeq a -> TM a (TSeq a)
-(@@) _ []          = pure []
-(@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
-(@@) s (t:ts)      = do {t' <- s@> t; (t':)<$>s@@ts}
+(@@) s seq | EmptyL <- viewl seq = pure Seq.empty
+(@@) s seq | (SV _ n:<ts) <- viewl seq = do {v <- s@~>n; (v><)<$>s@@ts}
+(@@) s seq | (t:<ts) <- viewl seq = do {t' <- s@> t; (t'<|)<$>s@@ts}
 
 (@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
     case IM.lookup i (svs s) of
         Just ts -> mapSV (IM.delete i) s @@ ts
-        Nothing -> pure [SV x v]
+        Nothing -> pure (Seq.singleton (SV x v))
 
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> TM a (T a)
@@ -129,28 +130,34 @@ usc f s = uas f s `onM` (s@@)
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-uas _ s [] [] = pure ([], s)
-uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
-    let n0=length t0d; n1=length t1d in
+uas _ s seq0 seq1 
+    | EmptyL <- viewl seq0
+    , EmptyL <- viewl seq1 
+    = pure ([], s)
+uas f s t0 t1
+    | (SV _ sn0 :< t0d) <- viewl t0
+    , (SV _ sn1 :< t1d) <- viewl t1
+    = let n0=Seq.length t0d; n1=Seq.length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+              in first (uws><) <$> usc f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
-uas f s t0@((SV _ sn0):t0d) t1 =
-    let n0=length t0d; n1=length t1 in
+             in first (uws><) <$> usc f (iSV sn0 uws s) t0d res
+uas f s t0 t1
+    | SV _ sn0 :< t0d <- viewl t0 
+    = let n0=Seq.length t0d; n1=Seq.length t1 in
     case compare n0 n1 of
         GT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
+             in first (uws><) <$> usc f (iSV sn0 uws s) t0d res
 uas f s t0 t1@((SV _ sn1):t1d) =
-    let n0=length t0; n1=length t1d in
+    let n0=Seq.length t0; n1=Seq.length t1d in
     case compare n0 n1 of
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
-             in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-uas RF s t0 t1 | length t0 > length t1 = pure ([Σ (tLs t0) [t0,t1]], s) -- FIXME don't include prefix-up-to-unfication in arms
-               | length t1 > length t0 = pure ([Σ (tLs t1) [t0,t1]], s)
+             in first (uws><) <$> usc f (iSV sn1 uws s) t1d res
+uas RF s t0 t1 | Seq.length t0 > Seq.length t1 = pure ([Σ (tLs t0) [t0,t1]], s) -- FIXME don't include prefix-up-to-unfication in arms
+               | Seq.length t1 > Seq.length t0 = pure ([Σ (tLs t1) [t0,t1]], s)
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -288,8 +295,8 @@ traceCat a as t0 t1 tRes = pretty a <+> ":" <+> pretty t0
     <#> indent 4 (hsep(pretty<$>a:as) <+> ":" <+> pretty tRes)
     <> hardline
 
-splitFromLeft :: Int -> [a] -> ([a], [a])
-splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
+splitFromLeft :: Int -> Seq.Seq a -> (Seq.Seq a, Seq.Seq a)
+splitFromLeft n xs | nl <- Seq.length xs = Seq.splitAt (nl-n) xs
 
 {-# SCC cat #-}
 cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
@@ -322,20 +329,24 @@ tae b s a = do
     t' <- exps (aL a) t
     pure (a' {aL = t'}, s')
 
+rsing :: T a -> TS a
+rsing t = TS Seq.empty (Seq.singleton t)
+
 ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-ta _ s (L l lit@I{})  = pure (L (TS [] [TP l Int]) lit, s)
-ta _ s (L l lit@BL{}) = pure (L (TS [] [TP l Bool]) lit, s)
+ta _ s (L l lit@I{})  = pure (L (rsing (TP l Int)) lit, s)
+ta _ s (L l lit@BL{}) = pure (L (rsing (TP l Bool)) lit, s)
 ta b s (V _ n)        = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
-ta _ s (B l Un)       = do {n <- ftv l "a"; pure (B (TS [n] []) Un, s)}
-ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
-ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
-ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
+ta _ s (B l Un)       = do {n <- ftv l "a"; pure (B (TS (Seq.singleton n) Seq.empty) Un, s)}
+ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS (Seq.singleton n) (Seq.fromList [n,n])) Dup, s)}
+ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS (Seq.fromList [a,b]) (Seq.fromList [b,a])) Swap, s)}
+ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (rsing (QT l (aLs as'))) as', s')}
 ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
-ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
+ta _ s (C l tt)       = let ts=rsing (TT l tt) in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (fmap pare.(s0@*).aLs) as'
     let rights=trights<$>sigs; lefts=tlefts<$>sigs
+    -- a⁻¹ & b⁻¹ = (a ⊕ b)⁻¹ = (a ⊕ b) --
     (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU RF s1 lefts
     let t=TS pLeft pRight
     pure (Pat t (SL t as'), s2)

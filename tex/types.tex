@@ -21,7 +21,8 @@ A stack variable $A$ is a sequence of type variables $\alpha_1,\alpha_2,\ldots,\
 \newcommand{\Judge}{\Gamma\vdash}
 \newcommand{\with}{~\&~}
 \newcommand{\tseq}[2]{#1_1#1_2\cdots#1_#2}
-\newcommand{\withmany}[2]{#1_1\oplus#1_2\oplus\cdots\oplus#1_#2}
+\newcommand{\disjmany}[2]{#1_1\oplus#1_2\oplus\cdots\oplus#1_#2}
+\newcommand{\withmany}[2]{#1_1 \with #1_2 \with \cdots \with #1_#2}
 
 \begin{mathpar}
 \inferrule
@@ -72,9 +73,14 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 \quad(\textsc{Pattern-Match})
 
 \inferrule
-{\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\withmany{\beta}{m} \\ \Judge y : B~\withmany{\alpha}{n} -- C}
+{\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\disjmany{\beta}{m} \\ \Judge y : B~\disjmany{\alpha}{n} -- C}
 {\Judge xy : A -- B }
 \quad(\textsc{Narrow})
+
+\inferrule
+{\Judge \vdash x_1 : B -- \alpha_1 A \\ \Judge x_2 : B -- \alpha_2 A \\ \cdots \\ \Judge x_n : B -- \alpha_n A}
+{\Gamma \vdash \braces{x_1 \with x_2 \with \cdots \with x_n} : B -- \withmany{\alpha}{n} A}
+\quad(\textsc{Pattern-Match})
 
 \end{mathpar}
 

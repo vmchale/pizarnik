@@ -6,3 +6,6 @@
 - fixity: infixr 5 @~
 - fixity: infixr 6 @>
 - fixity: infixr 6 @@
+- fixity: infixr 5 ><
+- fixity: infixl 5 |>
+- fixity: infixr 5 :<
