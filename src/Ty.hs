@@ -10,6 +10,7 @@ import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
+import qualified Data.Set                   as S
 import qualified Data.Text                  as T
 import           Nm
 import           Pr
@@ -20,7 +21,7 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a }
+data Ext a = Ext { fns :: IM.IntMap (TS S.Set a), tds :: Cs a }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty

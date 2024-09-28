@@ -1,4 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module A ( A (..)
          , B (..)
@@ -74,20 +76,20 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
-data TS a = TS { tlefts, trights :: TSeq a }
-type TSeq a = [T a]
+data TS f a = TS { tlefts, trights :: TSeq f a }
+type TSeq f a = [T f a]
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
-data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
-         | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
-         | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: [TSeq a] }
-         | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
-         | TI { tL :: a, tI :: T a }
+data T f a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
+           | QT { tL :: a, tq :: TS f a } | SV { tL :: a, tSs :: Nm a }
+           | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: f (TSeq f a) }
+           | TA { tL :: a, tA0, tA1 :: T f a } | TC { tL :: a, tCon :: Nm a }
+           | TI { tL :: a, tI :: T f a }
 
-instance Eq (T a) where
+instance Eq (T f a) where
 
-instance Ord (T a) where
+instance Ord (f (TSeq f a)) => Ord (T f a) where
     compare (TP _ p0) (TP _ p1) = compare p0 p1
     compare TP{} _ = GT; compare _ TP{} = LT
     compare (TT _ tt0) (TT _ tt1) = compare tt0 tt1
@@ -106,34 +108,34 @@ instance Ord (T a) where
     compare Σ{} _ = GT; compare _ Σ{} = LT
     compare (QT _ (TS l0 r0)) (QT _ (TS l1 r1)) = case compare l0 l1 of {EQ -> compare r0 r1; x -> x}
 
-data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
+data D f a b = TD a (Nm a) [Nm a] (T f a) | F b (Nm b) (TS f a) (ASeq b)
 
-instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
+instance Functor (D f a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
 
-instance Pretty (D a b) where
+instance Pretty (D [] a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
     pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
 
-data M a b = M [MN] [D a b]
+data M f a b = M [MN] [D f a b]
 
-instance Pretty (M a b) where
+instance Pretty (M [] a b) where
     pretty (M [] ds) = pDs ds
     pretty (M ms ds) = concatWith (<#>) (pI<$>ms) <##> pDs ds
 
 pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
-instance Pretty (TS a) where
+instance Pretty (TS [] a) where
     pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
     pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
 
-instance Show (TS a) where show=show.pretty
+instance Show (TS [] a) where show=show.pretty
 
-tunroll :: T a -> [T a]
+tunroll :: T f a -> [T f a]
 tunroll (TA _ t t') = t:tunroll t'
 tunroll t           = [t]
 
-instance Pretty (T a) where
+instance Pretty (T [] a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>ts))
@@ -142,7 +144,7 @@ instance Pretty (T a) where
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 
-instance Show (T a) where show=show.pretty
+instance Show (T [] a) where show=show.pretty
 
 instance Pretty (A a) where
     pretty (B _ b) = pretty b; pretty (Q _ as) = brackets (pASeq as)

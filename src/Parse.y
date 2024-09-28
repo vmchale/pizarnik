@@ -107,14 +107,14 @@ braces(p)
 parens(p)
     : lparen p rparen { $2 }
 
-TDef :: { T AlexPosn }
+TDef :: { T [] AlexPosn }
      : sepBy(some(T),oplus) { let tΣs = reverse (fmap reverse $1) in Σ (tL (head$head tΣs)) tΣs }
      | T { $1 }
 
-TS :: { TS AlexPosn }
+TS :: { TS [] AlexPosn }
    : many(T) sig many(T) { TS (reverse $1) (reverse $3) }
 
-T :: { T AlexPosn }
+T :: { T [] AlexPosn }
   : name { TV (Nm.loc $1) $1 }
   | sv { SV (Nm.loc $1) $1 }
   | tyname { TC (Nm.loc $1) $1 }
@@ -143,17 +143,17 @@ A :: { A AlexPosn }
   | false { L $1 (BL False) } | true { L $1 (BL True) }
   | ilit { L (loc $1) (A.I (int $1)) }
 
-D :: { D AlexPosn AlexPosn }
+D :: { D [] AlexPosn AlexPosn }
   : name colon TS defEq brackets(many(A)) { F $2 $1 $3 (SL $4 (reverse (snd $5))) }
   | type tyname many(name) eq TDef semicolon { TD $1 $2 (reverse $3) $5 }
 
-M :: { M AlexPosn AlexPosn }
+M :: { M [] AlexPosn AlexPosn }
   : many(seq(i,modname)) imp many(D) { M (reverse $1) (reverse $3) }
   | many(D) { M [] (reverse $1) }
 
 {
 
-troll :: T a -> [T a] -> T a
+troll :: T f a -> [T f a] -> T f a
 troll t []      = t
 troll t (t':ts) = troll (TA (tL t) t t') ts
 
@@ -172,10 +172,10 @@ instance Exception ParseE
 
 type Parse = ExceptT ParseE Alex
 
-pM :: AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
+pM :: AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M [] AlexPosn AlexPosn)
 pM = parseA 0
 
-parseA :: Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
+parseA :: Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M [] AlexPosn AlexPosn)
 parseA = runParseSt parseM
 
 runParseSt :: Parse a -> Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, a)
