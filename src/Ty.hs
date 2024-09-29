@@ -9,10 +9,12 @@ import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
+import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Set                   as S
 import qualified Data.Text                  as T
+import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -63,6 +65,8 @@ data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq S.Set a) }
 
 instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
 
+instance Show (Subst a) where show=show.pretty
+
 instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
 instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
@@ -90,6 +94,9 @@ iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert 
 
 (@*) :: Subst a -> TS S.Set a -> TM a (TS S.Set a)
 s @* (TS l r) = TS <$> s@@l <*> s@@r
+
+-- peek :: Subst a -> TSeq S.Set a -> TM (TSeq S.Set a)
+-- peek _ [] = pure []
 
 {-# SCC (@@) #-}
 (@@) :: Subst a -> TSeq S.Set a -> TM a (TSeq S.Set a)
@@ -152,6 +159,7 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+             -- TODO: this should not make Σ (... Σ {}) it should UNIFY
 uas RF s t0 t1 | length t0 > length t1 = pure ([Σ (tLs t0) (S.fromList [t0,t1])], s) -- FIXME don't include prefix-up-to-unfication in arms
                | length t1 > length t0 = pure ([Σ (tLs t1) (S.fromList [t0,t1])], s)
 uas f s (t0:ts0) (t1:ts1) = do
@@ -177,39 +185,39 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x (S.fromList [[t0],[t1]]), s) -- TODO: order... tseq... unifies different length sequences as well (on the right)
+ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x (S.fromList [[t0],[t1]]), s)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (S.insert [t1] ts), s)
 ua _ _ t0 t1 = error (show (t0,t1))
 
 mSig :: TS S.Set a -> TS S.Set a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
 
 msc :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (Subst a)
-msc f s = ms f `onM` (s@@)
+msc f s = ms f s `onM` (s@@)
 
-ms :: F -> TSeq S.Set a -> TSeq S.Set a -> TM a (Subst a)
-ms f t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
+ms :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (Subst a)
+ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
     if n0>n1
         then throwError $ MSF t0e t1e f
         else let (uws, res) = splitFromLeft n0 t1
-             in msc f (ising sn1 uws) t0 res
-ms f t0e@(SV _ v0:t0) t1 = do
+             in msc f (iSV sn1 uws s) t0 res
+ms f s t0e@(SV _ v0:t0) t1 = do
     cs <- gets (tds.lo)
     t1ϵ <- traverse (lΒ cs) t1
     let n0=length t0; n1=length t1ϵ
     if n0>n1
         then throwError $ MSF t0e t1ϵ f
         else let (uws, res) = splitFromLeft n0 t1ϵ
-             in msc f (ising v0 uws) t0 res
-ms f (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f s' ts0 ts1}
+             in msc f (iSV v0 uws s) t0 res
+ms f s (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f (s<>s') ts0 ts1}
 -- stitch starting at the right
 -- {a `r ⊕ a `g} is a {`r ⊕ `g}
-ms _ [] [] = pure mempty
-ms f ts0 [] = throwError$ MSF ts0 [] f
-ms f [] ts1 = throwError$ MSF ts1 [] f
+ms _ s [] [] = pure s
+ms f _ ts0 [] = throwError$ MSF ts0 [] f
+ms f _ [] ts1 = throwError$ MSF ts1 [] f
 
 {-# SCC ma #-}
 ma :: F -> T S.Set a -> T S.Set a -> TM a (Subst a)
@@ -221,9 +229,20 @@ ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the left: intersection (type annotation must be narrower than what it accepts)
--- on the right: type annotation can be more general (superset)
-ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = unless (σ1 `S.isSubsetOf` σ0) (throwError $ MF t0 t1 LF) $> mempty
-ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = unless (σ0 `S.isSubsetOf` σ1) (throwError $ MF t0 t1 RF) $> mempty
+-- on the right: type annotation can be more general
+ma LF (Σ x0 σ0) (Σ x1 σ1) = do
+    s <- σPre LF mempty σ0 σ1
+    σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
+    unless (σ1' `S.isSubsetOf` σ0')
+        (throwError $ MF (Σ x0 σ0') (Σ x1 σ1') LF) $> s
+ma RF (Σ x0 σ0) (Σ x1 σ1) = do
+    s <- σPre RF mempty σ0 σ1
+    σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
+    unless (σ0' `S.isSubsetOf` σ1')
+        (throwError $ MF (Σ x0 σ0') (Σ x1 σ1') RF) $> s
+ma LF t0@(Σ _ σ0) t1@TP{} = do
+    unless ([t1] `S.member` σ0)
+        (throwError $ MF t0 t1 LF) $> mempty
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1@TC{} = do
@@ -234,6 +253,14 @@ ma f t0 (TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
+
+σPre :: F -> Subst a -> S.Set (TSeq S.Set a) -> S.Set (TSeq S.Set a) -> TM a (Subst a)
+σPre f s σ0 σ1 =
+    case (S.minView σ0, S.minView σ1) of
+        (Nothing, Nothing)               -> pure s
+        (Just (t0, ts0), Just (t1, ts1)) -> do {s' <- msc f s t0 t1; σPre f s' ts0 ts1}
+-- {a `just ⊕ `nothing}' against '{a `just ⊕ `nothing}
+-- ordering in S.Set agrees b/c names
 
 mtsc :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
