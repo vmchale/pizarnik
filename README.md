@@ -8,14 +8,17 @@ Aspirational examples:
 ```
 type Bool = `true ⊕ `false;
 
-if : a a `t -- a
+if : a b `true -- a
    := [ `true⁻¹ drop ]
 
-else : a a `f -- a
+else : a b `false -- b
      := [ `false⁻¹ nip ]
 
 choice : a a Bool -- a
        := [ { if & else } ]
+
+ifte : a b Bool -- {a ⊕ b}
+     := [ { if & else } ]
 ```
 
 ```
