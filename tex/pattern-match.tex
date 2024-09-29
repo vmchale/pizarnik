@@ -115,34 +115,11 @@ type Ord = `lt ⊕ `eq ⊕ `gt;
 Then we can define
 
 \begin{verbatim}
-lte : `lt ⊕ `eq --
+lte : {`lt ⊕ `eq} --
     := [ `lt⁻¹ & `eq⁻¹ ]
 \end{verbatim}
 
 So we get or-patterns for free and they are reusable as functions.
-
-\subsection{Nominal Typing}
-
-One can define
-
-\begin{verbatim}
-type Maybe a = a `just ⊕ `nothing;
-\end{verbatim}
-
-\section{Expression Problem}
-
-\begin{verbatim}
-type Expr = Int `int ⊕ Expr Expr `add;
-
-eval : Expr -- Int
-     := [ { `int⁻¹ & `add⁻¹ [eval] dip eval + } ]
-\end{verbatim}
-
-% matthias blume already did this: http://lambda-the-ultimate.org/node/4394
-% http://lambda-the-ultimate.org/node/4394#comment-68007
-
-% basically same as Haskell but without the globality of typeclasses
-% more "natural"; don't have to change approach entirely/start out w/ right approach
 
 % also emphasizes duality
 
@@ -161,7 +138,7 @@ eval : Expr -- Int
 
 \section{Error Hierarchies}
 
-% https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
+% also we can say "throw this X or Y" but let top-level be X | Y | W
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
