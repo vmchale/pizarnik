@@ -34,6 +34,9 @@ tuck : a b -- b a b
 nip : a b -- b
     := [ [drop] dip ]
 
+nip2 : a b c -- b c
+     := [ [[_] dip] dip ]
+
 dup2 : a b -- a b a b
      := [ over over ]
 
