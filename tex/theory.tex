@@ -1,0 +1,80 @@
+%! TeX program = lualatex
+
+\documentclass{article}
+
+\usepackage{hyperref}
+\usepackage{fontspec}
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{Theoretical Background}
+\author {V. E. McHale}
+\maketitle
+
+\tableofcontents
+
+\setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
+
+% $(G \oplus H)^\bot=G^\bot \& H^\bot$.
+
+\section{Background}
+
+Blume, Acar, and Chae present a functional language with \cite{blume2006}.
+
+% https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
+
+\section{Expression Problem}
+
+Blume, Acar, and Chae note that they solve the expression problem for functional languages \cite{blume2006}.
+
+% also emphasizes duality
+
+% { 0⁻¹ `true & _ `false }
+% type rewriting/expansion rules... Int + a = a for a universal, inv
+% insight: wildcard is drop
+% inverse of a type: swap left/right on stack
+
+% negation of types (constructive)
+% inspired by linear logic?
+
+% "right permeable" girard uses
+
+% convince myself that "always unify everything" and putting stack variables everywhere works (greedy but also we put them everywhere soooo probably yeah)
+% unlike Diggins, we also want monomorphization, hence mgu, match approach
+
+\section{Error Hierarchies}
+
+% https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
+
+% also we can say "throw this X or Y" but let top-level be X | Y | W
+
+\bibliographystyle{plain}
+\bibliography{bib.bib}
+
+\appendix
+
+\section{The Expression Problem}
+
+% http://lambda-the-ultimate.org/node/4394#comment-68007
+
+% basically same as Haskell but without the globality of typeclasses
+% more "natural"; don't have to change approach entirely/start out w/ right approach
+
+\section{Error Hierarchies}
+
+Nick Partridge gives an example of using prisms for error hierarchies in Haskell \cite{errorprisms}.
+
+This is dual to the lens kludge
+
+\begin{verbatim}
+class HasInt a where
+    int :: Lens a Int
+\end{verbatim}
+
+% https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
+
+Both entail the globality of typeclasses and the esoteric
+% https://www.tumblr.com/ezyang/62157468762/haskell-haskell-and-ghc-too-big-to-fail-panel
+
+\end{document}
