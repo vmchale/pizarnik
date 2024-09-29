@@ -9,12 +9,10 @@ import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
-import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Set                   as S
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -189,7 +187,17 @@ ua RF s t0@(TT x _) t1@(TT _ _) = pure (Σ x (S.fromList [[t0],[t1]]), s)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (S.insert [t1] ts), s)
-ua _ _ t0 t1 = error (show (t0,t1))
+ua RF s (Σ x0 σ0) (Σ x1 σ1) = do
+    s <- σPre RF mempty σ0 σ1
+    σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
+    unless (σ0' `S.isSubsetOf` σ1')
+        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s)
+ua LF s (Σ x0 σ0) (Σ x1 σ1) = do
+    s <- σPre RF mempty σ0 σ1
+    σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
+    unless (σ1' `S.isSubsetOf` σ0')
+        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s)
+
 
 mSig :: TS S.Set a -> TS S.Set a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
@@ -333,7 +341,7 @@ cat s (TS l0 r0) (TS l1 r1) = do
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 
-ftv, fsv :: a -> T.Text -> TM a (T S.Set a)
+ftv, fsv :: a -> T.Text -> TM a (T f a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 
 -- invariants for our inverses: pops off atomic tags.
@@ -365,17 +373,20 @@ ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (fmap pare.(s0@*).aLs) as'
-    let rights=trights<$>sigs; lefts=tlefts<$>sigs
-    (pRight, s1) <- dU RF s0 rights; (pLeft, s2) <- dU RF s1 lefts
-    let t=TS pLeft pRight
-    pure (Pat t (SL t as'), s2)
+    (t, s1) <- dU s0 sigs
+    pure (Pat t (SL t as'), s1)
+  where
+    pare :: TS f a -> TS f a
+    pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
-pare :: TS f a -> TS f a
-pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
+-- all in a right-context
+upm :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (TS S.Set a, Subst a)
+upm s ts0 ts1 = do {(TS l0 r0) <- exps (tLs$tlefts ts0) ts0; (TS l1 r1) <- exps (tLs$tlefts ts1) ts1; (l, s') <- usc RF s l0 l1; (r, s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
 
-dU :: F -> Subst a -> [TSeq S.Set a] -> TM a (TSeq S.Set a, Subst a)
-dU _ s [ts]       = pure (ts, s)
-dU f s (t0:t1:ts) = do {(tϵ, s') <- usc f s t0 t1; dU f s' (tϵ:ts)}
+dU :: Subst a -> [TS S.Set a] -> TM a (TS S.Set a, Subst a)
+dU s []         = pure (TS [] [], s)
+dU s [ts]       = pure (ts, s)
+dU s (t0:t1:ts) = do {(tϵ, s') <- upm s t0 t1; dU s' (tϵ:ts)}
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS S.Set a)], Subst a)
 tS _ s []     = pure ([], s)
