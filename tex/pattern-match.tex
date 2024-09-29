@@ -101,8 +101,10 @@ head : NE a -- a
 \end{verbatim}
 
 Any nonempty list can be supplied as an argument to a function on lists.
+
+% $\alpha$ unifies with $\alpha\oplus\beta$ on the right; catenation occurs on the right sorta
+
 % This is far more fluent than the situation in Haskell, in which \verb|foldr| \&c. for \verb|NonEmpty| must be defined separately.
-% row types give us ->1 etc., "sigma types" give us
 
 \subsection{Or-Patterns}
 
@@ -139,6 +141,7 @@ So we get or-patterns for free and they are reusable as functions.
 \section{Error Hierarchies}
 
 % also we can say "throw this X or Y" but let top-level be X | Y | W
+% e.g. "module resolution" error could be IO or parse
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
