@@ -10,5 +10,5 @@ isJust : Maybe(a) -- Bool
 isNothing : Maybe(a) -- Bool
           := [ { `just⁻¹ _ False & `nothing⁻¹ True } ]
 
-maybe : 'B [a -- 'B] Maybe(a) -- 'B
-      := [ { `just⁻¹ $ & `nothing _ } ]
+maybe : b [a -- b] Maybe(a) -- b
+      := [ { `just⁻¹ nip2 swap $ & `nothing _ } ]
