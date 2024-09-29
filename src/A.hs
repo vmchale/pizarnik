@@ -1,6 +1,5 @@
-{-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module A ( A (..)
          , B (..)
@@ -11,11 +10,15 @@ module A ( A (..)
          , D (..)
          , M (..)
          , SL (..), ASeq
+         , σ, σς
          , taseq
          , tTS
          , pSeq
          ) where
 
+import           Data.Foldable (toList)
+import           Data.Function (on)
+import qualified Data.Set      as S
 import qualified Data.Text     as T
 import           Nm
 import           Pr
@@ -77,7 +80,7 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
 data TS f a = TS { tlefts, trights :: TSeq f a }
-type TSeq f a = [T f a]
+type TSeq f a = [T f a]; type SeqT a = TSeq S.Set a
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
@@ -87,9 +90,18 @@ data T f a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
            | TA { tL :: a, tA0, tA1 :: T f a } | TC { tL :: a, tCon :: Nm a }
            | TI { tL :: a, tI :: T f a }
 
+σς :: TS [] a -> TS S.Set a
+σς (TS l r) = (TS `on` map σ) l r
+
+σ :: T [] a -> T S.Set a
+σ (TV x n) = TV x n; σ (TP x p) = TP x p; σ (SV x n) = SV x n
+σ (TC x n) = TC x n; σ (TT x n) = TT x n; σ (TI x t) = TI x (σ t)
+σ (Σ x as) = Σ x (S.fromList (map (map σ) as))
+σ (TA x t0 t1) = (TA x `on` σ) t0 t1; σ (QT x t) = QT x (σς t)
+
 instance Eq (T f a) where
 
-instance Ord (f (TSeq f a)) => Ord (T f a) where
+instance Ord (T S.Set a) where
     compare (TP _ p0) (TP _ p1) = compare p0 p1
     compare TP{} _ = GT; compare _ TP{} = LT
     compare (TT _ tt0) (TT _ tt1) = compare tt0 tt1
@@ -125,26 +137,26 @@ instance Pretty (M [] a b) where
 pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
-instance Pretty (TS [] a) where
+instance Foldable f => Pretty (TS f a) where
     pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
     pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
 
-instance Show (TS [] a) where show=show.pretty
+instance Foldable f => Show (TS f a) where show=show.pretty
 
 tunroll :: T f a -> [T f a]
 tunroll (TA _ t t') = t:tunroll t'
 tunroll t           = [t]
 
-instance Pretty (T [] a) where
+instance Foldable f => Pretty (T f a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>ts))
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>toList ts))
     pretty (TA _ t t') = pretty t <+> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 
-instance Show (T [] a) where show=show.pretty
+instance Foldable f => Show (T f a) where show=show.pretty
 
 instance Pretty (A a) where
     pretty (B _ b) = pretty b; pretty (Q _ as) = brackets (pASeq as)
