@@ -70,7 +70,6 @@ instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
 mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
-ising n t = Subst IM.empty (IM.singleton (unU$un n) t)
 
 tCtx :: Cs a -> T S.Set a -> Either (BE a) (T S.Set a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
@@ -188,15 +187,15 @@ ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s (Σ x0 σ0) (Σ x1 σ1) = do
-    s <- σPre RF mempty σ0 σ1
+    s' <- σPre RF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ0' `S.isSubsetOf` σ1')
-        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s)
+        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s')
 ua LF s (Σ x0 σ0) (Σ x1 σ1) = do
-    s <- σPre RF mempty σ0 σ1
+    s' <- σPre RF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ1' `S.isSubsetOf` σ0')
-        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s)
+        (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s')
 
 
 mSig :: TS S.Set a -> TS S.Set a -> TM a (Subst a)
