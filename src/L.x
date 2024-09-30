@@ -12,6 +12,7 @@
              , withAlexSt
              -- * Lexer states
              , postImp
+             , get_pos
              ) where
 
 import Control.Arrow ((&&&))

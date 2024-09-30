@@ -4,7 +4,6 @@ import           A
 import           Control.Monad.State.Strict (State, gets, modify, runState)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
-import qualified Data.Set                   as S
 import           Nm
 
 type BS = IM.IntMap Int
@@ -37,17 +36,15 @@ try v g n@(Nm t (U i) l) = do
 tryTV, trySV :: Nm a -> RM (Nm a)
 tryTV=try bTV ibTV; trySV=try bSV ibSV
 
-cloneSig :: Int -> TS S.Set a -> (Int, TS S.Set a)
+cloneSig :: Int -> TS a -> (Int, TS a)
 cloneSig u = (\(ts,RT uϵ _ _) -> (uϵ,ts)).flip runState (RT u IM.empty IM.empty) . cloneSigM
 
-cloneSigM :: TS S.Set a -> RM (TS S.Set a)
+cloneSigM :: TS a -> RM (TS a)
 cloneSigM (TS tl tr) = TS <$> traverse cT tl <*> traverse cT tr
   where
     cT t@TP{} = pure t; cT t@TT{} = pure t; cT t@TC{} = pure t
     cT (TV x n) = TV x <$> tryTV n; cT (SV x n) = SV x <$> trySV n
     cT (QT x ts) = QT x <$> cloneSigM ts
     cT (TA x t ts) = TA x <$> cT t <*> cT ts
-    cT (Σ x ts) = Σ x <$> tS (traverse cT) ts
+    cT (Σ x ts) = Σ x <$> traverse (traverse cT) ts
     cT (TI x t) = TI x <$> cT t
-
-tS f = fmap S.fromList . traverse f . S.toList

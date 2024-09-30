@@ -60,13 +60,13 @@ type RM x = StateT Rs (Either (RE x))
 runRM :: Int -> RM a (f a) -> Either (RE a) (Int, Ex, f a)
 runRM u = fmap (\(x,Rs u' b _ _) -> (u',b,x)).flip runStateT (Rs u (Ex IM.empty IM.empty) IM.empty IM.empty)
 
-rTs :: Ex -> TSeq [] a -> RM a (TSeq [] a)
+rTs :: Ex -> TSeq a -> RM a (TSeq a)
 rTs b = traverse (b@~)
 
-rSig :: Ex -> TS [] a -> RM a (TS [] a)
+rSig :: Ex -> TS a -> RM a (TS a)
 rSig b (TS l r) = TS <$> rTs b l <*> rTs b r
 
-(@~) :: Ex -> T [] a -> RM a (T [] a)
+(@~) :: Ex -> T a -> RM a (T a)
 (@~) _ t@TP{}      = pure t
 (@~) _ t@TT{}      = pure t
 (@~) b (TC x n)    = TC x <$> lT b n
@@ -82,7 +82,7 @@ doLocal act = do
     (tvs,svs) <- gets (btv &&& bsv)
     act <* modify (stv tvs.ssv svs)
 
-ct :: Ex -> TS [] a -> RM a (TS [] a)
+ct :: Ex -> TS a -> RM a (TS a)
 ct b (TS l r) = doLocal $ TS <$> rTs b l <*> rTs b r
 
 frv :: Lens' Rs Bt -> Nm a -> RM x (Nm a)
@@ -127,13 +127,13 @@ rA b (Q x as)          = Q x <$> rAs b as
 rA b (Inv x a)         = Inv x <$> rA b a
 rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
 
-rM :: Int -> Ex -> M [] a a -> Either (RE a) (Int, Ex, M [] a a)
+rM :: Int -> Ex -> M a a -> Either (RE a) (Int, Ex, M a a)
 rM u b (M is ds) = runRM u (M is <$> (traverse (rD1 b) <=< traverse (rD0 b)) ds)
 
-rD0 :: Ex -> D [] a a -> RM a (D [] a a)
+rD0 :: Ex -> D a a -> RM a (D a a)
 rD0 b (F l n t as)  = F l <$> frn b n <*> pure t <*> pure as
 rD0 b (TD l n vs t) = TD l <$> frt b n <*> pure vs <*> pure t
 
-rD1 :: Ex -> D [] a a -> RM a (D [] a a)
+rD1 :: Ex -> D a a -> RM a (D a a)
 rD1 b (F l n t as)  = F l n <$> ct b t <*> rAs b as
 rD1 b (TD l n vs t) = do {(vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (b @~ t); pure (TD l n vs' t')}

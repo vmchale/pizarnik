@@ -1,4 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module A ( A (..)
@@ -6,20 +5,17 @@ module A ( A (..)
          , L (..)
          , Prim (..)
          , T (..), TS (..)
-         , UT, UTS
          , TSeq
          , D (..)
          , M (..)
          , SL (..), ASeq
-         , σ, σς
          , taseq
          , tTS
          , pSeq
          ) where
 
 import           Data.Foldable (toList)
-import           Data.Function (on)
-import qualified Data.Set      as S
+import qualified Data.IntMap   as IM
 import qualified Data.Text     as T
 import           Nm
 import           Pr
@@ -80,77 +76,45 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
-data TS f a = TS { tlefts, trights :: TSeq f a }
-type TSeq f a = [T f a]; type UTS a = TS S.Set a
+data TS a = TS { tlefts, trights :: TSeq a }
+type TSeq a = [T a]
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
-data T f a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
-           | QT { tL :: a, tq :: TS f a } | SV { tL :: a, tSs :: Nm a }
-           | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: f (TSeq f a) }
-           | TA { tL :: a, tA0, tA1 :: T f a } | TC { tL :: a, tCon :: Nm a }
-           | TI { tL :: a, tI :: T f a }
+data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
+         | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
+         | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: IM.IntMap (TSeq a) }
+         | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
+         | TI { tL :: a, tI :: T a }
 
-type UT a = T S.Set a
+data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
-σς :: TS [] a -> UTS a
-σς (TS l r) = (TS `on` map σ) l r
+instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
 
-σ :: T [] a -> UT a
-σ (TV x n) = TV x n; σ (TP x p) = TP x p; σ (SV x n) = SV x n
-σ (TC x n) = TC x n; σ (TT x n) = TT x n; σ (TI x t) = TI x (σ t)
-σ (Σ x as) = Σ x (S.fromList (map (map σ) as))
-σ (TA x t0 t1) = (TA x `on` σ) t0 t1; σ (QT x t) = QT x (σς t)
-
-instance Eq (T f a) where
-
-instance Ord (UT a) where
-    compare (TP _ p0) (TP _ p1) = compare p0 p1
-    compare TP{} _ = GT; compare _ TP{} = LT
-    compare (TT _ tt0) (TT _ tt1) = compare tt0 tt1
-    compare TT{} _ = GT; compare _ TT{} = LT
-    compare (TV _ n0) (TV _ n1) = compare n0 n1
-    compare TV{} _ = GT; compare _ TV{} = LT
-    compare (SV _ n0) (SV _ n1) = compare n0 n1
-    compare SV{} _ = GT; compare _ SV{} = LT
-    compare (TC _ c0) (TC _ c1) = compare c0 c1
-    compare TC{} _ = GT; compare _ TC{} = LT
-    compare (TA _ t0 t0') (TA _ t1 t1') = case compare t0 t1 of {EQ -> compare t0' t1'; o -> o}
-    compare TA{} _ = GT; compare _ TA{} = LT
-    compare (TI _ t0) (TI _ t1) = compare t0 t1
-    compare TI{} _ = GT; compare _ TI{} = LT
-    compare (Σ _ ts0) (Σ _ ts1) = (compare `on` S.map reverse) ts0 ts1
-    compare Σ{} _ = GT; compare _ Σ{} = LT
-    compare (QT _ (TS l0 r0)) (QT _ (TS l1 r1)) = case compare l0 l1 of {EQ -> compare r0 r1; x -> x}
-
-data D f a b = TD a (Nm a) [Nm a] (T f a) | F b (Nm b) (TS f a) (ASeq b)
-
-instance Functor (D f a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
-
-instance Pretty (D [] a b) where
+instance Pretty (D a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
     pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
 
-data M f a b = M [MN] [D f a b]
+data M a b = M [MN] [D a b]
 
-instance Pretty (M [] a b) where
+instance Pretty (M a b) where
     pretty (M [] ds) = pDs ds
     pretty (M ms ds) = concatWith (<#>) (pI<$>ms) <##> pDs ds
 
 pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
-instance Foldable f => Pretty (TS f a) where
+instance Pretty (TS a) where
     pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
     pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
 
-instance Foldable f => Show (TS f a) where show=show.pretty
+instance Show (TS a) where show=show.pretty
 
-tunroll :: T f a -> [T f a]
+tunroll :: T a -> [T a]
 tunroll (TA _ t t') = t:tunroll t'
 tunroll t           = [t]
 
-instance Foldable f => Pretty (T f a) where
+instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>toList ts))
@@ -159,7 +123,7 @@ instance Foldable f => Pretty (T f a) where
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 
-instance Foldable f => Show (T f a) where show=show.pretty
+instance Show (T a) where show=show.pretty
 
 instance Pretty (A a) where
     pretty (B _ b) = pretty b; pretty (Q _ as) = brackets (pASeq as)

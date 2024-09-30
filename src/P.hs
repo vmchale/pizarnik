@@ -9,7 +9,6 @@ import           Data.Bifunctor       (second)
 import qualified Data.ByteString.Lazy as BSL
 import           Data.Foldable        (fold)
 import qualified Data.IntMap          as IM
-import qualified Data.Set             as S
 import           L
 import           M
 import           Nm
@@ -29,7 +28,7 @@ pex n (Ex bv0 bc0) (Ex bv1 bc1) = Ex <$> m'merge bv0 bv1 MDF <*> m'merge bc0 bc1
   where
     m'merge b0 b1 err | IM.disjoint b0 b1 = Right (b0<>b1) | otherwise = Left (err n)
 
-tR :: IM.IntMap (M [] AlexPosn AlexPosn) -> Int -> [MN] -> Either (TE AlexPosn) (IM.IntMap (M S.Set AlexPosn (TS S.Set AlexPosn)))
+tR :: IM.IntMap (M AlexPosn AlexPosn) -> Int -> [MN] -> Either (TE AlexPosn) (IM.IntMap (M AlexPosn (TS AlexPosn)))
 tR rms = loop IM.empty where
     loop _ _ [] = Right IM.empty
     loop b u (MN _ (U i):mns) =
@@ -41,7 +40,7 @@ tR rms = loop IM.empty where
 
 tMs :: [FilePath]
     -> FilePath -- ^ Root module
-    -> IO (Either (TE AlexPosn) (IM.IntMap (M S.Set AlexPosn (TS S.Set AlexPosn))))
+    -> IO (Either (TE AlexPosn) (IM.IntMap (M AlexPosn (TS AlexPosn))))
 tMs incls fp = do
     (u, s, rms) <- yIO =<< rMs incls fp
     pure (tR rms u s)
@@ -50,7 +49,7 @@ tMs incls fp = do
 
 rMs :: [FilePath] -- ^ Include dirs
     -> FilePath -- ^ Root module
-    -> IO (Either (RE AlexPosn) (Int, [MN], IM.IntMap (M [] AlexPosn AlexPosn)))
+    -> IO (Either (RE AlexPosn) (Int, [MN], IM.IntMap (M AlexPosn AlexPosn)))
 rMs incls fp = do
     ((u,_,_,_), MS ms ims) <- pRoot incls fp
     let s=tsort ims

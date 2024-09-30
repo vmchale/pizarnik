@@ -17,7 +17,7 @@ import           Parse
 
 type MM = StateT AlexUserState IO
 
-data MS = MS (IM.IntMap (M [] AlexPosn AlexPosn)) [(MN, [MN])]
+data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
 
 rMM :: AlexUserState -> MM a -> IO (a, AlexUserState)
 rMM = flip runStateT
@@ -50,12 +50,12 @@ pMM (MS mSt mDeps) incls mn@(MN _ (U i)) = do
 mst :: (AlexUserState -> IO (AlexUserState, a)) -> MM a
 mst f = StateT $ fmap swap.f
 
-pMIO :: [FilePath] -> MN -> MM (M [] AlexPosn AlexPosn)
+pMIO :: [FilePath] -> MN -> MM (M AlexPosn AlexPosn)
 pMIO incls mn = do
     fp <- resolveI incls mn
     mst (liftIO.pIO fp)
 
-pIO :: FilePath -> AlexUserState -> IO (AlexUserState, M [] AlexPosn AlexPosn)
+pIO :: FilePath -> AlexUserState -> IO (AlexUserState, M AlexPosn AlexPosn)
 pIO fp st = do
     contents <- BSL.readFile fp
     eIO $ pM st contents where eIO = either throwIO pure
