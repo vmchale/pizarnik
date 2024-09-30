@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Ty ( TE, Ext (..), tM ) where
 
@@ -158,7 +159,7 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-             -- TODO: this should not make Σ (... Σ {}) it should UNIFY
+             --  (['A,a,`just],['A,`nothing],['A,a,{`just ⊕ `nothing}])
 uas RF s t0 t1 | length t0 > length t1 = pure ([Σ (tLs t0) (S.fromList [t0,t1])], s) -- FIXME don't include prefix-up-to-unfication in arms
                | length t1 > length t0 = pure ([Σ (tLs t1) (S.fromList [t0,t1])], s)
 uas f s (t0:ts0) (t1:ts1) = do
@@ -189,12 +190,12 @@ ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) t1@(TT x _) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s t1@(TT x _) (Σ _ ts) = pure (Σ x (S.insert [t1] ts), s)
 ua RF s (Σ x0 σ0) (Σ x1 σ1) = do
-    s' <- σPre RF mempty σ0 σ1
+    s' <- σup RF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ0' `S.isSubsetOf` σ1')
         (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s')
 ua LF s (Σ x0 σ0) (Σ x1 σ1) = do
-    s' <- σPre RF mempty σ0 σ1
+    s' <- σup RF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ1' `S.isSubsetOf` σ0')
         (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s')
@@ -240,18 +241,22 @@ ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the left: intersection (type annotation must be narrower than what it accepts)
 -- on the right: type annotation can be more general
 ma LF (Σ x0 σ0) (Σ x1 σ1) = do
-    s <- σPre LF mempty σ0 σ1
+    s <- σmp LF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ1' `S.isSubsetOf` σ0')
         (throwError $ MF (Σ x0 σ0') (Σ x1 σ1') LF) $> s
 ma RF (Σ x0 σ0) (Σ x1 σ1) = do
-    s <- σPre RF mempty σ0 σ1
+    s <- σmp RF mempty σ0 σ1
     σ0' <- tset (s@@) σ0; σ1' <- tset (s@@) σ1
     unless (σ0' `S.isSubsetOf` σ1')
         (throwError $ MF (Σ x0 σ0') (Σ x1 σ1') RF) $> s
 ma LF t0@(Σ _ σ0) t1@TP{} = do
     unless ([t1] `S.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
+ma LF t0@(Σ _ σ0) t1@TT{} = do
+    unless ([t1] `S.member` σ0)
+        (throwError $ MF t0 t1 LF) $> mempty
+ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1@TC{} = do
@@ -263,11 +268,20 @@ ma f t0 (TA _ TC{} _) = do
     t1' <- lΒ cs t0
     ma f t0 t1'
 
-σPre :: F -> Subst a -> S.Set (USeq a) -> S.Set (USeq a) -> TM a (Subst a)
-σPre f s σ0 σ1 =
+σup :: F -> Subst a -> S.Set (USeq a) -> S.Set (USeq a) -> TM a (Subst a)
+σup f s σ0 σ1 =
+    case (f, S.minView σ0, S.minView σ1) of
+        (_, Nothing, Nothing)               -> pure s
+        -- problem: unify `b ⊕ `c what if it "skips" one
+        (_, Just (t0, ts0), Just (t1, ts1)) -> do {(t, s') <- usc f s t0 t1; σup f s' ts0 ts1}
+        (RF, Nothing, Just{})               -> error (show σ1)
+        (LF, Nothing, Just{})               -> error "?"
+
+σmp :: F -> Subst a -> S.Set (USeq a) -> S.Set (USeq a) -> TM a (Subst a)
+σmp f s σ0 σ1 =
     case (S.minView σ0, S.minView σ1) of
         (Nothing, Nothing)               -> pure s
-        (Just (t0, ts0), Just (t1, ts1)) -> do {s' <- msc f s t0 t1; σPre f s' ts0 ts1}
+        (Just (t0, ts0), Just (t1, ts1)) -> do {s' <- msc f s t0 t1; σmp f s' ts0 ts1}
 -- {a `just ⊕ `nothing}' against '{a `just ⊕ `nothing}
 -- ordering in S.Set agrees b/c names
 
@@ -382,7 +396,11 @@ ta b s (Pat _ as)     = do
 
 -- all in a right-context
 upm :: Subst a -> UTS a -> UTS a -> TM a (UTS a, Subst a)
-upm s ts0 ts1 = do {(TS l0 r0) <- exps (tLs$tlefts ts0) ts0; (TS l1 r1) <- exps (tLs$tlefts ts1) ts1; (l, s') <- usc RF s l0 l1; (r, s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
+upm s (TS l0 r0) (TS l1 r1) = do
+    (l, s0) <- usc RF s l0 l1
+    (r, s1) <- usc RF s0 r0 r1
+    (,s1)<$>expl (TS l r)
+  where expl t = exps (tLs (tlefts t)) t
 
 dU :: Subst a -> [UTS a] -> TM a (UTS a, Subst a)
 dU s []         = pure (TS [] [], s)
