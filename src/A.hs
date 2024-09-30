@@ -6,6 +6,7 @@ module A ( A (..)
          , L (..)
          , Prim (..)
          , T (..), TS (..)
+         , UT, UTS
          , TSeq
          , D (..)
          , M (..)
@@ -80,7 +81,7 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
 data TS f a = TS { tlefts, trights :: TSeq f a }
-type TSeq f a = [T f a]; type SeqT a = TSeq S.Set a
+type TSeq f a = [T f a]; type UTS a = TS S.Set a
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
@@ -90,10 +91,12 @@ data T f a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
            | TA { tL :: a, tA0, tA1 :: T f a } | TC { tL :: a, tCon :: Nm a }
            | TI { tL :: a, tI :: T f a }
 
-σς :: TS [] a -> TS S.Set a
+type UT a = T S.Set a
+
+σς :: TS [] a -> UTS a
 σς (TS l r) = (TS `on` map σ) l r
 
-σ :: T [] a -> T S.Set a
+σ :: T [] a -> UT a
 σ (TV x n) = TV x n; σ (TP x p) = TP x p; σ (SV x n) = SV x n
 σ (TC x n) = TC x n; σ (TT x n) = TT x n; σ (TI x t) = TI x (σ t)
 σ (Σ x as) = Σ x (S.fromList (map (map σ) as))
@@ -101,7 +104,7 @@ data T f a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
 
 instance Eq (T f a) where
 
-instance Ord (T S.Set a) where
+instance Ord (UT a) where
     compare (TP _ p0) (TP _ p1) = compare p0 p1
     compare TP{} _ = GT; compare _ TP{} = LT
     compare (TT _ tt0) (TT _ tt1) = compare tt0 tt1

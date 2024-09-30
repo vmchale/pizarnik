@@ -22,13 +22,15 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-data Ext a = Ext { fns :: IM.IntMap (TS S.Set a), tds :: Cs a }
+type USeq a = TSeq S.Set a
+
+data Ext a = Ext { fns :: IM.IntMap (UTS a), tds :: Cs a }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
 
-data TE a = UF (T S.Set a) (T S.Set a) F | MF (T S.Set a) (T S.Set a) F
-          | USF (TSeq S.Set a) (TSeq S.Set a) F | MSF (TSeq S.Set a) (TSeq S.Set a) F | BE (BE a)
+data TE a = UF (UT a) (UT a) F | MF (UT a) (UT a) F
+          | USF (USeq a) (USeq a) F | MSF (USeq a) (USeq a) F | BE (BE a)
 
 tLs :: TSeq f a -> a
 tLs = tL.head
@@ -58,8 +60,8 @@ type TM x = StateT (TSt x) (Either (TE x))
 runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
 runTM u = fmap (\(x, TSt m st) -> (x, st, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
 
-type Bt a = IM.IntMap (T S.Set a)
-data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq S.Set a) }
+type Bt a = IM.IntMap (UT a)
+data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (USeq a) }
 
 instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
 
@@ -71,7 +73,7 @@ instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 
-tCtx :: Cs a -> T S.Set a -> Either (BE a) (T S.Set a)
+tCtx :: Cs a -> UT a -> Either (BE a) (UT a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
 tCtx c t@TA{} = uncurry (β c) (tun t)
 tCtx _ t      = Right t
@@ -80,35 +82,35 @@ tun :: T f a -> (Nm a, [T f a])
 tun (TC _ n)     = (n, [])
 tun (TA _ t0 t1) = second (++[t1]) (tun t0)
 
-lΒ :: Cs a -> T S.Set a -> TM a (T S.Set a)
+lΒ :: Cs a -> UT a -> TM a (UT a)
 lΒ c = liftEither . first BE . tCtx c
 
-iFn :: Nm a -> TS S.Set b -> TM b ()
+iFn :: Nm a -> UTS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
 
-iTD :: Nm a -> [Nm b] -> T S.Set b -> TM b ()
+iTD :: Nm a -> [Nm b] -> UT b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
 
-(@*) :: Subst a -> TS S.Set a -> TM a (TS S.Set a)
+(@*) :: Subst a -> UTS a -> TM a (UTS a)
 s @* (TS l r) = TS <$> s@@l <*> s@@r
 
--- peek :: Subst a -> TSeq S.Set a -> TM (TSeq S.Set a)
+-- peek :: Subst a -> USeq a -> TM (USeq a)
 -- peek _ [] = pure []
 
 {-# SCC (@@) #-}
-(@@) :: Subst a -> TSeq S.Set a -> TM a (TSeq S.Set a)
+(@@) :: Subst a -> USeq a -> TM a (USeq a)
 (@@) _ []          = pure []
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
 (@@) s (t:ts)      = do {t' <- s@> t; (t':)<$>s@@ts}
 
-(@~>) :: Subst a -> Nm a -> TM a (TSeq S.Set a)
+(@~>) :: Subst a -> Nm a -> TM a (USeq a)
 (@~>) s v@(Nm _ (U i) x) =
     case IM.lookup i (svs s) of
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
 {-# SCC (@>) #-}
-(@>) :: Subst a -> T S.Set a -> TM a (T S.Set a)
+(@>) :: Subst a -> UT a -> TM a (UT a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
 (@>) s t@(TA _ TC{} _) = do
@@ -131,11 +133,11 @@ s @* (TS l r) = TS <$> s@@l <*> s@@r
 tset f = fmap S.fromList . traverse f . S.toList
 
 {-# SCC usc #-}
-usc :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (TSeq S.Set a, Subst a)
+usc :: F -> Subst a -> USeq a -> USeq a -> TM a (USeq a, Subst a)
 usc f s = uas f s `onM` (s@@)
 
 {-# SCC uas #-}
-uas :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (TSeq S.Set a, Subst a)
+uas :: F -> Subst a -> USeq a -> USeq a -> TM a (USeq a, Subst a)
 uas _ s [] [] = pure ([], s)
 uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
     let n0=length t0d; n1=length t1d in
@@ -166,11 +168,11 @@ uas f _ t0 [] = throwError $ USF t0 [] f
 uas f _ [] t1 = throwError $ USF t1 [] f
 
 {-# SCC uac #-}
-uac :: F -> Subst a -> T S.Set a -> T S.Set a -> TM a (T S.Set a, Subst a)
+uac :: F -> Subst a -> UT a -> UT a -> TM a (UT a, Subst a)
 uac f s = ua f s `onM` (s@>)
 
 {-# SCC ua #-}
-ua :: F -> Subst a -> T S.Set a -> T S.Set a -> TM a (T S.Set a, Subst a)
+ua :: F -> Subst a -> UT a -> UT a -> TM a (UT a, Subst a)
 ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
 ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
@@ -198,13 +200,13 @@ ua LF s (Σ x0 σ0) (Σ x1 σ1) = do
         (throwError $ UF (Σ x0 σ0') (Σ x1 σ1') RF) $> (Σ x1 σ1', s')
 
 
-mSig :: TS S.Set a -> TS S.Set a -> TM a (Subst a)
+mSig :: UTS a -> UTS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
 
-msc :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (Subst a)
+msc :: F -> Subst a -> USeq a -> USeq a -> TM a (Subst a)
 msc f s = ms f s `onM` (s@@)
 
-ms :: F -> Subst a -> TSeq S.Set a -> TSeq S.Set a -> TM a (Subst a)
+ms :: F -> Subst a -> USeq a -> USeq a -> TM a (Subst a)
 ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
     let n0=length t0; n1=length t1 in
     if n0>n1
@@ -227,7 +229,7 @@ ms f _ ts0 [] = throwError$ MSF ts0 [] f
 ms f _ [] ts1 = throwError$ MSF ts1 [] f
 
 {-# SCC ma #-}
-ma :: F -> T S.Set a -> T S.Set a -> TM a (Subst a)
+ma :: F -> UT a -> UT a -> TM a (Subst a)
 ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
@@ -261,7 +263,7 @@ ma f t0 (TA _ TC{} _) = do
     t1' <- lΒ cs t0
     ma f t0 t1'
 
-σPre :: F -> Subst a -> S.Set (TSeq S.Set a) -> S.Set (TSeq S.Set a) -> TM a (Subst a)
+σPre :: F -> Subst a -> S.Set (USeq a) -> S.Set (USeq a) -> TM a (Subst a)
 σPre f s σ0 σ1 =
     case (S.minView σ0, S.minView σ1) of
         (Nothing, Nothing)               -> pure s
@@ -269,16 +271,16 @@ ma f t0 (TA _ TC{} _) = do
 -- {a `just ⊕ `nothing}' against '{a `just ⊕ `nothing}
 -- ordering in S.Set agrees b/c names
 
-mtsc :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (Subst a)
+mtsc :: Subst a -> UTS a -> UTS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
 
-us :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (TS S.Set a, Subst a)
+us :: Subst a -> UTS a -> UTS a -> TM a (UTS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
 
-liftClone :: TS S.Set a -> TM a (TS S.Set a)
+liftClone :: UTS a -> TM a (UTS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
-lA :: IM.IntMap (TS S.Set a) -> Nm a -> TM a (TS S.Set a)
+lA :: IM.IntMap (UTS a) -> Nm a -> TM a (UTS a)
 lA es (Nm _ (U i) _) = do
     b <- gets (fns.lo)
     case IM.lookup i b of
@@ -287,20 +289,20 @@ lA es (Nm _ (U i) _) = do
             Just ts -> liftClone ts
             Nothing -> pure $ IM.findWithDefault (error "Internal error. Name lookup failed during type resolution.") i es
 
-tM :: Int -> Ext a -> M [] a a -> Either (TE a) (M S.Set a (TS S.Set a), Ext a, Int)
+tM :: Int -> Ext a -> M [] a a -> Either (TE a) (M S.Set a (UTS a), Ext a, Int)
 tM i ex = runTM i.tMM ex
 
-tMM :: Ext a -> M [] a a -> TM a (M S.Set a (TS S.Set a))
+tMM :: Ext a -> M [] a a -> TM a (M S.Set a (UTS a))
 tMM b (M is ds) = M is <$> tD b ds
 
-tD :: Ext a -> [D [] a a] -> TM a [D S.Set a (TS S.Set a)]
+tD :: Ext a -> [D [] a a] -> TM a [D S.Set a (UTS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
 tD0 :: D [] a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n (σς ts)
 tD0 (TD _ n vs t) = iTD n vs (σ t)
 
-tD1 :: Ext a -> D [] a a -> TM a (D S.Set a (TS S.Set a))
+tD1 :: Ext a -> D [] a a -> TM a (D S.Set a (UTS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs (σ t))
 tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
@@ -310,7 +312,7 @@ tD1 b (F _ n ts as) = do
   where
     tsσ=σς ts
 
-tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS S.Set a), Subst a)
+tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (UTS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
@@ -329,7 +331,7 @@ splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
-cat :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (TS S.Set a, Subst a)
+cat :: Subst a -> UTS a -> UTS a -> TM a (UTS a, Subst a)
 cat s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- usc LF s r0 l1 -- narrow supplied arguments
     pure (TS l0 r1, s')
@@ -346,11 +348,11 @@ ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 -- invariants for our inverses: pops off atomic tags.
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
-exps :: a -> TS S.Set a -> TM a (TS S.Set a)
+exps :: a -> UTS a -> TM a (UTS a)
 exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t
 exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ:l) (ᴀ:r))}
 
-tae :: Ext a -> Subst a -> A a -> TM a (A (TS S.Set a), Subst a)
+tae :: Ext a -> Subst a -> A a -> TM a (A (UTS a), Subst a)
 tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "c"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
 tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS [a] [b])] [b]) Doll, s)}
 tae b s a = do
@@ -359,7 +361,7 @@ tae b s a = do
     t' <- exps (aL a) t
     pure (a' {aL = t'}, s')
 
-ta :: Ext a -> Subst a -> A a -> TM a (A (TS S.Set a), Subst a)
+ta :: Ext a -> Subst a -> A a -> TM a (A (UTS a), Subst a)
 ta _ s (L l lit@I{})  = pure (L (TS [] [TP l Int]) lit, s)
 ta _ s (L l lit@BL{}) = pure (L (TS [] [TP l Bool]) lit, s)
 ta b s (V _ n)        = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
@@ -379,15 +381,15 @@ ta b s (Pat _ as)     = do
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
 -- all in a right-context
-upm :: Subst a -> TS S.Set a -> TS S.Set a -> TM a (TS S.Set a, Subst a)
+upm :: Subst a -> UTS a -> UTS a -> TM a (UTS a, Subst a)
 upm s ts0 ts1 = do {(TS l0 r0) <- exps (tLs$tlefts ts0) ts0; (TS l1 r1) <- exps (tLs$tlefts ts1) ts1; (l, s') <- usc RF s l0 l1; (r, s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
 
-dU :: Subst a -> [TS S.Set a] -> TM a (TS S.Set a, Subst a)
+dU :: Subst a -> [UTS a] -> TM a (UTS a, Subst a)
 dU s []         = pure (TS [] [], s)
 dU s [ts]       = pure (ts, s)
 dU s (t0:t1:ts) = do {(tϵ, s') <- upm s t0 t1; dU s' (tϵ:ts)}
 
-tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS S.Set a)], Subst a)
+tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (UTS a)], Subst a)
 tS _ s []     = pure ([], s)
 tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
 
