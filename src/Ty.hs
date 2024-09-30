@@ -96,6 +96,9 @@ s @* (TS l r) = TS <$> s@@l <*> s@@r
 -- peek :: Subst a -> TSeq a -> TM (TSeq a)
 -- peek _ [] = pure []
 
+viewr :: [a] -> Maybe a
+viewr []=Nothing; viewr xs=Just$last xs
+
 {-# SCC (@@) #-}
 (@@) :: Subst a -> TSeq a -> TM a (TSeq a)
 (@@) _ []          = pure []
@@ -155,9 +158,9 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-             --  (['A,a,`just],['A,`nothing],['A,a,{`just ⊕ `nothing}])
-uas RF s t0 t1 | length t0 > length t1 = pure ([Σ (tLs t0) undefined], s) -- FIXME don't include prefix-up-to-unfication in arms
-               | length t1 > length t0 = pure ([Σ (tLs t1) undefined], s)
+             -- prefix-up-to-unification
+uas RF s t0 [] | Just (TT{}) <- viewr t0 = pure ([Σ (tLs t0) undefined], s)
+uas RF s [] t1 | Just (TT{}) <- viewr t1 = pure ([Σ (tLs t1) undefined], s)
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -183,7 +186,7 @@ ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua RF s t0@(TT x n0) t1@(TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
-ua RF s (Σ _ ts) t1@(TT x n0) = pure (Σ x (Nm.insert n0 [] ts), s)
+ua RF s (Σ _ ts) t1@(TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s t1@(TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ x1 σ1) = undefined
 ua LF s (Σ x0 σ0) (Σ x1 σ1) = undefined
@@ -227,7 +230,14 @@ ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the left: intersection (type annotation must be narrower than what it accepts)
 -- on the right: type annotation can be more general
-ma LF (Σ x0 σ0) (Σ x1 σ1) = undefined
+ma LF t0@(Σ x0 σ0) t1@(Σ x1 σ1) = do
+    unless (IM.isSubmapOfBy (\_ _ -> True) σ0 σ1) $ throwError $ MF t0 t1 LF
+    let prem=IM.elems$IM.intersectionWith (,) σ0 σ1
+        (t0,t1)=unzip prem
+    mss LF mempty t0 t1
+  where
+    mss _ s [] [] = pure s
+    mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s xs ys}
 ma LF t0@(Σ _ σ0) t1@(TT _ (Nm _ (U i) _)) = do
     unless (i `IM.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
