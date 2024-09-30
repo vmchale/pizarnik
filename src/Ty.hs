@@ -201,7 +201,7 @@ ua LF s (Σ x0 σ0) (Σ x1 σ1) = do
 
 
 mSig :: UTS a -> UTS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1} -- TODO: msc for constructor application?
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1}
 
 msc :: F -> Subst a -> USeq a -> USeq a -> TM a (Subst a)
 msc f s = ms f s `onM` (s@@)
