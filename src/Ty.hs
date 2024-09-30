@@ -233,8 +233,8 @@ ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 ma LF t0@(Σ x0 σ0) t1@(Σ x1 σ1) = do
     unless (IM.isSubmapOfBy (\_ _ -> True) σ0 σ1) $ throwError $ MF t0 t1 LF
     let prem=IM.elems$IM.intersectionWith (,) σ0 σ1
-        (t0,t1)=unzip prem
-    mss LF mempty t0 t1
+        (t0s,t1s)=unzip prem
+    mss LF mempty t0s t1s
   where
     mss _ s [] [] = pure s
     mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s xs ys}
@@ -252,14 +252,6 @@ ma f t0 (TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
-
-σup :: F -> Subst a -> IM.IntMap (TSeq a) -> IM.IntMap (TSeq a) -> TM a (Subst a)
-σup f s σ0 σ1 = undefined
-
-σmp :: F -> Subst a -> IM.IntMap (TSeq a) -> IM.IntMap (TSeq a) -> TM a (Subst a)
-σmp f s σ0 σ1 = undefined
--- {a `just ⊕ `nothing}' against '{a `just ⊕ `nothing}
--- ordering in S.Set agrees b/c names
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
