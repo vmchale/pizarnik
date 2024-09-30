@@ -37,6 +37,7 @@ library
                       Ty.Clone
                       TS
                       Pr
+                      Nm.Map
     other-extensions: DeriveFunctor
                       OverloadedStrings
                       RankNTypes
