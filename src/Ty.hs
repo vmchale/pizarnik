@@ -166,6 +166,9 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
              -- prefix-up-to-unification
+             -- 'A -- 'A
+             -- 'B {`e ⊕ `a ⊕ `b ⊕ `c} -- 'B {`e ⊕ `a ⊕ `b ⊕ `c}
+             -- (should unify...)
 uas RF s t0 [] | Just (TT{}) <- viewr t0 = pure ([Σ (tLs t0) undefined], s)
 uas RF s [] t1 | Just (TT{}) <- viewr t1 = pure ([Σ (tLs t1) undefined], s)
 uas f s (t0:ts0) (t1:ts1) = do
