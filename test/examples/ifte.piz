@@ -12,6 +12,3 @@ else : a b `f -- b
 
 choice : a a B -- a
        := [ { if & else } ]
-
-ifte : a b B -- {a `l ⊕ b `r}
-     := [ { if `l & else `r } ]

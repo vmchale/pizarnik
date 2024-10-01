@@ -15,9 +15,10 @@ import qualified Data.ByteString.Lazy as BSL
 import qualified Data.IntMap as IM
 import qualified Data.Text as T
 import L
-import qualified Nm
-import qualified Nm.Map as Nm
 import Nm hiding (loc)
+import qualified Nm
+import Nm.Map (NmMap)
+import qualified Nm.Map as Nm
 import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 
 }
@@ -159,12 +160,12 @@ M :: { M AlexPosn AlexPosn }
 
 {
 
-σparsed = (locArms &&& mkΣ)
+σparsed = (locArms &&& mkΣ).reverse
 
 locArms :: [(Nm a, TSeq a)] -> a
 locArms = Nm.loc . fst . head
 
-mkΣ :: [(Nm a, TSeq a)] -> IM.IntMap (TSeq a)
+mkΣ :: [(Nm a, TSeq a)] -> NmMap (TSeq a)
 mkΣ = Nm.fromList
 
 troll :: T a -> [T a] -> T a

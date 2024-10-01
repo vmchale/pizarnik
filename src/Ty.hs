@@ -10,10 +10,13 @@ import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
+import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
+import           Debug.Trace
 import           Nm
+import           Nm.Map                     (xx)
 import qualified Nm.Map                     as Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -85,10 +88,10 @@ lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
 
 iFn :: Nm a -> TS b -> TM b ()
-iFn n ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (Nm.insert n ts f) c))
+iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
-iTD n vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (Nm.insert n (vs,t) c)))
+iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
 
 (@*) :: Subst a -> TS a -> TM a (TS a)
 s @* (TS l r) = TS <$> s@@l <*> s@@r
@@ -184,10 +187,10 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
     pure (TA x t0ϵ t1ϵ, s1)
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua RF s t0@(TT x n0) t1@(TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
+ua RF s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
-ua RF s (Σ _ ts) t1@(TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua RF s t1@(TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
+ua RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
+ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ x1 σ1) = undefined
 ua LF s (Σ x0 σ0) (Σ x1 σ1) = undefined
 
@@ -231,15 +234,15 @@ ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the left: intersection (type annotation must be narrower than what it accepts)
 -- on the right: type annotation can be more general
 ma LF t0@(Σ x0 σ0) t1@(Σ x1 σ1) = do
-    unless (IM.isSubmapOfBy (\_ _ -> True) σ0 σ1) $ throwError $ MF t0 t1 LF
-    let prem=IM.elems$IM.intersectionWith (,) σ0 σ1
+    unless ((IM.isSubmapOfBy (\_ _ -> True) `on` xx) σ0 σ1) $ throwError $ MF t0 t1 LF
+    let prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
         (t0s,t1s)=unzip prem
     mss LF mempty t0s t1s
   where
-    mss _ s [] [] = pure s
+    mss _ s [] []         = pure s
     mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s xs ys}
-ma LF t0@(Σ _ σ0) t1@(TT _ (Nm _ (U i) _)) = do
-    unless (i `IM.member` σ0)
+ma LF t0@(Σ _ σ0) t1@(TT _ n) = do
+    unless (n `Nm.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF

@@ -14,10 +14,10 @@ module A ( A (..)
          , pSeq
          ) where
 
-import           Data.Foldable (toList)
-import qualified Data.IntMap   as IM
 import qualified Data.Text     as T
 import           Nm
+import           Nm.Map        (NmMap)
+import qualified Nm.Map        as Nm
 import           Pr
 import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, group, hardline, hsep, line, tupled, (<+>))
 
@@ -25,9 +25,6 @@ data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
        | Swap | Eq | Gt | Lt
        | Doll
-
--- cons?
--- polymorphic/recursive types
 
 instance Pretty B where
     pretty Dip = "dip"; pretty Dup = "dup"; pretty Un = "_"
@@ -83,7 +80,7 @@ tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
 data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
-         | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: IM.IntMap (TSeq a) }
+         | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | TI { tL :: a, tI :: T a }
 
@@ -117,7 +114,7 @@ tunroll t           = [t]
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.fmap pretty<$>toList ts))
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> fmap pretty tsϵ++[pretty u])<$>Nm.toList ts))
     pretty (TA _ t t') = pretty t <+> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
 
