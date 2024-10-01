@@ -1,9 +1,6 @@
-%! TeX program = lualatex
-
 \documentclass{article}
 
 \usepackage{hyperref}
-\usepackage{fontspec}
 \usepackage{amsmath}
 
 \begin{document}
@@ -14,19 +11,18 @@
 
 \tableofcontents
 
-\setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
-
 % $(G \oplus H)^\bot=G^\bot \& H^\bot$.
 
 \section{Background}
 
-Blume, Acar, and Chae present a functional language with \cite{blume2006}.
+Blume, Acar, and Chae present a functional language in which sum type variants (and dually, pattern match arms) are handled like row types \cite{blume2006}.
 
+% Point being: there's lots more room for FP to win!
 % https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
 
 \section{Expression Problem}
 
-Blume, Acar, and Chae note that they solve the expression problem for functional languages \cite{blume2006}.
+Blume, Acar, and Chae note that they solve the expression problem for functional languages.
 
 % also emphasizes duality
 
@@ -59,6 +55,9 @@ Blume, Acar, and Chae note that they solve the expression problem for functional
 % basically same as Haskell but without the globality of typeclasses
 % more "natural"; don't have to change approach entirely/start out w/ right approach
 
+% http://lambda-the-ultimate.org/node/4394#comment-68060
+% https://okmij.org/ftp/tagless-final/course/course.html
+
 \section{Error Hierarchies}
 
 Nick Partridge gives an example of using prisms for error hierarchies in Haskell \cite{errorprisms}.
@@ -70,9 +69,13 @@ class HasInt a where
     int :: Lens a Int
 \end{verbatim}
 
+which is known to be superseded by row types.
+
 % https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
 
 Both entail the globality of typeclasses and the esoteric
 % https://www.tumblr.com/ezyang/62157468762/haskell-haskell-and-ghc-too-big-to-fail-panel
+
+The Haskell solutions are more convoluted, but it is precisely this maladroitness that attests to the appetite for a solution to this problem.
 
 \end{document}
