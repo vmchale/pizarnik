@@ -202,7 +202,7 @@ mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-msc f s = ms f s `onM` (s@@)
+msc f s = ms f s `onM` peek s
 
 ms :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
