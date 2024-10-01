@@ -93,11 +93,15 @@ iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
 
+{-# SCC (@*) #-}
 (@*) :: Subst a -> TS a -> TM a (TS a)
 s @* (TS l r) = TS <$> s@@l <*> s@@r
 
--- peek :: Subst a -> TSeq a -> TM (TSeq a)
--- peek _ [] = pure []
+{-# SCC peek #-}
+peek :: Subst a -> TSeq a -> TM a (TSeq a)
+peek _ []          = pure []
+peek s (SV _ n:ts) = do {v <- s@~>n; pure (v++ts)}
+peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
 
 viewr :: [a] -> Maybe a
 viewr []=Nothing; viewr xs=Just$last xs
@@ -137,7 +141,7 @@ viewr []=Nothing; viewr xs=Just$last xs
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-usc f s = uas f s `onM` (s@@)
+usc f s = uas f s `onM` peek s
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -233,14 +237,14 @@ ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the left: intersection (type annotation must be narrower than what it accepts)
 -- on the right: type annotation can be more general
-ma LF t0@(Σ x0 σ0) t1@(Σ x1 σ1) = do
+ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless ((IM.isSubmapOfBy (\_ _ -> True) `on` xx) σ0 σ1) $ throwError $ MF t0 t1 LF
     let prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
         (t0s,t1s)=unzip prem
     mss LF mempty t0s t1s
   where
     mss _ s [] []         = pure s
-    mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s xs ys}
+    mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s' xs ys}
 ma LF t0@(Σ _ σ0) t1@(TT _ n) = do
     unless (n `Nm.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
