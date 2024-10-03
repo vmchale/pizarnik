@@ -5,7 +5,7 @@ module Ty ( TE, Ext (..), tM ) where
 
 import           A
 import           B
-import           Control.Monad              (unless)
+import           Control.Monad              (unless, zipWithM)
 import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
@@ -14,7 +14,6 @@ import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Nm.Map                     (xx)
 import qualified Nm.Map                     as Nm
@@ -165,17 +164,20 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-             -- prefix-up-to-unification
-             -- 'A -- 'A
-             -- 'B {`e ⊕ `a ⊕ `b ⊕ `c} -- 'B {`e ⊕ `a ⊕ `b ⊕ `c}
-             -- (should unify...)
-uas RF s t0 [] | Just (TT{}) <- viewr t0 = pure ([Σ (tLs t0) undefined], s)
-uas RF s [] t1 | Just (TT{}) <- viewr t1 = pure ([Σ (tLs t1) undefined], s)
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
 uas f _ t0 [] = throwError $ USF t0 [] f
 uas f _ [] t1 = throwError $ USF t1 [] f
+
+balance :: TS a -> TS a -> TM a (TS a, TS a)
+balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
+    let n0l=length l0; n1l=length l1
+    in if n0l>n1l
+        then let a=minimum [n0l-n1l,n1l-length r1,n0l-length r0] in
+             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l0) (T.singleton c)) [1..a] ['c'..]; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined -- 1 needs to be augmented on both sides, but only if that's available
+        else let a=minimum [n1l-n0l,n1l-length r1,n0l-length r0] in
+             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l1) (T.singleton c)) [1..a] ['c'..]; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -198,7 +200,7 @@ ua RF s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua RF s (Σ x0 σ0) (Σ x1 σ1) = undefined
+ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 ua LF s (Σ x0 σ0) (Σ x1 σ1) = undefined
 
 mSig :: TS a -> TS a -> TM a (Subst a)
@@ -248,7 +250,7 @@ ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
   where
     mss _ s [] []         = pure s
     mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s' xs ys}
-ma LF t0@(Σ _ σ0) t1@(TT _ n) = do
+ma LF t0@(Σ _ σ0) t1@(TT _ n) =
     unless (n `Nm.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
@@ -262,6 +264,9 @@ ma f t0 (TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
+ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) =
+    unless (σ0 `Nm.isSubmapOf` σ1)
+        (throwError $ MF t0 t1 RF) $> mempty
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
@@ -308,7 +313,7 @@ tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
     (t, s2) <- cat s1 (aL a') tϵ
-    -- pure $ traceShow (traceCat a' as' (aL a') (s1@*tϵ) (s2@*t)) (SL t (a':as'), s2)
+    -- pure $ traceShow (traceCat a' as' (aL a') tϵ t) (SL t (a':as'), s2)
     pure (SL t (a':as'), s2)
 
 traceCat :: A b -> [A b] -> TS a -> TS a -> TS a -> Doc ann
@@ -343,7 +348,7 @@ exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t
 exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ:l) (ᴀ:r))}
 
 tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "c"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
+tae _ s (B l Dip)      = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "C"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
 tae _ s (B l Doll)     = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS [a] [b])] [b]) Doll, s)}
 tae b s a = do
     (a',s') <- ta b s a
@@ -370,13 +375,15 @@ ta b s (Pat _ as)     = do
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
+    -- expl t = exps (tLs (tlefts$head sigs)) t
+
 -- all in a right-context
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-upm s (TS l0 r0) (TS l1 r1) = do
+upm s ts0 ts1 = do
+    (TS l0 r0, TS l1 r1) <- balance ts0 ts1
     (l, s0) <- usc RF s l0 l1
     (r, s1) <- usc RF s0 r0 r1
-    (,s1)<$>expl (TS l r)
-  where expl t = exps (tLs (tlefts t)) t
+    pure (TS l r, s1)
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s []         = pure (TS [] [], s)

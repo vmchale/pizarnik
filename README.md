@@ -16,9 +16,6 @@ else : a b `false -- b
 
 choice : a a Bool -- a
        := [ { if & else } ]
-
-ifte : a b Bool -- {a ⊕ b}
-     := [ { if & else } ]
 ```
 
 ```
