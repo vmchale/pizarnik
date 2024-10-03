@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE TupleSections     #-}
 
 module Ty ( TE, Ext (..), tM ) where
 
@@ -230,8 +229,12 @@ ms _ s [] [] = pure s
 ms f _ ts0 [] = throwError$ MSF ts0 [] f
 ms f _ [] ts1 = throwError$ MSF ts1 [] f
 
-mss _ s [] []         = pure s
-mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s' xs ys}
+mσ f s σ0 σ1 =
+    let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
+    in mss f s t0s t1s
+  where
+    mss _ s [] []         = pure s
+    mss f s (x:xs) (y:ys) = do {s' <- msc f s x y; mss f s' xs ys}
 
 {-# SCC ma #-}
 ma :: F -> T a -> T a -> TM a (Subst a)
@@ -246,16 +249,10 @@ ma f t0@QT{} t1 = throwError $ MF t0 t1 f
 -- on the right: type annotation can be more general
 ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (throwError $ MF t0 t1 LF) *> mss LF mempty t0s t1s
-  where
-    prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
-    (t0s,t1s)=unzip prem
+        (throwError $ MF t0 t1 LF) *> mσ LF mempty σ0 σ1
 ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
-        (throwError $ MF t0 t1 RF) *> mss RF mempty t0s t1s
-  where
-    prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
-    (t0s,t1s)=unzip prem
+        (throwError $ MF t0 t1 RF) *> mσ RF mempty σ0 σ1
 ma LF t0@(Σ _ σ0) t1@(TT _ n) =
     unless (n `Nm.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
