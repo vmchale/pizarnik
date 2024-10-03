@@ -3,7 +3,7 @@
 Pizarnik is a stack-based, concatenative language with structural sum types and
 evocative syntax for pattern-matching.
 
-Aspirational examples:
+Example:
 
 ```
 type Bool = `true ⊕ `false;
@@ -17,6 +17,8 @@ else : a b `false -- b
 choice : a a Bool -- a
        := [ { if & else } ]
 ```
+
+Aspirational example:
 
 ```
 @i prelude/fn
