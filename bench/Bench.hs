@@ -10,5 +10,6 @@ main = defaultMain
         ]
     , bgroup "t"
         [ bench "test/examples/ifte.piz" $ whnfIO $ tMs ["."] "test/examples/ifte.piz"
+        , bench "examples/vierergruppe.piz" $ whnfIO $ tMs ["."] "examples/vierergruppe.piz"
         ]
     ]
