@@ -170,15 +170,16 @@ uas f s (t0:ts0) (t1:ts1) = do
 uas f _ t0 [] = throwError $ USF t0 [] f
 uas f _ [] t1 = throwError $ USF t1 [] f
 
+{-# SCC balance #-}
 balance :: TS a -> TS a -> TM a (TS a, TS a)
 balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
     let n0l=length l0; n1l=length l1
+        lexcess=[n1l-length r1,n0l-length r0]
     in if n0l>n1l
-        then let a=minimum [n0l-n1l,n1l-length r1,n0l-length r0] in
-             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l0) (T.singleton c)) [1..a] ['c'..]; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined -- 1 needs to be augmented on both sides, but only if that's available
-        else let a=minimum [n1l-n0l,n1l-length r1,n0l-length r0] in
+        then let a=minimum (n0l-n1l:lexcess) in
+             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l0) (T.singleton c)) [1..a] ['c'..]; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined
+        else let a=minimum (n1l-n0l:lexcess) in
              if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l1) (T.singleton c)) [1..a] ['c'..]; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
-
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 uac f s = ua f s `onM` (s@>)
