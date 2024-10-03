@@ -109,7 +109,7 @@ viewr []=Nothing; viewr xs=Just$last xs
 (@@) :: Subst a -> TSeq a -> TM a (TSeq a)
 (@@) _ []          = pure []
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
-(@@) s (t:ts)      = do {t' <- s@> t; (t':)<$>s@@ts}
+(@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
 
 (@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
@@ -377,8 +377,6 @@ ta b s (Pat _ as)     = do
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
-    -- expl t = exps (tLs (tlefts$head sigs)) t
-
 -- all in a right-context
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
@@ -398,6 +396,3 @@ tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
 
 onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
-
--- PROBLEM: when do we add the ⊕ ?
--- I think doing it in ua is too early. We want sequences of types to be ⊕ together...
