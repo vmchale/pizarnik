@@ -3,4 +3,4 @@
 type Maybe a = a `just ⊕ `nil;
 
 defaultZero : Maybe(Int) -- Int
-            := [ { just⁻¹ & `nil⁻¹ 0 } ]
+            := [ { `just⁻¹ & `nil⁻¹ 0 } ]

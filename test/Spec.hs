@@ -14,6 +14,7 @@ main = defaultMain $
       , tFile ["."] "test/examples/bool.piz"
       , rFile ["."] "test/examples/mutual.piz"
       , tFile ["."] "test/examples/maybe.piz"
+      , tFile ["."] "test/data/beta.piz"
       , tFile [] "examples/vierergruppe.piz"
       , tFile [] "prelude/fn.piz"
       , tFile ["."] "test/examples/ifte.piz"
