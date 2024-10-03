@@ -10,12 +10,10 @@ import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
-import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
 import           Nm
-import           Nm.Map                     (xx)
 import qualified Nm.Map                     as Nm
 import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
@@ -164,6 +162,7 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+             -- unify-prefix
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -227,11 +226,12 @@ ms f s t0e@(SV _ v0:t0) t1 = do
         else let (uws, res) = splitFromLeft n0 t1ϵ
              in msc f (iSV v0 uws s) t0 res
 ms f s (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f (s<>s') ts0 ts1}
--- stitch starting at the right
--- {a `r ⊕ a `g} is a {`r ⊕ `g}
 ms _ s [] [] = pure s
 ms f _ ts0 [] = throwError$ MSF ts0 [] f
 ms f _ [] ts1 = throwError$ MSF ts1 [] f
+
+mss _ s [] []         = pure s
+mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s' xs ys}
 
 {-# SCC ma #-}
 ma :: F -> T a -> T a -> TM a (Subst a)
@@ -242,16 +242,20 @@ ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
--- on the left: intersection (type annotation must be narrower than what it accepts)
+-- on the left: type annotation must be narrower than what it accepts
 -- on the right: type annotation can be more general
 ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless ((IM.isSubmapOfBy (\_ _ -> True) `on` xx) σ0 σ1) $ throwError $ MF t0 t1 LF
-    let prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
-        (t0s,t1s)=unzip prem
-    mss LF mempty t0s t1s
+    unless (σ1 `Nm.isSubmapOf` σ0)
+        (throwError $ MF t0 t1 LF) *> mss LF mempty t0s t1s
   where
-    mss _ s [] []         = pure s
-    mss f s (x:xs) (y:ys) = do {s' <- ms f s x y; mss f s' xs ys}
+    prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
+    (t0s,t1s)=unzip prem
+ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+    unless (σ0 `Nm.isSubmapOf` σ1)
+        (throwError $ MF t0 t1 RF) *> mss RF mempty t0s t1s
+  where
+    prem=Nm.elems$Nm.intersectionWith (,) σ0 σ1
+    (t0s,t1s)=unzip prem
 ma LF t0@(Σ _ σ0) t1@(TT _ n) =
     unless (n `Nm.member` σ0)
         (throwError $ MF t0 t1 LF) $> mempty
@@ -266,9 +270,6 @@ ma f t0 (TA _ TC{} _) = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t0
     ma f t0 t1'
-ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) =
-    unless (σ0 `Nm.isSubmapOf` σ1)
-        (throwError $ MF t0 t1 RF) $> mempty
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
