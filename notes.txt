@@ -1,0 +1,11 @@
+`e --
+{`e ⊕ `a ⊕ `b ⊕ `c} `a -- {`e ⊕ `a ⊕ `b ⊕ `c}
+
+1 0
+2 1
+
+a `just -- Bool
+`nothing -- Bool
+
+2 1
+1 1
