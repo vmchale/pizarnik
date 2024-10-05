@@ -167,12 +167,12 @@ uas f _ [] t1 = throwError $ USF t1 [] f
 {-# SCC balance #-}
 balance :: TS a -> TS a -> TM a (TS a, TS a)
 balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
-    let n0l=length l0; n1l=length l1
-        lexcess=[n1l-length r1,n0l-length r0]
-    in if n0l>n1l
-        then let a=minimum (n0l-n1l:lexcess) in
+    let n0l=length l0; n1l=length l1;n0r=length r0; n1r=length r1
+        lexcess=[n1l-n0r,n0l-n0r]
+    in if n0r>n1r
+        then let a=minimum (n0r-n1r:lexcess) in
              if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l0) (T.singleton c)) [1..a] ['c'..]; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined
-        else let a=minimum (n1l-n0l:lexcess) in
+        else let a=minimum (n1r-n0r:lexcess) in
              if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l1) (T.singleton c)) [1..a] ['c'..]; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
 
 {-# SCC uac #-}
@@ -373,12 +373,13 @@ ta b s (Pat _ as)     = do
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
--- uas LF s t0 t1 | Just (a0, TT x n0) <- unsnoc t0
+-- uas RF s t0 t1 | Just (a0, TT x n0) <- unsnoc t0
                -- , Just (a1, TT _ n1) <- unsnoc t1
                -- = pure ([Σ x (Nm.fromList [(n0,a0),(n1,a1)])], s)
 
 -- rights should unify, lefts branch out (after substitution?)
 -- l0,l1 -> sum type, each new arm/defined by tag
+-- unify-prefix: probably silly?
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- balance ts0 ts1
