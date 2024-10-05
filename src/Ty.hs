@@ -99,9 +99,6 @@ peek _ []          = pure []
 peek s (SV _ n:ts) = do {v <- s@~>n; pure (v++ts)}
 peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
 
-viewr :: [a] -> Maybe a
-viewr []=Nothing; viewr xs=Just$last xs
-
 {-# SCC (@@) #-}
 (@@) :: Subst a -> TSeq a -> TM a (TSeq a)
 (@@) _ []          = pure []
@@ -161,7 +158,6 @@ uas f s t0 t1@((SV _ sn1):t1d) =
         LT -> throwError $ USF t0 t1 f
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-             -- unify-prefix
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
@@ -377,7 +373,12 @@ ta b s (Pat _ as)     = do
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
--- all in a right-context
+-- uas LF s t0 t1 | Just (a0, TT x n0) <- unsnoc t0
+               -- , Just (a1, TT _ n1) <- unsnoc t1
+               -- = pure ([Σ x (Nm.fromList [(n0,a0),(n1,a1)])], s)
+
+-- rights should unify, lefts branch out (after substitution?)
+-- l0,l1 -> sum type, each new arm/defined by tag
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- balance ts0 ts1
