@@ -9,6 +9,7 @@ import           Control.Monad.Except       (liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
+import           Data.Function              (on)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
@@ -99,6 +100,9 @@ peek _ []          = pure []
 peek s (SV _ n:ts) = do {v <- s@~>n; pure (v++ts)}
 peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
 
+peekS :: Subst a -> TS a -> TM a (TS a)
+peekS s (TS l r) = TS <$> peek s l <*> peek s r
+
 {-# SCC (@@) #-}
 (@@) :: Subst a -> TSeq a -> TM a (TSeq a)
 (@@) _ []          = pure []
@@ -171,9 +175,11 @@ balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
         lexcess=[n1l-n0r,n0l-n0r]
     in if n0r>n1r
         then let a=minimum (n0r-n1r:lexcess) in
-             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l0) (T.singleton c)) [1..a] ['c'..]; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined
+             if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined
         else let a=minimum (n1r-n0r:lexcess) in
-             if a>=0 then do {ρ <- zipWithM (\_ c -> ftv (tLs l1) (T.singleton c)) [1..a] ['c'..]; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
+             if a>=0 then do {ρ <- fρ (tLs l1) a; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
+  where
+    fρ x n = zipWithM (\_ c -> ftv x (T.singleton c)) [1..n] ['c'..]
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -366,12 +372,9 @@ ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (In
 ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
-    sigs <- traverse (fmap pare.(s0@*).aLs) as'
+    sigs <- traverse (peekS s0.aLs) as'
     (t, s1) <- dU s0 sigs
     pure (Pat t (SL t as'), s1)
-  where
-    pare :: TS a -> TS a
-    pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
 -- uas RF s t0 t1 | Just (a0, TT x n0) <- unsnoc t0
                -- , Just (a1, TT _ n1) <- unsnoc t1
@@ -382,10 +385,13 @@ ta b s (Pat _ as)     = do
 -- unify-prefix: probably silly?
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
-    (TS l0 r0, TS l1 r1) <- balance ts0 ts1
+    (TS l0 r0, TS l1 r1) <- (balance `on` pare) ts0 ts1
     (l, s0) <- usc RF s l0 l1
     (r, s1) <- usc RF s0 r0 r1
     pure (TS l r, s1)
+  where
+    pare :: TS a -> TS a
+    pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s []         = pure (TS [] [], s)
