@@ -71,6 +71,8 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 {\Judge \braces{x_1 \with x_2 \with \cdots \with x_n} : \withmany{\alpha}{n} -- A}
 \quad(\textsc{Pattern-Match})
 
+% what about stack variable though
+
 \inferrule
 {\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\withmany{\beta}{m} \\ \Judge y : B~\withmany{\alpha}{n} -- C}
 {\Judge xy : A -- B }
@@ -80,11 +82,13 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 
 Note that this is not algorithmic typing, one could go awry in applying \textsc{Disjunction} spuriously.
 
+We justify $\textsc{(Pattern-Match)}$ by noting that if $x_1 : \alpha_1 -- A$ and $x_2 : \alpha_2 -- A$, hence $x_1 : -- \alpha_1^{-1} A$ and $x_2 : -- \alpha_2^{-1} A$, $\{x_1 \with x_2\} :$
+
 \section{Unification}
 
 % In the presence of disjunctions, one calculates the most specific unifier
 
-$\alpha$ unifies with $\alpha \oplus \beta$ on the right, but not on the left---the latter would correspond to an inexhaustive pattern match.
+$\alpha$ unifies with $\alpha \oplus \beta$ on the right, but not on the left---the latter would correspond to an inexhaustive pattern match. Conversely, narrowing is permitted on the left but not the right.
 
 \subsection{Monomorphization}
 % unlike Diggins, we also want monomorphization, hence mgu, match approach
