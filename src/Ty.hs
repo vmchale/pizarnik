@@ -14,7 +14,6 @@ import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import           Data.List                  (uncons, unsnoc)
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Nm.Map                     (NmMap)
 import qualified Nm.Map                     as Nm
@@ -143,15 +142,17 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
--- (['A,{a b `t ⊕ a a `f}],[a,a,B])
+-- FIXME: unify-prefix got overzealous:
+-- ('A {a `just ⊕ `nothing} -- 'A Bool,Maybe (a) -- Bool)
+-- ('A {`nothing `just ⊕ `nothing} -- 'A `nothing,Maybe (Maybe, a) -- Maybe (a))
 upre :: Subst a -> a -> NmMap (TSeq a) -> TM a (TSeq a, Subst a)
-upre s l fan =
-    case unconss fan of
-        Nothing -> pure ([Σ l fan], s)
+upre s l splat =
+    case unconss splat of
+        Nothing -> pure ([Σ l splat], s)
         Just mu -> let uu=fst<$>Nm.elems mu
-                   in catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l fan], s))
+                   in catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
   where
-    unconss :: NmMap [x] -> Maybe (NmMap (x,[x]))
+    unconss :: NmMap [x] -> Maybe (NmMap (x, [x]))
     unconss = traverse uncons
 
 tU :: Subst a -> [T a] -> TM a (T a, Subst a)
@@ -191,6 +192,7 @@ balance :: TS a -> TS a -> TM a (TS a, TS a)
 balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
     let n0l=length l0; n1l=length l1;n0r=length r0; n1r=length r1
         lexcess=[n1l-n1r,n0l-n0r]
+        -- this is tortuous
     in if n0r>n1r
         then let a=minimum (n0r-n1r:lexcess) in
              if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else pure (ts0,ts1)
@@ -410,18 +412,26 @@ tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
 σp [Σ x ps] t1 | Just (a, TT _ n1) <- unsnoc t1
                = pure [Σ x (Nm.insert n1 a ps)]
 
+-- `just --
+-- `nothing -- `nothing
+--
+-- screwy w.r.t "balance"?
+--
+-- c `just -- c
+-- `nothing -- `nothing
+-- (unifying on the right in the presence of 'balance' is wrong here
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- (balance `on` pare) ts0 ts1
     (r, s0) <- usc RF s r0 r1
     l0' <- s0@@l0; l1' <- s0@@l1
-    l <- traceShow (TS l0' r0, TS l1' r1) $ σp l0' l1'
+    l <- σp l0' l1'
     pure (TS l r, s0)
   where
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
--- TODO: stepping σp one-at-a-time... could bundle up lefts?
+-- stepping σp one-at-a-time... could bundle up lefts...
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s []         = pure (TS [] [], s)
 dU s [ts]       = pure (ts, s)
