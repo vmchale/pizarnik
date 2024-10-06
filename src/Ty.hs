@@ -3,6 +3,7 @@
 module Ty ( TE, Ext (..), tM ) where
 
 import           A
+import Debug.Trace
 import           B
 import           Control.Monad              (unless, zipWithM)
 import           Control.Monad.Except       (liftEither, throwError)
@@ -10,6 +11,7 @@ import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, st
 import           Data.Bifunctor             (first, second)
 import           Data.Foldable              (traverse_)
 import           Data.Function              (on)
+import Data.List (unsnoc)
 import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import qualified Data.Text                  as T
@@ -175,9 +177,9 @@ balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
         lexcess=[n1l-n0r,n0l-n0r]
     in if n0r>n1r
         then let a=minimum (n0r-n1r:lexcess) in
-             if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else undefined
+             if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else pure (ts0,ts1)
         else let a=minimum (n1r-n0r:lexcess) in
-             if a>=0 then do {ρ <- fρ (tLs l1) a; pure (TS (ρ++l0) (ρ++r0), ts1)} else undefined
+             if a>=0 then do {ρ <- fρ (tLs l1) a; pure (TS (ρ++l0) (ρ++r0), ts1)} else pure (ts0,ts1)
   where
     fρ x n = zipWithM (\_ c -> ftv x (T.singleton c)) [1..n] ['c'..]
 
@@ -205,7 +207,7 @@ ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1}
+mSig (TS l0 r0) (TS l1 r1) = do {s <- traceShow (l0,l1) $ ms LF mempty l0 l1; msc RF s r0 r1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f s `onM` peek s
@@ -376,9 +378,13 @@ ta b s (Pat _ as)     = do
     (t, s1) <- dU s0 sigs
     pure (Pat t (SL t as'), s1)
 
--- uas RF s t0 t1 | Just (a0, TT x n0) <- unsnoc t0
-               -- , Just (a1, TT _ n1) <- unsnoc t1
-               -- = pure ([Σ x (Nm.fromList [(n0,a0),(n1,a1)])], s)
+σp :: TSeq a -> TSeq a -> TM a (TSeq a)
+σp t0 t1 | Just (a0, TT x0 n0) <- unsnoc t0
+         , Just (a1, TT _ n1) <- unsnoc t1
+         = pure [Σ x0 (Nm.fromList [(n0,a0),(n1,a1)])]
+σp [Σ x ps] t1 | Just (a, TT _ n1) <- unsnoc t1
+               = pure [Σ x (Nm.insert n1 a ps)]
+σp t0 t1 = error (show (t0,t1))
 
 -- rights should unify, lefts branch out (after substitution?)
 -- l0,l1 -> sum type, each new arm/defined by tag
@@ -386,13 +392,15 @@ ta b s (Pat _ as)     = do
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- (balance `on` pare) ts0 ts1
-    (l, s0) <- usc RF s l0 l1
-    (r, s1) <- usc RF s0 r0 r1
-    pure (TS l r, s1)
+    (r, s0) <- usc RF s r0 r1
+    l0' <- s0@@l0; l1' <- s0@@l1
+    l <- σp l0' l1'
+    pure (TS l r, s0)
   where
     pare :: TS a -> TS a
     pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
+-- TODO: stepping σp one-at-a-time is silly
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s []         = pure (TS [] [], s)
 dU s [ts]       = pure (ts, s)
