@@ -190,7 +190,7 @@ uas f _ [] t1 = throwError $ USF t1 [] f
 balance :: TS a -> TS a -> TM a (TS a, TS a)
 balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
     let n0l=length l0; n1l=length l1;n0r=length r0; n1r=length r1
-        lexcess=[n1l-n0r,n0l-n0r]
+        lexcess=[n1l-n1r,n0l-n0r]
     in if n0r>n1r
         then let a=minimum (n0r-n1r:lexcess) in
              if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else pure (ts0,ts1)
