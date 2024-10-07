@@ -1,3 +1,16 @@
+`just --
+`nothing -- `nothing
+
+join : Maybe(Maybe(a)) -- Maybe(a)
+     := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
+
+(at this point `just already has something on the stack... anyway a `just -- a ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with a on the right, it propagates to the left, and suddenly the focus prevents generalization (if it gets generalized I guess that can be passed back? unify on right first...)
+
+
+'A {a b `t ⊕ a a `f} and a a B
+(split)
+
+
 `e --
 {`e ⊕ `a ⊕ `b ⊕ `c} `a -- {`e ⊕ `a ⊕ `b ⊕ `c}
 
@@ -9,3 +22,10 @@ a `just -- Bool
 
 2 1
 1 1
+
+`just --
+`nothing -- `nothing
+1 0
+1 1
+
+(excess on the right?)

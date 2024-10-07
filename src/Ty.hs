@@ -4,6 +4,7 @@ module Ty ( TE, Ext (..), tM ) where
 
 import           A
 import           B
+import           Control.Composition        ((&:))
 import           Control.Monad              (unless, zipWithM)
 import           Control.Monad.Except       (catchError, liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
@@ -14,6 +15,7 @@ import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import           Data.List                  (uncons, unsnoc)
 import qualified Data.Text                  as T
+import           Debug.Trace
 import           Nm
 import           Nm.Map                     (NmMap)
 import qualified Nm.Map                     as Nm
@@ -142,9 +144,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
--- FIXME: unify-prefix got overzealous:
--- ('A {a `just ⊕ `nothing} -- 'A Bool,Maybe (a) -- Bool)
--- ('A {`nothing `just ⊕ `nothing} -- 'A `nothing,Maybe (Maybe, a) -- Maybe (a))
 upre :: Subst a -> a -> NmMap (TSeq a) -> TM a (TSeq a, Subst a)
 upre s l splat =
     case unconss splat of
@@ -191,13 +190,13 @@ uas f _ [] t1 = throwError $ USF t1 [] f
 balance :: TS a -> TS a -> TM a (TS a, TS a)
 balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
     let n0l=length l0; n1l=length l1;n0r=length r0; n1r=length r1
-        lexcess=[n1l-n1r,n0l-n0r]
         -- this is tortuous
-    in if n0r>n1r
-        then let a=minimum (n0r-n1r:lexcess) in
-             if a>=0 then do {ρ <- fρ (tLs l0) a; pure (ts0, TS (ρ++l1) (ρ++r1))} else pure (ts0,ts1)
-        else let a=minimum (n1r-n0r:lexcess) in
-             if a>=0 then do {ρ <- fρ (tLs l1) a; pure (TS (ρ++l0) (ρ++r0), ts1)} else pure (ts0,ts1)
+    in case compare n0r n1r of
+        EQ -> pure (ts0,ts1)
+        GT -> let a=minimum [n0r-n1r,n1l-n1r] in
+              do {ρ <- fρ (tLs l0) a; pure (ts0, (TS&:(ρ++)) l1 r1)}
+        LT -> let a=minimum [n1r-n0r,n0l-n0r] in
+              do {ρ <- fρ (tLs l1) a; pure ((TS&:(ρ++)) l0 r0, ts1)}
   where
     fρ x n = zipWithM (\_ c -> ftv x (T.singleton c)) [1..n] ['c'..]
 
@@ -211,7 +210,7 @@ ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
 ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
 ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
-ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
+ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s) -- c unifies with `nothing on the right but could be c = `nothing ⊕ ... hm
 ua f s (TA x t0 t1) (TA _ t0' t1') = do
     (t0ϵ, s0) <- ua f s t0 t0'
     (t1ϵ, s1) <- uac f s0 t1 t1'
@@ -225,7 +224,7 @@ ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms LF mempty l0 l1; msc RF s r0 r1}
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f s `onM` peek s
@@ -293,7 +292,7 @@ ma f t0 (TA _ TC{} _) = do
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
+mtsc s asig tsig = do {asig' <- s@*asig; traceShow (asig,asig',tsig) $ mSig asig' tsig}
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
@@ -412,18 +411,12 @@ tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
 σp [Σ x ps] t1 | Just (a, TT _ n1) <- unsnoc t1
                = pure [Σ x (Nm.insert n1 a ps)]
 
--- `just --
--- `nothing -- `nothing
---
--- screwy w.r.t "balance"?
---
--- c `just -- c
--- `nothing -- `nothing
--- (unifying on the right in the presence of 'balance' is wrong here
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- (balance `on` pare) ts0 ts1
-    (r, s0) <- usc RF s r0 r1
+    -- this is introducing c->`nothing (causes problems on the left)
+    -- c unifying with `nothing... c=`nothing (most specific) but on the right we are allowed to fan out
+    (r, s0) <- traceShow (r0,r1) $ usc RF s r0 r1
     l0' <- s0@@l0; l1' <- s0@@l1
     l <- σp l0' l1'
     pure (TS l r, s0)
