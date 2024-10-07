@@ -189,12 +189,10 @@ uas f _ [] t1 = throwError $ USF t1 [] f
 {-# SCC expr #-}
 expr :: TS a -> TS a -> TM a (TS a, TS a)
 expr ts0@(TS l0 r0) ts1@(TS l1 r1) =
-    case compare n0r n1r of
+    case (compare `on` length) r0 r1 of
         EQ -> pure (ts0,ts1)
         GT -> do {ᴅ <- fsv (tLs l0) "ᴅ"; pure (ts0, (TS&:(ᴅ:)) l1 r1)}
         LT -> do {ᴅ <- fsv (tLs l1) "ᴅ"; pure ((TS&:(ᴅ:)) l0 r0, ts1)}
-  where
-    n0r=length r0; n1r=length r1
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
