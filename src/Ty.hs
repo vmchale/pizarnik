@@ -413,7 +413,7 @@ upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- (expr `on` pare) ts0 ts1
     -- this is introducing c->`nothing (causes problems on the left)
     -- c unifying with `nothing... c=`nothing (most specific) but on the right we are allowed to fan out
-    (r, s0) <- traceShow (r0,r1) $ usc RF s r0 r1
+    (r, s0) <- usc RF s r0 r1
     l0' <- s0@@l0; l1' <- s0@@l1
     l <- σp l0' l1'
     pure (TS l r, s0)
