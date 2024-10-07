@@ -186,18 +186,15 @@ uas f s (t0:ts0) (t1:ts1) = do
 uas f _ t0 [] = throwError $ USF t0 [] f
 uas f _ [] t1 = throwError $ USF t1 [] f
 
-{-# SCC balance #-}
-balance :: TS a -> TS a -> TM a (TS a, TS a)
-balance ts0@(TS l0 r0) ts1@(TS l1 r1) =
-    let n0l=length l0; n1l=length l1;n0r=length r0; n1r=length r1
-        -- this is tortuous
-    in case compare n0r n1r of
+{-# SCC expr #-}
+expr :: TS a -> TS a -> TM a (TS a, TS a)
+expr ts0@(TS l0 r0) ts1@(TS l1 r1) =
+    case compare n0r n1r of
         EQ -> pure (ts0,ts1)
-        GT -> let a=minimum [n0r-n1r,n1l-n1r] in
-              do {ρ <- fρ (tLs l0) a; pure (ts0, (TS&:(ρ++)) l1 r1)}
-        LT -> let a=minimum [n1r-n0r,n0l-n0r] in
-              do {ρ <- fρ (tLs l1) a; pure ((TS&:(ρ++)) l0 r0, ts1)}
+        GT -> let a=n0r-n1r in do {ρ <- fρ (tLs l0) a; pure (ts0, (TS&:(ρ++)) l1 r1)}
+        LT -> let a=n1r-n0r in do {ρ <- fρ (tLs l1) a; pure ((TS&:(ρ++)) l0 r0, ts1)}
   where
+    n0r=length r0; n1r=length r1
     fρ x n = zipWithM (\_ c -> ftv x (T.singleton c)) [1..n] ['c'..]
 
 {-# SCC uac #-}
@@ -413,7 +410,7 @@ tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
 
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
-    (TS l0 r0, TS l1 r1) <- (balance `on` pare) ts0 ts1
+    (TS l0 r0, TS l1 r1) <- (expr `on` pare) ts0 ts1
     -- this is introducing c->`nothing (causes problems on the left)
     -- c unifying with `nothing... c=`nothing (most specific) but on the right we are allowed to fan out
     (r, s0) <- traceShow (r0,r1) $ usc RF s r0 r1
