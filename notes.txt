@@ -4,7 +4,7 @@
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
 
-(at this point `just already has something on the stack... anyway a `just -- a ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with a on the right, it propagates to the left, and suddenly the focus prevents generalization (if it gets generalized I guess that can be passed back? unify on right first...)
+(at this point `just already has something on the stack... anyway c `just -- c ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with c on the right, it propagates to the left, and suddenly the focus prevents generalization)
 
 
 'A {a b `t ⊕ a a `f} and a a B
@@ -28,4 +28,4 @@ a `just -- Bool
 1 0
 1 1
 
-(excess on the right?)
+(excess on the right?) why not use a stack variable rip
