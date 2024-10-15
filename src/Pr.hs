@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Pr ( pBound
+module Pr ( pBound, pB
           , (<#>)
           , (<##>)
           ) where

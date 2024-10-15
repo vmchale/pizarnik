@@ -13,6 +13,8 @@ import           Data.Bifunctor (first)
 import qualified Data.IntMap    as IM
 import qualified Data.Text      as T
 import           Nm
+import           Pr
+import           Prettyprinter  (Pretty (pretty), vsep)
 
 data NmMap a = NmMap { xx :: !(IM.IntMap a), context :: IM.IntMap T.Text }
 
@@ -39,6 +41,9 @@ elems (NmMap x _) = IM.elems x
 
 toList :: NmMap a -> [(T.Text, a)]
 toList (NmMap x ns) = map (first (ns IM.!)) (IM.toList x)
+
+instance Pretty a => Pretty (NmMap a) where
+    pretty nms = vsep (pB<$>Nm.Map.toList nms)
 
 fromList :: [(Nm a, b)] -> NmMap b
 fromList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }

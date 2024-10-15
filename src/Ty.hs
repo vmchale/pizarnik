@@ -5,7 +5,7 @@ module Ty ( TE, Ext (..), tM ) where
 import           A
 import           B
 import           Control.Composition        ((&:))
-import           Control.Monad              (unless, zipWithM)
+import           Control.Monad              (unless)
 import           Control.Monad.Except       (catchError, liftEither, throwError)
 import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor             (first, second)
@@ -64,17 +64,17 @@ runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
 runTM u = fmap (\(x, TSt m st) -> (x, st, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
 
 type Bt a = IM.IntMap (T a)
-data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
+data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a), rvs :: IM.IntMap (NmMap (TSeq a)) }
 
-instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
+instance Pretty (Subst a) where pretty (Subst t s r) = "tv" <#> pBound t <##> "sv" <#> pBound s <##> "rv" <#> pBound r
 
 instance Show (Subst a) where show=show.pretty
 
-instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
-instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
+instance Semigroup (Subst a) where (<>) (Subst tv0 sv0 rv0) (Subst tv1 sv1 rv1) = Subst (tv0<>tv1) (sv0<>sv1) (rv0<>rv1)
+instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty IM.empty
 
-mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
-iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
+mapTV f (Subst tv sv rv) = Subst (f tv) sv rv; mapSV f (Subst tv sv rv) = Subst tv (f sv) rv; mapRV f (Subst tv sv rv) = Subst tv sv (f rv)
+iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t); iRV n t = mapRV (IM.insert (unU$un n) t)
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
@@ -112,6 +112,8 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@@) _ []          = pure []
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
 (@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
+
+-- eventually a US should be "called back"/concretized?
 
 (@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
@@ -168,6 +170,14 @@ uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
               in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
+uas RF s t0@(SV l sn0:t0d) t1 =
+    let n0=length t0d; n1=length t1 in
+    case compare n0 n1 of
+        GT -> throwError $ USF t0 t1 RF
+        _ -> let (uws, res) = splitFromLeft n0 t1
+                 Just (a, TT _ tt) = unsnoc uws
+  -- | Just (a1, TT _ tt) <- unsnoc t1 =
+             in let uw=(Nm.fromList [(tt,a)]) in do {sn <- fr l (text sn0); first (US l sn0 uw:) <$> usc RF (iRV sn0 uw s) t0d res}
 uas f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
@@ -203,6 +213,8 @@ ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
 ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
+ua RF s (TT _ tt) (TV x n) = let t=US x n (Nm.fromList [(tt,[])]) in pure (t, iTV n t s)
+ua RF s (TV x n) (TT _ tt) = let t=US x n (Nm.fromList [(tt,[])]) in pure (t, iTV n t s)
 ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
 ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s) -- c unifies with `nothing on the right but could be c = `nothing ⊕ ... hm
 ua f s (TA x t0 t1) (TA _ t0' t1') = do
@@ -255,7 +267,7 @@ ma :: F -> T a -> T a -> TM a (Subst a)
 ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty)
+ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty IM.empty)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
@@ -286,7 +298,7 @@ ma f t0 (TA _ TC{} _) = do
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; traceShow (asig,asig',tsig) $ mSig asig' tsig}
+mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
