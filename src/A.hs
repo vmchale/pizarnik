@@ -19,7 +19,7 @@ import           Nm
 import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, group, hardline, hsep, line, punctuate, tupled, (<+>))
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
 
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
@@ -118,7 +118,7 @@ instance Pretty (T a) where
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
     pretty (TA _ t t') = pretty t <+> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
-    pretty (US _ n s) = pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " ((\(u,tsϵ) -> hsep (map pretty tsϵ++[pretty u]))<$>Nm.toList s)))
+    pretty (US _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " ((\(u,tsϵ) -> hsep (map pretty tsϵ++[pretty u]))<$>Nm.toList s))))
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 

@@ -15,7 +15,6 @@ import           Data.Functor               (($>))
 import qualified Data.IntMap                as IM
 import           Data.List                  (uncons, unsnoc)
 import qualified Data.Text                  as T
-import           Debug.Trace
 import           Nm
 import           Nm.Map                     (NmMap)
 import qualified Nm.Map                     as Nm
@@ -34,6 +33,7 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
 
 data TE a = UF (T a) (T a) F | MF (T a) (T a) F
           | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
+          | PM (TSeq a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
@@ -44,6 +44,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
     pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> squotes (pSeq ts0) <+> "against" <+> squotes (pSeq ts1)
     pretty (BE e)          = pretty e
+    pretty (PM ts)         = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
 
 tc t f p = pretty (tL t) <> ":" <+> pretty f <+> p
 tsc t f p = pretty (tLs t) <> ":" <+> pretty f <+> p
@@ -64,17 +65,18 @@ runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
 runTM u = fmap (\(x, TSt m st) -> (x, st, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
 
 type Bt a = IM.IntMap (T a)
-data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a), rvs :: IM.IntMap (NmMap (TSeq a)) }
+data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
 
-instance Pretty (Subst a) where pretty (Subst t s r) = "tv" <#> pBound t <##> "sv" <#> pBound s <##> "rv" <#> pBound r
+instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
 
 instance Show (Subst a) where show=show.pretty
 
-instance Semigroup (Subst a) where (<>) (Subst tv0 sv0 rv0) (Subst tv1 sv1 rv1) = Subst (tv0<>tv1) (sv0<>sv1) (rv0<>rv1)
-instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty IM.empty
+instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
+instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
-mapTV f (Subst tv sv rv) = Subst (f tv) sv rv; mapSV f (Subst tv sv rv) = Subst tv (f sv) rv; mapRV f (Subst tv sv rv) = Subst tv sv (f rv)
-iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t); iRV n t = mapRV (IM.insert (unU$un n) t)
+mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
+iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
+sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
@@ -113,7 +115,7 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
 (@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
 
--- eventually a US should be "called back"/concretized?
+-- when does a US get concretized?
 
 (@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
@@ -134,8 +136,11 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
 (@>) s (QT x sig)      = QT x<$>s@*sig
 (@>) s (TI x t)        = TI x <$> s@>t
-(@>) s t@(TV _ n)      =
-    let u=unU (un n) in
+(@>) s t@(TV _ (Nm _ (U u) _)) =
+    case IM.lookup u (tvs s) of
+        Nothing -> pure t
+        Just t' -> mapTV (IM.delete u) s@>t'
+(@>) s t@(US _ (Nm _ (U u) _) _) =
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> mapTV (IM.delete u) s@>t'
@@ -170,14 +175,16 @@ uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
               in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
-uas RF s t0@(SV l sn0:t0d) t1 =
-    let n0=length t0d; n1=length t1 in
-    case compare n0 n1 of
-        GT -> throwError $ USF t0 t1 RF
-        _ -> let (uws, res) = splitFromLeft n0 t1
-                 Just (a, TT _ tt) = unsnoc uws
-  -- | Just (a1, TT _ tt) <- unsnoc t1 =
-             in let uw=(Nm.fromList [(tt,a)]) in do {sn <- fr l (text sn0); first (US l sn0 uw:) <$> usc RF (iRV sn0 uw s) t0d res}
+uas RF s (SV l sn0:t0d) t1
+    | n0 <- length t0d
+    , (uws, res) <- splitFromLeft n0 t1
+    , Just (a, TT _ tt) <- unsnoc uws
+    , n0 <= length t1 = do
+             -- SV is replaced at sites with US everywhere (i.e. @~> should peek at RV record?)
+             -- (US is named so that it can accumulate constraints in multiple places...)
+        sn <- fr l (text sn0)
+        let t=US l sn (Nm.fromList [(tt,a)])
+        first (t:) <$> usc RF (iSV sn0 [t] s) t0d res
 uas f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
@@ -267,7 +274,7 @@ ma :: F -> T a -> T a -> TM a (Subst a)
 ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-ma _ (TV _ n0) t = pure (Subst (IM.singleton (unU$un n0) t) IM.empty IM.empty)
+ma _ (TV _ n0) t = pure (sTV n0 t)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
@@ -285,6 +292,12 @@ ma LF t0@(Σ _ σ) t1@(TT _ n) =
 ma RF t0@(TT _ n) t1@(Σ _ σ) =
     unless (n `Nm.member` σ)
         (throwError $ MF t0 t1 RF) $> mempty
+ma _ t0@(US l n as) t1@(Σ _ σ) = do
+    unless (as `Nm.isSubmapOf` σ)
+        (throwError$ MF t0 t1 RF)
+    n' <- fr l (text n)
+    s' <- mσ RF mempty as σ
+    pure (iTV n (US l n' σ) s')
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
@@ -416,12 +429,11 @@ tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
          = pure [Σ x0 (Nm.fromList [(n0,a0),(n1,a1)])]
 σp [Σ x ps] t1 | Just (a, TT _ n1) <- unsnoc t1
                = pure [Σ x (Nm.insert n1 a ps)]
+σp _ t1 = throwError (PM t1)
 
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 upm s ts0 ts1 = do
     (TS l0 r0, TS l1 r1) <- (expr `on` pare) ts0 ts1
-    -- this is introducing C->`nothing (causes problems on the left)
-    -- C unifying with `nothing... C=`nothing (most specific) but on the right we are allowed to fan out (constraint was introduced on the right!)
     (r, s0) <- usc RF s r0 r1
     l0' <- s0@@l0; l1' <- s0@@l1
     l <- σp l0' l1'
