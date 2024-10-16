@@ -45,5 +45,7 @@ toList (NmMap x ns) = map (first (ns IM.!)) (IM.toList x)
 instance Pretty a => Pretty (NmMap a) where
     pretty nms = vsep (pB<$>Nm.Map.toList nms)
 
+instance Pretty a => Show (NmMap a) where show=show.pretty
+
 fromList :: [(Nm a, b)] -> NmMap b
 fromList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }
