@@ -22,6 +22,7 @@ import           Pr
 import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
 import           Ty.Clone
 
+infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
@@ -123,6 +124,9 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
+(\-) :: Subst a -> Int -> Subst a
+(\-) s u = mapTV (IM.delete u) s
+
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
@@ -139,11 +143,11 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@>) s t@(TV _ (Nm _ (U u) _)) =
     case IM.lookup u (tvs s) of
         Nothing -> pure t
-        Just t' -> mapTV (IM.delete u) s@>t'
+        Just t' -> s\-u@>t'
 (@>) s (US x n@(Nm _ (U u) _) as) =
     case IM.lookup u (tvs s) of
         Nothing -> US x n <$> traverse (s@@) as
-        Just t' -> mapTV (IM.delete u) s@>t'
+        Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
 
@@ -161,6 +165,9 @@ upre s l splat =
     unconss :: NmMap [x] -> Maybe (NmMap (x, [x]))
     unconss = traverse uncons
 
+-- basically uac could go wrong b/c of stack variables, e.g.
+-- `just⁻¹ nip2 swap $ is inferred to have type
+-- 'A a ['A c -- a] c `just --
 tU :: Subst a -> [T a] -> TM a (T a, Subst a)
 tU s (t0:t1:ts) = do {(t',s') <- uac RF s t0 t1; tU s' (t':ts)}
 tU s [t]        = pure (t, s)
