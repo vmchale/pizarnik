@@ -140,9 +140,9 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> mapTV (IM.delete u) s@>t'
-(@>) s t@(US _ (Nm _ (U u) _) _) =
+(@>) s (US x n@(Nm _ (U u) _) as) =
     case IM.lookup u (tvs s) of
-        Nothing -> pure t
+        Nothing -> US x n <$> traverse (s@@) as
         Just t' -> mapTV (IM.delete u) s@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
@@ -182,7 +182,7 @@ uas RF s (SV l sn0:t0d) t1
     , n0 <= length t1 = do
              -- SV is replaced at sites with US everywhere (i.e. @~> should peek at RV record?)
              -- (US is named so that it can accumulate constraints in multiple places...)
-        sn <- fr l (text sn0)
+        sn <- frc sn0
         let t=US l sn (Nm.fromList [(tt,a)])
         first (t:) <$> usc RF (iSV sn0 [t] s) t0d res
 uas f s t0@((SV _ sn0):t0d) t1 =
@@ -295,7 +295,7 @@ ma RF t0@(TT _ n) t1@(Σ _ σ) =
 ma _ t0@(US l n as) t1@(Σ _ σ) = do
     unless (as `Nm.isSubmapOf` σ)
         (throwError$ MF t0 t1 RF)
-    n' <- fr l (text n)
+    n' <- frc n
     s' <- mσ RF mempty as σ
     pure (iTV n (US l n' σ) s')
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
@@ -378,6 +378,7 @@ cat s (TS l0 r0) (TS l1 r1) = do
 
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
+frc n = fr (loc n) (text n)
 
 ftv, fsv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
