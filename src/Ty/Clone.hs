@@ -1,9 +1,9 @@
 module Ty.Clone ( cloneSig ) where
 
 import           A
-import           Control.Monad.State.Strict (State, gets, modify, runState)
-import           Data.Functor               (($>))
-import qualified Data.IntMap                as IM
+import           Control.Monad.Trans.State.Strict (State, gets, modify, runState)
+import           Data.Functor                     (($>))
+import qualified Data.IntMap                      as IM
 import           Nm
 
 type BS = IM.IntMap Int

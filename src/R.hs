@@ -9,19 +9,19 @@ module R ( Ex (..)
          ) where
 
 import           A
-import           Control.Arrow              ((&&&))
-import           Control.Exception          (Exception (..))
-import           Control.Monad              ((<=<))
-import           Control.Monad.Except       (throwError)
-import           Control.Monad.State.Strict (StateT, get, gets, modify, put, runStateT)
-import           Data.Functor               (($>))
-import qualified Data.IntMap                as IM
-import           Data.Typeable              (Typeable)
-import           Lens.Micro                 (Lens', set)
-import           Lens.Micro.Extras          (view)
+import           Control.Arrow                    ((&&&))
+import           Control.Exception                (Exception (..))
+import           Control.Monad                    ((<=<))
+import           Control.Monad.Except             (throwError)
+import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, put, runStateT)
+import           Data.Functor                     (($>))
+import qualified Data.IntMap                      as IM
+import           Data.Typeable                    (Typeable)
+import           Lens.Micro                       (Lens', set)
+import           Lens.Micro.Extras                (view)
 import           Nm
 import           Pr
-import           Prettyprinter              (Pretty (..), squotes, (<+>))
+import           Prettyprinter                    (Pretty (..), squotes, (<+>))
 
 infixr 5 @~
 

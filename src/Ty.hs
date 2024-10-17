@@ -4,22 +4,22 @@ module Ty ( TE, Ext (..), tM ) where
 
 import           A
 import           B
-import           Control.Composition        ((&:))
-import           Control.Monad              (unless)
-import           Control.Monad.Except       (catchError, liftEither, throwError)
-import           Control.Monad.State.Strict (StateT, gets, modify, runStateT, state)
-import           Data.Bifunctor             (first, second)
-import           Data.Foldable              (traverse_)
-import           Data.Function              (on)
-import           Data.Functor               (($>))
-import qualified Data.IntMap                as IM
-import           Data.List                  (uncons, unsnoc)
-import qualified Data.Text                  as T
+import           Control.Composition              ((&:))
+import           Control.Monad                    (unless)
+import           Control.Monad.Except             (catchError, liftEither, throwError)
+import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
+import           Data.Bifunctor                   (first, second)
+import           Data.Foldable                    (traverse_)
+import           Data.Function                    (on)
+import           Data.Functor                     (($>))
+import qualified Data.IntMap                      as IM
+import           Data.List                        (uncons, unsnoc)
+import qualified Data.Text                        as T
 import           Nm
-import           Nm.Map                     (NmMap)
-import qualified Nm.Map                     as Nm
+import           Nm.Map                           (NmMap)
+import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter              (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
 import           Ty.Clone
 
 infixl 7 \-

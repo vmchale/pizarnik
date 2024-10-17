@@ -3,13 +3,13 @@
 module M ( MS (..), pRoot ) where
 
 import           A
-import           Control.Exception          (throwIO)
-import           Control.Monad.IO.Class     (liftIO)
-import           Control.Monad.State.Strict (StateT (StateT), runStateT)
-import qualified Data.ByteString.Lazy       as BSL
-import qualified Data.IntMap                as IM
-import           Data.List.NonEmpty         (NonEmpty (..))
-import           Data.Tuple                 (swap)
+import           Control.Exception                (throwIO)
+import           Control.Monad.IO.Class           (liftIO)
+import           Control.Monad.Trans.State.Strict (StateT (StateT), runStateT)
+import qualified Data.ByteString.Lazy             as BSL
+import qualified Data.IntMap                      as IM
+import           Data.List.NonEmpty               (NonEmpty (..))
+import           Data.Tuple                       (swap)
 import           Imp
 import           L
 import           Nm
