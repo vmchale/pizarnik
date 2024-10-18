@@ -13,7 +13,7 @@ tail : NE a -- a
      := [ `cons⁻¹ _ ]
 
 foldr : [ a b -- b ] b List(a) -- b
-      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip2 [ swap $ ] dip foldr } ]
+      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip2 [swap $] dip foldr } ]
 
 free : List(a) --
      := [ { `nil⁻¹ & `cons⁻¹ _ free } ]
