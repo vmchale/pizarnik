@@ -41,7 +41,7 @@ library
     other-extensions: DeriveFunctor
                       OverloadedStrings
                       RankNTypes
-    build-tool-depends: alex:alex, happy:happy >=1.17.1
+    build-tool-depends: alex:alex, happy:happy >=2.1
     build-depends:    base >=4.19.0.0
                     , array
                     , bytestring

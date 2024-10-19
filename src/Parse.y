@@ -26,7 +26,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 %name parseM M
 %tokentype { Tok }
 %error { parseErr }
-%errorhandlertype explist
+%error.expected
 %monad { Parse } { (>>=) } { pure }
 %lexer { lift alexMonadScan >>= } { EOF _ }
 
@@ -172,8 +172,8 @@ troll :: T a -> [T a] -> T a
 troll t []      = t
 troll t (t':ts) = troll (TA (tL t) t t') ts
 
-parseErr :: (Tok, [String]) -> Parse a
-parseErr = throwError . uncurry Unexpected
+parseErr :: Tok -> [String] -> Parse a
+parseErr t = throwError . Unexpected t
 
 data ParseE = Unexpected !Tok [String] | LexErr String | AnonymousArm !AlexPosn
 
