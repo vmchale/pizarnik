@@ -13,9 +13,11 @@ import           Data.Foldable                    (traverse_)
 import           Data.Function                    (on)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
+import Control.Exception (Exception)
 import           Data.List                        (uncons, unsnoc)
 import qualified Data.Text                        as T
 import           Nm
+import Data.Typeable (Typeable)
 import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
@@ -51,6 +53,8 @@ tc t f p = pretty (tL t) <> ":" <+> pretty f <+> p
 tsc t f p = pretty (tLs t) <> ":" <+> pretty f <+> p
 
 instance Pretty a => Show (TE a) where show=show.pretty
+
+instance (Typeable a, Pretty a) => Exception (TE a) where
 
 data F = LF | RF
 
