@@ -4,9 +4,6 @@
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
 
-(at this point `just already has something on the stack... anyway c `just -- c ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with c on the right, it propagates to the left, and suddenly the focus prevents generalization, even though we could have said c=`nothing)
-
-
 'A {a b `t ⊕ a a `f} and a a B
 (split)
 
@@ -28,4 +25,22 @@ a `just -- Bool
 1 0
 1 1
 
-(excess on the right?) why not use a stack variable rip
+([{'A₄₂₉ a₄₂₃ ['A₄₂₉ c₄₂₅ -- b₁₂₄] c₄₂₅ `just ⊕ b₁₂₄ a₄₃₄ `nothing}],[b₁₂₄,[a₁₂₅ -- b₁₂₄],{a₁₂₅ `just ⊕ `nothing}])
+                           FAIL
+    test/Spec.hs:39:
+    20:14: ⦠ Failed to match ‘{'A₄₂₉ a₄₂₃ ['A₄₂₉ c₄₂₅ -- b₁₂₄] c₄₂₅ `just ⊕ b₁₂₄ a₄₃₄ `nothing}’ against ‘b₁₂₄’
+
+basically it SHOULD pull some of the 'A₄₂₉ out here...
+
+but why would we be justified in gathering substitutions from the right (even to get thabove)?
+
+({'A₄₂₉ a₄₂₃ ['A₄₂₉ c₄₂₅ -- 'A₄₃₈] c₄₂₅ `just ⊕ 'A₄₃₈ a₄₃₄ `nothing} -- 'A₄₃₈,b₁₂₄ [a₁₂₅ -- b₁₂₄] Maybe₁₁₀(a₁₂₅) -- b₁₂₄)
+                           FAIL
+    test/Spec.hs:39:
+    20:14: ⦠ Failed to match ‘{'A₄₂₉ a₄₂₃ ['A₄₂₉ c₄₂₅ -- b₁₂₄] c₄₂₅ `just ⊕ b₁₂₄ a₄₃₄ `nothing}’ against ‘b₁₂₄’
+
+drop : a --
+     := [(_ : 'A a -- 'A)]
+
+trip : a -- a a a
+     := [(dup : a -- a a) (dup : 'A a -- 'A a a)]
