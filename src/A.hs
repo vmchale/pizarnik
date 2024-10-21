@@ -50,15 +50,15 @@ data A a = B { aL :: a, builtin :: !B }
          | C { aL :: a, tagn :: Nm a } | V { aL :: a, fn :: Nm a }
          | Inv { aL :: a, inva :: A a }
 
-aT :: SL b (A (T a)) -> Doc ann
+aT :: SL b (A (TS a)) -> Doc ann
 aT = hsep.fmap ana.aas
 
 (<:>) x y = x <+> ":" <+> y
 
-ana :: A (T b) -> Doc ann
+ana :: A (TS b) -> Doc ann
 ana (B t a) = parens (pretty a <:> pretty t); ana (L t a) = parens (pretty a <:> pretty t)
 ana (C t a) = parens (pretty a <:> pretty t); ana (V t a) = parens (pretty a <:> pretty t)
-ana (Inv t a) = parens (pretty a <:> pretty t); ana (Q t a) = parens (brackets (aT a) <:> pretty t)
+ana (Inv t a) = parens (pretty a <> "⁻¹" <:> pretty t); ana (Q t a) = parens (brackets (aT a) <:> pretty t)
 ana (Pat t a) = group (braces (align (pA (map aT (aas a))))) <:> pretty t
 
 faseq :: (a -> b) -> ASeq a -> ASeq b
@@ -100,7 +100,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
-anD :: D a (T b) -> Doc ann
+anD :: D a (TS b) -> Doc ann
 anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (hsep (map ana (aas as))))
 anD d@TD{}       = pretty d
 
@@ -110,7 +110,7 @@ instance Pretty (D a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
     pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
 
-am :: M a (T b) -> Doc ann
+am :: M a (TS b) -> Doc ann
 am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
 
 data M a b = M [MN] [D a b]

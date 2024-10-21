@@ -8,10 +8,19 @@ import qualified Data.ByteString.Lazy      as BSL
 import           Data.Tuple.Extra          (thd3)
 import           L
 import           P
+import A
+import Data.Foldable (traverse_)
 import           Parse
 import           Pr
 import           Prettyprinter             (pretty)
 import           Prettyprinter.Render.Text (putDoc)
+
+adbg :: [FilePath] -> FilePath -> IO ()
+adbg incls fp = do
+    tms <- tMs incls fp
+    case tms of
+        Left err -> throwIO err
+        Right ms -> traverse_ (putDoc.am) ms
 
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = parseA 0 alexInitUserState
