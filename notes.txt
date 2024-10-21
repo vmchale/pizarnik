@@ -4,7 +4,7 @@
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
 
-(at this point `just already has something on the stack... anyway c `just -- c ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with c on the right, it propagates to the left, and suddenly the focus prevents generalization)
+(at this point `just already has something on the stack... anyway c `just -- c ; `nothing -- `nothing we *do* expand... but we then when `nothing unifies with c on the right, it propagates to the left, and suddenly the focus prevents generalization, even though we could have said c=`nothing)
 
 
 'A {a b `t ⊕ a a `f} and a a B
