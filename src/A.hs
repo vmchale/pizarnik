@@ -10,6 +10,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , taseq
+         , am
          , tTS
          , pSeq
          ) where
@@ -20,6 +21,8 @@ import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
 import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
+
+infixl 9 <:>
 
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
@@ -46,6 +49,17 @@ data A a = B { aL :: a, builtin :: !B }
          | Pat { aL :: a, arms :: SL a (ASeq a) }
          | C { aL :: a, tagn :: Nm a } | V { aL :: a, fn :: Nm a }
          | Inv { aL :: a, inva :: A a }
+
+aT :: SL b (A (T a)) -> Doc ann
+aT = hsep.fmap ana.aas
+
+(<:>) x y = x <+> ":" <+> y
+
+ana :: A (T b) -> Doc ann
+ana (B t a) = parens (pretty a <:> pretty t); ana (L t a) = parens (pretty a <:> pretty t)
+ana (C t a) = parens (pretty a <:> pretty t); ana (V t a) = parens (pretty a <:> pretty t)
+ana (Inv t a) = parens (pretty a <:> pretty t); ana (Q t a) = parens (brackets (aT a) <:> pretty t)
+ana (Pat t a) = group (braces (align (pA (map aT (aas a))))) <:> pretty t
 
 faseq :: (a -> b) -> ASeq a -> ASeq b
 faseq f (SL x xs) = SL (f x) (map (f<$>) xs)
@@ -86,11 +100,18 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
+anD :: D a (T b) -> Doc ann
+anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (hsep (map ana (aas as))))
+anD d@TD{}       = pretty d
+
 instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
 
 instance Pretty (D a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
     pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
+
+am :: M a (T b) -> Doc ann
+am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
 
 data M a b = M [MN] [D a b]
 
