@@ -116,7 +116,7 @@ instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
-    pretty (TA _ t t') = pretty t <+> tupled (pretty<$>tunroll t')
+    pretty (TA _ t t') = pretty t <> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
     pretty (US _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " ((\(u,tsϵ) -> hsep (map pretty tsϵ++[pretty u]))<$>Nm.toList s))))
 
