@@ -8,6 +8,7 @@ import           Control.Composition              ((&:))
 import           Control.Monad                    (unless)
 import           Control.Monad.Except             (catchError, liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
+import Debug.Trace
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Function                    (on)
@@ -19,7 +20,7 @@ import           Nm
 import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, squotes, (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
 import           Ty.Clone
 
 infixl 7 \-
@@ -40,10 +41,10 @@ tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (UF t0 t1 f)    = tc t0 f $ "Failed to unify" <+> squotes (pretty t0) <+> "with" <+> squotes (pretty t1)
-    pretty (USF ts0 ts1 f) = tsc ts0 f $ "Failed to unify" <+> squotes (pSeq ts0) <+> "with" <+> squotes (pSeq ts1)
-    pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> squotes (pretty t0) <+> "against" <+> squotes (pretty t1)
-    pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> squotes (pSeq ts0) <+> "against" <+> squotes (pSeq ts1)
+    pretty (UF t0 t1 f)    = tc t0 f $ "Failed to unify" <+> sq (pretty t0) <+> "with" <+> sq (pretty t1)
+    pretty (USF ts0 ts1 f) = tsc ts0 f $ "Failed to unify" <+> sq (pSeq ts0) <+> "with" <+> sq (pSeq ts1)
+    pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> sq (pretty t0) <+> "against" <+> sq (pretty t1)
+    pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> sq (pSeq ts0) <+> "against" <+> sq (pSeq ts1)
     pretty (BE e)          = pretty e
     pretty (PM ts)         = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
 
@@ -160,12 +161,15 @@ upre s l splat =
     case unconss splat of
         Nothing -> pure ([Σ l splat], s)
         Just mu -> let uu=fst<$>Nm.elems mu
-                   in catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
+                   in if any isSV uu
+                        then pure ([Σ l splat], s)
+                        else catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
   where
     unconss :: NmMap [x] -> Maybe (NmMap (x, [x]))
     unconss = traverse uncons
 
--- basically uac could go wrong b/c of stack variables, e.g.
+    isSV SV{}=True; isSV _=False
+
 -- `just⁻¹ nip2 swap $ is inferred to have type
 -- 'A a ['A c -- a] c `just --
 tU :: Subst a -> [T a] -> TM a (T a, Subst a)
@@ -244,7 +248,7 @@ ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
+mSig ts0@(TS l0 r0) ts1@(TS l1 r1) = traceShow (ts0,ts1) $ do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f s `onM` peek s

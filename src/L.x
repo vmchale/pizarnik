@@ -27,7 +27,8 @@ import qualified Data.Map as M
 import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Nm
-import Prettyprinter (Pretty (..), (<+>), squotes)
+import Pr (sq)
+import Prettyprinter (Pretty (..), (<+>))
 
 }
 
@@ -222,13 +223,13 @@ instance Pretty Tok where
     pretty EOF{}        = "(eof)"
     pretty (TokI _ i)   = pretty i
     pretty (TokS _ s)   = pretty s
-    pretty (TokN _ n)   = "identifier" <+> squotes (pretty n)
-    pretty (TokMN _ m)  = "module" <+> squotes (pretty m)
+    pretty (TokN _ n)   = "identifier" <+> sq (pretty n)
+    pretty (TokMN _ m)  = "module" <+> sq (pretty m)
     pretty (TokTN _ tn) = pretty tn
     pretty (TokSV _ sn) = pretty sn
-    pretty (TokB _ b)   = "builtin" <+> squotes (pretty b)
+    pretty (TokB _ b)   = "builtin" <+> sq (pretty b)
     pretty (TokT _ t)   = pretty t
-    pretty (TokKw _ k)  = "keyword" <+> squotes (pretty k)
+    pretty (TokKw _ k)  = "keyword" <+> sq (pretty k)
 
 runAlexSt :: BSL.ByteString -> Alex a -> Either String (AlexUserState, a)
 runAlexSt inp = withAlexSt inp 0 alexInitUserState

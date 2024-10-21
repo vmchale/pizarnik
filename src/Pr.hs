@@ -3,6 +3,7 @@
 module Pr ( pBound, pB
           , (<#>)
           , (<##>)
+          , sq
           ) where
 
 import qualified Data.IntMap   as IM
@@ -20,3 +21,5 @@ pB (i,j) = pretty i <+> "→" <+> pretty j
 
 pBound :: Pretty b => IM.IntMap b -> Doc a
 pBound b = vsep (pB<$>IM.toList b)
+
+sq x = "‘" <> x <> "’"
