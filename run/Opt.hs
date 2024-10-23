@@ -10,7 +10,7 @@ import           Prettyprinter.Render.Text (renderIO)
 import           System.Exit               (exitFailure)
 import           System.IO                 (stderr, stdout)
 
-data Cmd = TC !FilePath | Fmt !FilePath
+data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath
 
 pComplete :: HasCompleter f => Mod f a
 pComplete = completer . bashCompleter $ "file -X '!*.piz -o plusdirs"
@@ -18,9 +18,10 @@ pComplete = completer . bashCompleter $ "file -X '!*.piz -o plusdirs"
 cmd :: Parser Cmd
 cmd = hsubparser
     (command "tc" (info tcP (progDesc "Type-check"))
+    <> command "an" (info anP (progDesc "Display type annotations"))
     <> command "fmt" (info fmtP (progDesc "Format")))
   where
-    tcP = TC<$>src; fmtP=Fmt<$>src
+    tcP = TC<$>src; fmtP=Fmt<$>src; anP=An<$>src
 
 src :: Parser FilePath
 src = argument str

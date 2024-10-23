@@ -5,6 +5,7 @@ module Ty ( TE, Ext (..), tM ) where
 import           A
 import           B
 import           Control.Composition              ((&:))
+import           Control.Exception                (Exception)
 import           Control.Monad                    (unless)
 import           Control.Monad.Except             (catchError, liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
@@ -13,11 +14,10 @@ import           Data.Foldable                    (traverse_)
 import           Data.Function                    (on)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
-import Control.Exception (Exception)
 import           Data.List                        (uncons, unsnoc)
 import qualified Data.Text                        as T
+import           Data.Typeable                    (Typeable)
 import           Nm
-import Data.Typeable (Typeable)
 import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
@@ -165,7 +165,9 @@ upre s l splat =
         Nothing -> pure ([Σ l splat], s)
         Just mu -> let uu=fst<$>Nm.elems mu
                    in if any isSV uu
-                        -- FIXME: I don't think this is sensible.
+                        -- FIXME:
+                        -- `just⁻¹ nip2 swap $ is inferred to have type
+                        -- 'A a ['A c -- a] c `just --
                         then pure ([Σ l splat], s)
                         else catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
   where
@@ -174,8 +176,6 @@ upre s l splat =
 
     isSV SV{}=True; isSV _=False
 
--- `just⁻¹ nip2 swap $ is inferred to have type
--- 'A a ['A c -- a] c `just --
 tU :: Subst a -> [T a] -> TM a (T a, Subst a)
 tU s (t0:t1:ts) = do {(t',s') <- uac RF s t0 t1; tU s' (t':ts)}
 tU s [t]        = pure (t, s)
@@ -436,8 +436,7 @@ tP :: Subst a -> [T a] -> TM a ([T a], Subst a)
 tP s [] = pure ([], s)
 tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
   where
-    g v (Σ x ss) = upre v x ss
-    g v a        = pure ([a], v)
+    g v (Σ x ss) = upre v x ss; g v a = pure ([a], v)
 
 σp :: TSeq a -> TSeq a -> TM a (TSeq a)
 σp t0 t1 | Just (a0, TT x0 n0) <- unsnoc t0

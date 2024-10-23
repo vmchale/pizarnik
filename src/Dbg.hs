@@ -2,14 +2,14 @@ module Dbg ( dT, dFmt
            , module P
            ) where
 
+import           A
 import           Control.Exception         (throwIO)
 import           Control.Monad             ((<=<))
 import qualified Data.ByteString.Lazy      as BSL
+import           Data.Foldable             (traverse_)
 import           Data.Tuple.Extra          (thd3)
 import           L
 import           P
-import A
-import Data.Foldable (traverse_)
 import           Parse
 import           Pr
 import           Prettyprinter             (pretty)
