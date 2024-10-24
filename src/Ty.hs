@@ -7,18 +7,17 @@ import           B
 import           Control.Composition              ((&:))
 import           Control.Exception                (Exception)
 import           Control.Monad                    (unless)
-import           Control.Monad.Except             (catchError, liftEither, throwError)
+import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Function                    (on)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
-import           Data.List                        (uncons, unsnoc)
+import           Data.List                        (unsnoc)
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
-import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
@@ -159,26 +158,8 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
-upre :: Subst a -> a -> NmMap (TSeq a) -> TM a (TSeq a, Subst a)
-upre s l splat =
-    case unconss splat of
-        Nothing -> pure ([Σ l splat], s)
-        Just mu -> let uu=fst<$>Nm.elems mu
-                   in if any isSV uu
-                        -- FIXME:
-                        -- `just⁻¹ nip2 swap $ is inferred to have type
-                        -- 'A a ['A c -- a] c `just --
-                        then pure ([Σ l splat], s)
-                        else catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
-  where
-    unconss :: NmMap [x] -> Maybe (NmMap (x, [x]))
-    unconss = traverse uncons
-
-    isSV SV{}=True; isSV _=False
-
-tU :: Subst a -> [T a] -> TM a (T a, Subst a)
-tU s (t0:t1:ts) = do {(t',s') <- uac RF s t0 t1; tU s' (t':ts)}
-tU s [t]        = pure (t, s)
+φ :: TSeq a -> TSeq a
+φ ts = case unsnoc ts of {Just (tsϵ, Σ l aas) -> [Σ l ((tsϵ++)<$>aas)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -252,7 +233,7 @@ ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
-mSig ts0@(TS l0 r0) ts1@(TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
+mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
 
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f s `onM` peek s
@@ -326,7 +307,9 @@ ma f t0 (TA _ TC{} _) = do
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
+mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' (𝜙 tsig')}
+  where 𝜙 (TS l r) = (TS&:φ) l r
+        ʙ st (TS l r) = TS <$> traverse (lΒ st) l <*> traverse (lΒ st) r
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
@@ -427,16 +410,8 @@ ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    (TS l r, s1) <- dU s0 sigs
-    (l', s2) <- tP s1 l
-    let t=TS l' r
-    pure (Pat t (SL t as'), s2)
-
-tP :: Subst a -> [T a] -> TM a ([T a], Subst a)
-tP s [] = pure ([], s)
-tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
-  where
-    g v (Σ x ss) = upre v x ss; g v a = pure ([a], v)
+    (t, s1) <- dU s0 sigs
+    pure (Pat t (SL t as'), s1)
 
 σp :: TSeq a -> TSeq a -> TM a (TSeq a)
 σp t0 t1 | Just (a0, TT x0 n0) <- unsnoc t0
