@@ -159,7 +159,7 @@ usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
 φ :: TSeq a -> TSeq a
-φ ts = case unsnoc ts of {Just (tsϵ, Σ l aas) -> [Σ l ((tsϵ++)<$>aas)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
+φ ts = case unsnoc ts of {Just (tsϵ, Σ l as) -> [Σ l ((tsϵ++)<$>as)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
