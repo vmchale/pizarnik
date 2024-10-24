@@ -5,7 +5,6 @@ import           Data.Functor              (void)
 import           Dbg
 import           Options.Applicative       (HasCompleter, Mod, Parser, ParserInfo, argument, bashCompleter, command, completer, execParser, fullDesc, header, help, helper,
                                             hsubparser, info, metavar, progDesc, str)
-import           P
 import           Prettyprinter             (Pretty (pretty), defaultLayoutOptions, hardline, layoutPretty)
 import           Prettyprinter.Render.Text (renderIO)
 import           System.Exit               (exitFailure)
