@@ -20,7 +20,7 @@ import           Nm
 import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -51,7 +51,7 @@ data A a = B { aL :: a, builtin :: !B }
          | Inv { aL :: a, inva :: A a }
 
 aT :: SL b (A (TS a)) -> Doc ann
-aT = hsep.fmap ana.aas
+aT = align.fillSep.fmap ana.aas
 
 (<:>) x y = x <+> ":" <+> y
 
@@ -101,7 +101,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
 anD :: D a (TS b) -> Doc ann
-anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (hsep (map ana (aas as))))
+anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (align (fillSep (map ana (aas as)))))
 anD d@TD{}       = pretty d
 
 instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)

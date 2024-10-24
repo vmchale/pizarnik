@@ -1,4 +1,5 @@
 module Dbg ( dT, dFmt
+           , adbg
            , module P
            ) where
 
@@ -12,15 +13,16 @@ import           L
 import           P
 import           Parse
 import           Pr
-import           Prettyprinter             (pretty)
-import           Prettyprinter.Render.Text (putDoc)
+import           Prettyprinter             (defaultLayoutOptions, layoutSmart, pretty)
+import           Prettyprinter.Render.Text (putDoc, renderIO)
+import           System.IO                 (stdout)
 
 adbg :: [FilePath] -> FilePath -> IO ()
 adbg incls fp = do
     tms <- tMs incls fp
     case tms of
         Left err -> throwIO err
-        Right ms -> traverse_ (putDoc.am) ms
+        Right ms -> traverse_ (rDoc.am) ms
 
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = parseA 0 alexInitUserState
@@ -29,3 +31,5 @@ dT :: [FilePath] -> FilePath -> IO ()
 dT incls fp = do
     res <- rMs incls fp
     either throwIO (putDoc.pBound.thd3) res
+
+rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
