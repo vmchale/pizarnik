@@ -82,6 +82,8 @@ mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
+(\-) s u = mapTV (IM.delete u) s
+
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t@TC{} = uncurry (β c) (tun t)
 tCtx c t@TA{} = uncurry (β c) (tun t)
@@ -127,9 +129,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
-(\-) :: Subst a -> Int -> Subst a
-(\-) s u = mapTV (IM.delete u) s
-
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
@@ -158,6 +157,19 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
+-- FIXME: too general?
+-- (_ : 'A [a -- b] -- 'A)} : {b [a -- 'ᴅ] a `just ⊕ 'ᴅ [a -- b] `nothing} -- 'ᴅ]
+-- in
+--
+-- maybe : b [a -- b] Maybe(a) -- b
+--    := [{`just⁻¹ nip2 swap $ & `nothing⁻¹ _}]
+--
+-- the atoms are annotated to have type
+-- {b [a -- 'ᴅ] a `just ⊕ 'ᴅ [a -- b] `nothing} -- 'ᴅ]
+--
+-- also we could rewrite {('ᴅ ⊃ {a `just, `nothing}) `just ⊕ `nothing} -- ('ᴅ ⊃ {a `just, `nothing})
+-- for clarity idk
+
 φ :: TSeq a -> TSeq a
 φ ts = case unsnoc ts of {Just (tsϵ, Σ l as) -> [Σ l ((tsϵ++)<$>as)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
 
@@ -178,6 +190,8 @@ uas RF s (SV l sn0:t0d) t1
     , n0 <= length t1 = do
              -- SV is replaced at sites with US everywhere (i.e. @~> should peek at RV record?)
              -- (US is named so that it can accumulate constraints in multiple places...)
+             --
+             -- maybe only justified in pattern-match right-side b/c inverses?
         sn <- frc sn0
         let t=US l sn (Nm.fromList [(tt,a)])
         first (t:) <$> usc RF (iSV sn0 [t] s) t0d res
