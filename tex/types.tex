@@ -75,14 +75,19 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 
 \inferrule
 {\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\withmany{\beta}{m} \\ \Judge y : B~\withmany{\alpha}{n} -- C}
-{\Judge xy : A -- B }
+{\Judge xy : A -- C }
 \quad(\textsc{Narrow})
+
+% \inferrule
+% {\Judge x : \bigoplus_i \alpha -- \\ y : \bigoplus_j\beta}
+% {\Judge xy : -- \bigoplus_i \left(\bigoplus_j \alpha_j\right) \beta_i}
+% \quad(\textsc{Fan-Out})
 
 \end{mathpar}
 
 Note that this is not algorithmic typing, one could go awry in applying \textsc{Disjunction} spuriously.
 
-We justify $\textsc{(Pattern-Match)}$ by noting that if $x_1 : \alpha_1 -- A$ and $x_2 : \alpha_2 -- A$, hence $x_1 : -- \alpha_1^{-1} A$ and $x_2 : -- \alpha_2^{-1} A$, $\{x_1 \with x_2\} :$
+We justify $\textsc{(Pattern-Match)}$ by noting that if $x_1 : \alpha_1 -- A$ and $x_2 : \alpha_2 -- A$, then $x_1 : -- \alpha_1^{-1} A$ and $x_2 : -- \alpha_2^{-1} A$, $\{x_1 \with x_2\} :$
 
 \section{Unification}
 
