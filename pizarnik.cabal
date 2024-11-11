@@ -48,7 +48,6 @@ library
                     , composition-prelude >=3.0.0.0
                     , containers >=0.6.2.1
                     , directory
-                    , extra
                     , filepath
                     , microlens
                     , mtl

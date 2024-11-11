@@ -8,7 +8,6 @@ import           Control.Exception         (throwIO)
 import           Control.Monad             ((<=<))
 import qualified Data.ByteString.Lazy      as BSL
 import           Data.Foldable             (traverse_)
-import           Data.Tuple.Extra          (thd3)
 import           L
 import           P
 import           Parse
@@ -33,3 +32,5 @@ dT incls fp = do
     either throwIO (putDoc.pBound.thd3) res
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
+
+thd3 (_,_,z) = z
