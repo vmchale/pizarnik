@@ -146,29 +146,12 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> s\-u@>t'
-(@>) s (US x n@(Nm _ (U u) _) as) =
-    case IM.lookup u (tvs s) of
-        Nothing -> US x n <$> traverse (s@@) as
-        Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
-
--- FIXME: too general?
--- (_ : 'A [a -- b] -- 'A)} : {b [a -- 'ᴅ] a `just ⊕ 'ᴅ [a -- b] `nothing} -- 'ᴅ]
--- in
---
--- maybe : b [a -- b] Maybe(a) -- b
---    := [{`just⁻¹ nip2 swap $ & `nothing⁻¹ _}]
---
--- the atoms are annotated to have type
--- {b [a -- 'ᴅ] a `just ⊕ 'ᴅ [a -- b] `nothing} -- 'ᴅ]
---
--- also we could rewrite {('ᴅ ⊃ {a `just, `nothing}) `just ⊕ `nothing} -- ('ᴅ ⊃ {a `just, `nothing})
--- for clarity idk
 
 φ :: TSeq a -> TSeq a
 φ ts = case unsnoc ts of {Just (tsϵ, Σ l as) -> [Σ l ((tsϵ++)<$>as)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
@@ -183,18 +166,6 @@ uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
               in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
-uas RF s (SV l sn0:t0d) t1
-    | n0 <- length t0d
-    , (uws, res) <- splitFromLeft n0 t1
-    , Just (a, TT _ tt) <- unsnoc uws
-    , n0 <= length t1 = do
-             -- SV is replaced at sites with US everywhere (i.e. @~> should peek at RV record?)
-             -- (US is named so that it can accumulate constraints in multiple places...)
-             --
-             -- maybe only justified in pattern-match right-side b/c inverses?
-        sn <- frc sn0
-        let t=US l sn (Nm.fromList [(tt,a)])
-        first (t:) <$> usc RF (iSV sn0 [t] s) t0d res
 uas f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
@@ -213,14 +184,6 @@ uas f s (t0:ts0) (t1:ts1) = do
 uas f _ t0 [] = throwError $ USF t0 [] f
 uas f _ [] t1 = throwError $ USF t1 [] f
 
-{-# SCC expr #-}
-expr :: TS a -> TS a -> TM a (TS a, TS a)
-expr ts0@(TS l0 r0) ts1@(TS l1 r1) =
-    case (compare `on` length) r0 r1 of
-        EQ -> pure (ts0,ts1)
-        GT -> do {ᴅ <- fsv (tLs l0) "ᴅ"; pure (ts0, (TS&:(ᴅ:)) l1 r1)}
-        LT -> do {ᴅ <- fsv (tLs l1) "ᴅ"; pure ((TS&:(ᴅ:)) l0 r0, ts1)}
-
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 uac f s = ua f s `onM` (s@>)
@@ -230,8 +193,6 @@ ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
 ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
-ua RF s (TT _ tt) (TV x n) = let t=US x n (Nm.fromList [(tt,[])]) in pure (t, iTV n t s)
-ua RF s (TV x n) (TT _ tt) = let t=US x n (Nm.fromList [(tt,[])]) in pure (t, iTV n t s)
 ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
 ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s) -- c unifies with `nothing on the right but could be c = `nothing ⊕ ... hm
 ua f s (TA x t0 t1) (TA _ t0' t1') = do
@@ -302,12 +263,6 @@ ma LF t0@(Σ _ σ) t1@(TT _ n) =
 ma RF t0@(TT _ n) t1@(Σ _ σ) =
     unless (n `Nm.member` σ)
         (throwError $ MF t0 t1 RF) $> mempty
-ma _ t0@(US l n as) t1@(Σ _ σ) = do
-    unless (as `Nm.isSubmapOf` σ)
-        (throwError$ MF t0 t1 RF)
-    n' <- frc n
-    s' <- mσ RF mempty as σ
-    pure (iTV n (US l n' σ) s')
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
@@ -436,17 +391,13 @@ ta b s (Pat _ as)     = do
 σp _ t1 = throwError (PM t1)
 
 upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-upm s ts0 ts1 = do
-    (TS l0 r0, TS l1 r1) <- (expr `on` pare) ts0 ts1
+upm s (TS l0 r0) (TS l1 r1) = do
     (r, s0) <- usc RF s r0 r1
-    l0' <- s0@@l0; l1' <- s0@@l1
-    l <- σp l0' l1'
+    l <- σp l0 l1
     pure (TS l r, s0)
-  where
-    pare :: TS a -> TS a
-    pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
--- stepping σp one-at-a-time... could bundle up lefts...
+-- FIXME: lefts can fan-out within limits since it's an { x & y } expression, do those first and apply substitution (or generalization)?
+-- right now the result is wrong b/c it tries to use substitutions on the right (equalities) rather than generalizations that can come from the lefts...
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s []         = pure (TS [] [], s)
 dU s [ts]       = pure (ts, s)

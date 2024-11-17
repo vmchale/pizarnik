@@ -20,7 +20,7 @@ import           Nm
 import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -96,7 +96,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
-         | TI { tL :: a, tI :: T a } | US { tL :: a, nUs :: Nm a, uS :: NmMap (TSeq a) }
+         | TI { tL :: a, tI :: T a }
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
@@ -139,7 +139,6 @@ instance Pretty (T a) where
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
     pretty (TA _ t t') = pretty t <> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
-    pretty (US _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " ((\(u,tsϵ) -> hsep (map pretty tsϵ++[pretty u]))<$>Nm.toList s))))
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 
