@@ -10,6 +10,10 @@ isJust : Maybe(a) -- Bool
 isNothing : Maybe(a) -- Bool
           := [ { `just⁻¹ _ False & `nothing⁻¹ True } ]
 
+# FIXME: shouldn't be allowed as a pattern match though, doesn't inspect-first (functions-as-pattern-match fails) basically we need a principled way to forbid anything that doesn't begin by inpsecting the stack
+# just0 : b [a -- b] a `just -- b
+      # := [ nip3 `just⁻¹ swap $ ]
+
 just : b [a -- b] a `just -- b
      := [ `just⁻¹ nip2 swap $ ]
 

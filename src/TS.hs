@@ -1,7 +1,7 @@
 module TS ( tsort ) where
 
 
-import           Data.Graph       (graphFromEdges, reverseTopSort)
+import           Data.Graph (graphFromEdges, reverseTopSort)
 import           Nm
 
 tsort :: [(MN, [MN])] -> [MN]
