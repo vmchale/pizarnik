@@ -6,18 +6,18 @@ import           A
 import           B
 import           Control.Composition              ((&:))
 import           Control.Exception                (Exception)
-import           Control.Monad                    (unless)
+import           Control.Monad                    (foldM, unless)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
-import           Data.Function                    (on)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import           Data.List                        (unsnoc)
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
+import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
@@ -382,26 +382,21 @@ ta b s (Pat _ as)     = do
     (t, s1) <- dU s0 sigs
     pure (Pat t (SL t as'), s1)
 
-σp :: TSeq a -> TSeq a -> TM a (TSeq a)
-σp t0 t1 | Just (a0, TT x0 n0) <- unsnoc t0
-         , Just (a1, TT _ n1) <- unsnoc t1
-         = pure [Σ x0 (Nm.fromList [(n0,a0),(n1,a1)])]
-σp [Σ x ps] t1 | Just (a, TT _ n1) <- unsnoc t1
-               = pure [Σ x (Nm.insert n1 a ps)]
-σp _ t1 = throwError (PM t1)
+σs :: (a, NmMap (TSeq a)) -> TSeq a -> TM a (a, NmMap (TSeq a))
+σs (x, ps) t = pure (x, Nm.insert undefined undefined ps)
+σs _ t       = throwError (PM t)
 
-upm :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-upm s (TS l0 r0) (TS l1 r1) = do
-    (r, s0) <- usc RF s r0 r1
-    l <- σp l0 l1
-    pure (TS l r, s0)
+dL :: [TSeq a] -> TM a (T a)
+dL (t:ts) = uncurry Σ<$>foldM σs undefined ts
 
 -- FIXME: lefts can fan-out within limits since it's an { x & y } expression, do those first and apply substitution (or generalization)?
 -- right now the result is wrong b/c it tries to use substitutions on the right (equalities) rather than generalizations that can come from the lefts...
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
-dU s []         = pure (TS [] [], s)
-dU s [ts]       = pure (ts, s)
-dU s (t0:t1:ts) = do {(tϵ, s') <- upm s t0 t1; dU s' (tϵ:ts)}
+dU s tss = do
+    l' <- dL ls
+    -- unify rights
+    pure (TS [l'] undefined, undefined)
+  where ls=map tlefts tss; rs=map trights tss
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
