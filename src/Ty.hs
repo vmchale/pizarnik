@@ -383,19 +383,22 @@ ta b s (Pat _ as)     = do
     pure (Pat t (SL t as'), s1)
 
 σs :: (a, NmMap (TSeq a)) -> TSeq a -> TM a (a, NmMap (TSeq a))
-σs (x, ps) t = pure (x, Nm.insert undefined undefined ps)
-σs _ t       = throwError (PM t)
+σs (x, ps) t | Just (a0, TT _ n0) <- unsnoc t = pure (x, Nm.insert n0 a0 ps)
+             | otherwise = throwError (PM t)
 
 dL :: [TSeq a] -> TM a (T a)
-dL (t:ts) = uncurry Σ<$>foldM σs undefined ts
+dL (t:ts) | Just (a, TT x n) <- unsnoc t = uncurry Σ<$>foldM σs (x, Nm.singleton n a) ts
+          | otherwise = throwError (PM t)
 
--- FIXME: lefts can fan-out within limits since it's an { x & y } expression, do those first and apply substitution (or generalization)?
--- right now the result is wrong b/c it tries to use substitutions on the right (equalities) rather than generalizations that can come from the lefts...
+uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
+uss s [t]    = pure (t, s)
+uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
+
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
     l' <- dL ls
-    -- unify rights
-    pure (TS [l'] undefined, undefined)
+    (r',s') <- uss s rs
+    pure (TS [l'] r', s')
   where ls=map tlefts tss; rs=map trights tss
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)

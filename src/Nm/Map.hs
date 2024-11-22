@@ -1,6 +1,7 @@
 module Nm.Map ( NmMap (..)
               , insert
               , member
+              , singleton
               , intersectionWith
               , isSubmapOf
               , elems
@@ -26,6 +27,9 @@ instance Traversable NmMap where traverse f (NmMap x c) = NmMap <$> traverse f x
 
 insert :: Nm a -> b -> NmMap b -> NmMap b
 insert (Nm n (U i) _) y (NmMap x ctx)= NmMap (IM.insert i y x) (IM.insert i n ctx)
+
+singleton :: Nm a -> b -> NmMap b
+singleton (Nm n (U i) _) x = NmMap (IM.singleton i x) (IM.singleton i n)
 
 member :: Nm a -> NmMap b -> Bool
 member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
