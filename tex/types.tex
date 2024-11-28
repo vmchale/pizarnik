@@ -3,6 +3,7 @@
 \usepackage{hyperref}
 \usepackage{mathpartir}
 \usepackage{amsmath}
+\usepackage{amssymb}
 
 \begin{document}
 
@@ -96,9 +97,15 @@ Note that this is not algorithmic typing, one could go awry in applying \textsc{
 
 $\alpha$ unifies with $\alpha \oplus \beta$ on the right, but not on the left---the latter would correspond to an inexhaustive pattern match. Conversely, narrowing is permitted on the left but not the right.
 
+\subsection{Generalization}
+
+$\alpha \biguplus_\sphericalangle \{\alpha \oplus \beta\}$
+
 \subsection{Type Rewrite Rules}
 
 If $\alpha \biguplus \beta = \gamma$, $\braces{\alpha~A \oplus \beta~B} \Rightarrow \gamma~\braces{A \oplus B}$
+
+% α unifies with α⊕β on the right only...
 
 \subsection{Monomorphization}
 % unlike Diggins, we also want monomorphization, hence mgu, match approach
