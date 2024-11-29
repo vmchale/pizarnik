@@ -345,7 +345,6 @@ cat s (TS l0 r0) (TS l1 r1) = do
 
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
-frc n = fr (loc n) (text n)
 
 ftv, fsv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
