@@ -54,6 +54,7 @@ drop3 : a b c --
        # := [ { False⁻¹ drop & True⁻¹ nip } ]
 
 # https://github.com/mirth-lang/mirth/blob/main/lib/std/prelude.mth
+# http://tunes.org/~iepos/joy.html#dipn
 sip : 'A x ['A x -- 'B] -- 'B x
     := [ [dup] dip swap [$] dip ]
 
