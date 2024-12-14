@@ -48,12 +48,12 @@ instance Show Ex where show=show.pretty
 stv tv r = r { btv = tv }; ssv sv r = r { bsv = sv }
 
 bfl,btl :: Lens' Ex Bd
-bfl f s = fmap (\x -> s { bf = x }) (f (bf s))
-btl f s = fmap (\x -> s { bt = x }) (f (bt s))
+btl f (Ex ff t) = Ex ff <$> f t
+bfl f (Ex ff t) = (\x -> Ex x t) <$> f ff
 
 bvl,bsl :: Lens' Rs Bt
-bvl f s = fmap (\x -> s { btv = x }) (f (btv s))
-bsl f s = fmap (\x -> s { bsv = x }) (f (bsv s))
+bsl f (Rs m e t v) = Rs m e t <$> f v
+bvl f (Rs m e t v) = (\x -> Rs m e x v) <$> f t
 
 type RM x = StateT Rs (Either (RE x))
 
