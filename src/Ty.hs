@@ -389,17 +389,24 @@ dL :: [TSeq a] -> TM a (T a)
 dL (t:ts) | Just (a, TT x n) <- unsnoc t = uncurry Σ<$>foldM σs (x, Nm.singleton n a) ts
           | otherwise = throwError (PM t)
 
-uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
-uss s [t]    = pure (t, s)
-uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
+uss :: Subst a -> [(Nm a, TSeq a)] -> TM a (TSeq a, Subst a)
+uss s [(_,t)]    = pure (t, s)
+uss s ((_,t):ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
     l' <- dL ls
-    -- TODO: "fan out up to left" here, unifying stack variables (and substituting them as equalities) is wrong
-    (r',s') <- uss s rs
+    ss <- tts ls
+    -- TODO: "fan out up to left" here, unifying on the right (and deducing stack variable equalities for substitution) is wrong
+    -- well not quite "fan out up to left" b/c we could have returned (say) Either instead...
+    (r',s') <- uss s (zip ss rs)
     pure (TS [l'] r', s')
   where ls=map tlefts tss; rs=map trights tss
+
+        tts :: [TSeq a] -> TM a [Nm a]
+        tts []     = pure []
+        tts (t:ts) | Just (_, TT _ n) <- unsnoc t = (n:)<$>tts ts
+                   | otherwise = throwError (PM t)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
