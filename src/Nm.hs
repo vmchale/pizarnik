@@ -5,7 +5,6 @@
 module Nm ( U (..), Nm (..), MN (..) ) where
 
 import           Data.Foldable      (toList)
-import           Data.Function      (fix)
 import           Data.List          (intersperse)
 import           Data.List.NonEmpty (NonEmpty)
 import qualified Data.Text          as T
@@ -41,10 +40,3 @@ instance Pretty MN where
     pretty (MN t _) = intercalate "/" (toList (pretty <$> t))
 
 instance Show MN where show=show.pretty
-
-pᵤ :: Integral a => a -> Doc ann
-pᵤ = fix (\r d -> let (q,s) = d `quotRem` 10 in if q==0 then g s else r q<>g s)
-  where
-    g 0="₀"; g 1="₁"; g 2="₂"; g 3="₃"; g 4="₄";
-    g 5="₅"; g 6="₆"; g 7="₇"; g 8="₈"; g 9="₉"
-    g _=error "?"
