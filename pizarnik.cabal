@@ -36,10 +36,11 @@ library
                       R
                       Ty.Clone
                       TS
+                      C
                       Pr
                       Nm.Map
+    default-extensions: OverloadedStrings
     other-extensions: DeriveFunctor
-                      OverloadedStrings
                       RankNTypes
     build-tool-depends: alex:alex, happy:happy >=2.1
     build-depends:    base >=4.19.0.0

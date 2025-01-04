@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module M ( MS (..), pRoot ) where
 
 import           A

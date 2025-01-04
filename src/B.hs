@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module B ( Cs, BE, β ) where
 
 import           A

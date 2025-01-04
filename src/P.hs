@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module P ( fmt, rMs, tMs ) where
 
 import           A

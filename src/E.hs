@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module E ( E (..) ) where
 
 import           L

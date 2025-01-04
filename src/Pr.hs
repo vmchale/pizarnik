@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Pr ( pBound, pB
           , (<#>)
           , (<##>)

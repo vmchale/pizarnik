@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Imp ( resolveI ) where
 
 import           Control.Exception      (Exception, throwIO)

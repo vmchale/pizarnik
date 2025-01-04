@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Ty ( TE, Ext (..), tM ) where
 
 import           A

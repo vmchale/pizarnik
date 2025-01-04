@@ -1,7 +1,6 @@
 {-# LANGUAGE DeriveFoldable    #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Nm ( U (..), Nm (..), MN (..) ) where
 

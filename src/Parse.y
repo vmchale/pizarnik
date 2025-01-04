@@ -1,6 +1,5 @@
 {
 
-    {-# LANGUAGE OverloadedStrings #-}
     module Parse ( parseA
                  , pM
                  , ParseE

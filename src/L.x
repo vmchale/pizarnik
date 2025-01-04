@@ -1,5 +1,4 @@
 {
-    {-# LANGUAGE OverloadedStrings #-}
     module L ( AlexUserState
              , AlexPosn (..)
              , Alex (..)
