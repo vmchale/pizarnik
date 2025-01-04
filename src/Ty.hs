@@ -2,6 +2,7 @@ module Ty ( TE, Ext (..), tM ) where
 
 import           A
 import           B
+import           C
 import           Control.Composition              ((&:))
 import           Control.Exception                (Exception)
 import           Control.Monad                    (foldM, unless)
@@ -192,7 +193,7 @@ ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
 ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
 ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
-ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s) -- c unifies with `nothing on the right but could be c = `nothing ⊕ ... hm
+ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
 ua f s (TA x t0 t1) (TA _ t0' t1') = do
     (t0ϵ, s0) <- ua f s t0 t0'
     (t1ϵ, s1) <- uac f s0 t1 t1'
@@ -391,14 +392,29 @@ uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 uss s [t]    = pure (t, s)
 uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 
+-- `nothing -- `nothing
+-- `just --
+--
+-- justified:
+-- ρ₁ `just -- ρ₁
+-- `nothing -- `nothing
+--
+-- b/c # of elements on stack
+
+pad :: a -> Int -> TM a (TSeq a)
+pad l n = traverse (\i -> ftv l ("ρ"<>pᵤ i)) [1..n]
+
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
-    l' <- dL ls
-    -- TODO: "fan out up to left" here, unifying on the right (and deducing stack variable equalities for substitution) is wrong
-    -- well not quite "fan out up to left" b/c we could have returned (say) Either instead...
-    (r',s') <- uss s rs
+    ρ <- traverse (pad undefined) e
+    let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
+    l' <- dL ls'
+    (r',s') <- uss s rs'
     pure (TS [l'] r', s')
-  where ls=map tlefts tss; rs=map trights tss
+  where tss'=map pare tss
+        ls=map tlefts tss'; rs=map trights tss'
+        rm=maximum (length<$>rs)
+        e = [ rm-length r | r <- rs ]
 
 pare :: TS a -> TS a
 pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t

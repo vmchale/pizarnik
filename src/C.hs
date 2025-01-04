@@ -1,7 +1,7 @@
 module C ( pᵤ ) where
 
-import Data.Function (fix)
-import Data.String (IsString)
+import           Data.Function (fix)
+import           Data.String   (IsString)
 
 pᵤ :: (Integral a, IsString b, Semigroup b) => a -> b
 pᵤ = fix (\r d -> let (q,s) = d `quotRem` 10 in if q==0 then g s else r q<>g s)
