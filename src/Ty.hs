@@ -68,7 +68,7 @@ data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 type TM x = StateT (TSt x) (Either (TE x))
 
 runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
-runTM u = fmap (\(x, TSt m st) -> (x, st, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
+runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
 
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
@@ -131,14 +131,14 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
+eA :: T a -> Bool
+eA TC{} = True; eA (TA _ t0 _) = eA t0; eA _ = False
+
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
-(@>) s t@(TA _ TC{} _) = do
-    cs <- gets (tds.lo)
-    (s@>) =<< lΒ cs t
-(@>) s t@TC{} = do
+(@>) s t | eA t = do
     cs <- gets (tds.lo)
     (s@>) =<< lΒ cs t
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
@@ -416,8 +416,7 @@ dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r| r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
-    l' <- dL ls'
-    (r',s') <- uss s rs'
+    l' <- dL ls'; (r',s') <- uss s rs'
     (,s') <$> exps (tL l') (TS [l'] r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
