@@ -13,12 +13,12 @@ module A ( A (..)
          , pSeq
          ) where
 
+import qualified Data.Set      as S
 import qualified Data.Text     as T
 import           Nm
 import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
-import qualified Data.Set as S
 import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
 
 infixl 9 <:>

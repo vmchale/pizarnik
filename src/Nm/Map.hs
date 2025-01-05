@@ -11,6 +11,7 @@ module Nm.Map ( NmMap (..)
 
 import           Control.Arrow  ((&&&))
 import           Data.Bifunctor (first)
+import           Data.Function  (on)
 import qualified Data.IntMap    as IM
 import qualified Data.Text      as T
 import           Nm
@@ -18,6 +19,9 @@ import           Pr
 import           Prettyprinter  (Pretty (pretty), vsep)
 
 data NmMap a = NmMap { xx :: !(IM.IntMap a), context :: IM.IntMap T.Text }
+
+instance Eq a => Eq (NmMap a) where (==) = (==) `on` xx
+instance Ord a => Ord (NmMap a) where compare = compare `on` xx
 
 instance Semigroup (NmMap a) where (<>) (NmMap x0 c0) (NmMap x1 c1) = NmMap (x0<>x1) (c0<>c1)
 

@@ -5,7 +5,7 @@ import           B
 import           C
 import           Control.Composition              ((&:))
 import           Control.Exception                (Exception)
-import           Control.Monad                    (foldM, unless)
+import           Control.Monad                    (foldM, unless, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
@@ -13,6 +13,7 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import           Data.List                        (unsnoc)
+import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
@@ -145,8 +146,14 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> s\-u@>t'
+(@>) s (RV l n@(Nm _ (U u) _) r) =
+    case IM.lookup u (tvs s) of
+        Nothing -> RV l n <$> st (s@>) r
+        Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
+
+st f = fmap S.fromList . traverse f . S.toList
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -205,6 +212,9 @@ ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
 ua RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
+ua RF s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
+ua RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
+ua RF s t@TP{} (RV x n r) = pure (RV x n (S.insert t r), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
@@ -245,6 +255,10 @@ ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 ma _ (TV _ n0) t = pure (sTV n0 t)
+ma _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
+ma f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
+    s <- ma f e t1
+    pure (iTV n t1 s)
 ma f t0 t1@TV{} = throwError $ MF t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
 ma f t0@QT{} t1 = throwError $ MF t0 t1 f
@@ -345,8 +359,9 @@ cat s (TS l0 r0) (TS l1 r1) = do
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 
-ftv, fsv :: a -> T.Text -> TM a (T a)
+ftv, fsv, erv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
+erv l n = RV l <$> fr l n <*> pure S.empty
 
 -- invariants for our inverses: pops off atomic tags.
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
@@ -392,21 +407,12 @@ uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 uss s [t]    = pure (t, s)
 uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 
--- `nothing -- `nothing
--- `just --
---
--- justified:
--- ρ₁ `just -- ρ₁
--- `nothing -- `nothing
---
--- b/c # of elements on stack
-
 pad :: a -> Int -> TM a (TSeq a)
-pad l n = traverse (\i -> ftv l ("ρ"<>pᵤ i)) [1..n]
+pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
-    ρ <- traverse (pad undefined) e
+    ρ <- zipWithM pad (tLs<$>ls) [ rm-length r| r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     l' <- dL ls'
     (r',s') <- uss s rs'
@@ -414,7 +420,6 @@ dU s tss = do
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
-        e = [ rm-length r | r <- rs ]
 
 pare :: TS a -> TS a
 pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
