@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Ty ( TE, Ext (..), tM ) where
 
 import           A
@@ -416,13 +418,13 @@ dU s tss = do
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     l' <- dL ls'
     (r',s') <- uss s rs'
-    pure (TS [l'] r', s')
+    (,s') <$> exps (tL l') (TS [l'] r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
 
-pare :: TS a -> TS a
-pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
+        pare :: TS a -> TS a
+        pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
