@@ -18,7 +18,8 @@ import           Nm
 import           Nm.Map        (NmMap)
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, tupled, (<+>))
+import qualified Data.Set as S
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -85,7 +86,7 @@ data Prim = Int | Bool | String deriving (Eq, Ord)
 
 instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
 
-data TS a = TS { tlefts, trights :: TSeq a }
+data TS a = TS { tlefts, trights :: TSeq a } deriving (Eq, Ord)
 type TSeq a = [T a]
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
@@ -94,7 +95,17 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
-         | TI { tL :: a, tI :: T a }
+         | TI { tL :: a, tI :: T a } | RV { tL :: a, tvar :: Nm a, uS :: S.Set (T a) }
+
+instance Eq (T a) where
+    (==) (TV _ n0) (TV _ n1) = n0==n1; (==) (TP _ t0) (TP _ t1) = t0==t1
+    (==) (TT _ t0) (TT _ t1) = t0==t1; (==) (SV _ v0) (SV _ v1) = v0==v1
+    (==) (TC _ n0) (TC _ n1) = n0==n1; (==) (TI _ t0) (TI _ t1) = t0==t1
+
+instance Ord (T a) where
+    compare (TV _ n0) (TV _ n1) = compare n0 n1; compare (TP _ t0) (TP _ t1) = compare t0 t1
+    compare (TT _ t0) (TT _ t1) = compare t0 t1; compare (SV _ n0) (SV _ n1) = compare n0 n1
+    compare (TC _ n0) (TC _ n1) = compare n0 n1; compare (TI _ t0) (TI _ t1) = compare t0 t1
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
@@ -137,6 +148,7 @@ instance Pretty (T a) where
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
     pretty (TA _ t t') = pretty t <> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
+    pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " (pretty<$>S.toList s))))
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
 
