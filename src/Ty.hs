@@ -281,13 +281,9 @@ ma RF t0@(TT _ n) t1@(Σ _ σ) =
 ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
-ma f t0 t1@TC{} = do
+ma f t0 t1 | eA t1 = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t1
-    ma f t0 t1'
-ma f t0 (TA _ TC{} _) = do
-    cs <- gets (tds.lo)
-    t1' <- lΒ cs t0
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
