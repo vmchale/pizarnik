@@ -161,15 +161,8 @@ st f = fmap S.fromList . traverse f . S.toList
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
 usc f s = uas f s `onM` peek s
 
-φ :: TSeq a -> TM a (TSeq a)
-φ ts = case unsnoc ts of
-    Just (ts', t) -> do
-        cs <- gets (tds.lo)
-        t' <- lΒ cs t
-        case t' of
-            Σ l as -> pure [Σ l ((ts'++)<$>as)]
-            _      -> (++[t'])<$>φ ts'
-    Nothing       -> pure []
+φ :: TSeq a -> TSeq a
+φ ts = case unsnoc ts of {Just (tsϵ, Σ l as) -> [Σ l ((tsϵ++)<$>as)]; Just (ts', t) -> φ ts'++[t]; Nothing -> []}
 
 {-# SCC uas #-}
 uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -294,8 +287,9 @@ ma f t0 t1 | eA t1 = do
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; tsig' <- 𝜙 tsig; mSig asig' tsig'}
-  where 𝜙 (TS l r) = TS <$> φ l <*> φ r
+mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' (𝜙 tsig')}
+  where 𝜙 (TS l r) = (TS&:φ) l r
+        ʙ st (TS l r) = TS <$> traverse (lΒ st) l <*> traverse (lΒ st) r
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
