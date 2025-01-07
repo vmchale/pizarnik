@@ -86,14 +86,17 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-tCtx :: Cs a -> T a -> Either (BE a) (T a)
-tCtx c t@TC{} = uncurry (β c) (tun t)
-tCtx c t@TA{} = uncurry (β c) (tun t)
-tCtx _ t      = Right t
+-- maybe I need a proper kind system so List(a) is known to be fully applied in NE
+-- type List a = `nil ⊕ List(a) a `cons;
+-- type NE a = List(a) a `cons;
 
-tun :: T a -> (Nm a, [T a])
-tun (TC _ n)     = (n, [])
-tun (TA _ t0 t1) = second (++[t1]) (tun t0)
+tCtx :: Cs a -> T a -> Either (BE a) (T a)
+tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
+
+tun :: T a -> Maybe (Nm a, [T a])
+tun (TC _ n)     = Just (n, [])
+tun (TA _ t0 t1) = fmap (second (++[t1])) (tun t0)
+tun _            = Nothing
 
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
@@ -135,9 +138,10 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
-(@>) s t | eA t = do
+(@>) s t | Just (n,a) <- tun t = do
+    a' <- traverse (s@>) a
     cs <- gets (tds.lo)
-    (s@>) =<< lΒ cs t
+    liftEither $ first BE (β cs n a')
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
 (@>) s (QT x sig)      = QT x<$>s@*sig
 (@>) s (TI x t)        = TI x <$> s@>t

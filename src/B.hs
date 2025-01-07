@@ -22,8 +22,9 @@ bS st (TV _ n@(Nm _ (U j) _)) =
     case IM.lookup j st of
         Nothing -> Left $ TCA n
         Just t  -> Right t
--- avoid TCA errors not by user when substituting (but guarding against recursion)
-bS st (TA x t0 t1) = TA x <$> bS st t0 <*> bS st t1
+-- avoid TCA errors not by user when substituting
+bS st t@(TA x t0 t1) | not (eA t) = TA x <$> bS st t0 <*> bS st t1
+                     | otherwise = pure t
 bS st (TI x t) = TI x <$> bS st t
 bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
