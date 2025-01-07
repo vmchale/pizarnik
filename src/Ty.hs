@@ -131,9 +131,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
-eA :: T a -> Bool
-eA TC{} = True; eA (TA _ t0 _) = eA t0; eA _ = False
-
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t

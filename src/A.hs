@@ -8,6 +8,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , taseq
+         , eA
          , am
          , tTS
          , pSeq
@@ -96,6 +97,9 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | TI { tL :: a, tI :: T a } | RV { tL :: a, tvar :: Nm a, uS :: S.Set (T a) }
+
+eA :: T a -> Bool
+eA TC{} = True; eA (TA _ t0 _) = eA t0; eA _ = False
 
 instance Eq (T a) where
     (==) (TV _ n0) (TV _ n1) = n0==n1; (==) (TP _ t0) (TP _ t1) = t0==t1
