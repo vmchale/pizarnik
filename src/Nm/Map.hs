@@ -5,6 +5,7 @@ module Nm.Map ( NmMap (..)
               , intersectionWith
               , isSubmapOf
               , elems
+              , the
               , fromList
               , toList
               ) where
@@ -37,6 +38,10 @@ singleton (Nm n (U i) _) x = NmMap (IM.singleton i x) (IM.singleton i n)
 
 member :: Nm a -> NmMap b -> Bool
 member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
+
+the :: NmMap a -> Maybe (b -> Nm b, a)
+the (NmMap x ns) | Just ((i,e),m) <- IM.minViewWithKey x, IM.null m = Just (Nm (ns IM.! i) (U i), e)
+                 | otherwise = Nothing
 
 isSubmapOf :: NmMap a -> NmMap b -> Bool
 isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
