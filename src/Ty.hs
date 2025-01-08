@@ -287,10 +287,14 @@ ma f t0 t1 | eA t1 = do
     t1' <- lΒ cs t1
     ma f t0 t1'
 
+sun :: T a -> TSeq a
+sun (Σ x as) | Just (n, s) <- Nm.the as = s++[TT x (n x)]; sun t = [t]
+
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig (𝜙 asig') (𝜙 tsig')}
   where 𝜙 (TS l r) = (TS&:φ) l r
-        ʙ c (TS l r) = TS <$> traverse (lΒ c) l <*> traverse (lΒ c) r
+        ʙ c (TS l r) = TS <$> lΒth c l <*> lΒth c r
+        lΒth c=fmap concat.traverse (fmap sun.lΒ c)
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
