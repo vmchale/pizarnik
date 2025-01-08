@@ -18,7 +18,7 @@ main = defaultMain $
       , tFile [] "examples/vierergruppe.piz"
       , tFile [] "prelude/fn.piz"
       , tFile ["."] "test/examples/ifte.piz"
-      , tErr ["."] "test/data/pmfail.piz" "8:17: ⦠ Failed to match ‘{`just}’ against ‘’"
+      , tErr ["."] "test/data/pmfail.piz" "8:17: ⦠ Failed to match ‘{a `just}’ against ‘{a `just ⊕ `nil}’"
       ]
 
 rFile :: [FilePath] -> FilePath -> TestTree

@@ -288,7 +288,7 @@ ma f t0 t1 | eA t1 = do
     ma f t0 t1'
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' (𝜙 tsig')}
+mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig (𝜙 asig') (𝜙 tsig')}
   where 𝜙 (TS l r) = (TS&:φ) l r
         ʙ c (TS l r) = TS <$> traverse (lΒ c) l <*> traverse (lΒ c) r
 
