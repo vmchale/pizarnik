@@ -114,7 +114,7 @@ Arm :: { (Nm AlexPosn, TSeq AlexPosn) }
     : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwError =<< fmap AnonymousArm (lift get_pos) } }
 
 TDef :: { T AlexPosn }
-     : sepBy(Arm,oplus) { uncurry Σ (σparsed $1) }
+     : braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
      | T { $1 }
 
 TS :: { TS AlexPosn }
