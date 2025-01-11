@@ -1,6 +1,8 @@
 MAKEFLAGS += --no-builtin-rules -j
 .DELETE_ON_ERROR:
 
+HC ?= ghc
+
 HS_SRC = $(shell fd '\.(hs|x|y|hsc|cpphs)$$' $$(ja -F'\s*:\s*' '{%/hs-source-dirs/}{`2}' -i pizarnik.cabal))
 
 moddeps.svg: $(HS_SRC)
@@ -11,7 +13,7 @@ clean:
 	rm -rf dist-newstyle *.prof tags tags.mtime moddeps.svg
 
 install:
-	cabal install
+	cabal install -w $(HC)
 
 fmt:
 	fd '\.(cpphs|hs)$$' $$(ja -F'\s*:\s*' '{%/hs-source-dirs/}{`2}' -i pizarnik.cabal) -x stylish-haskell -i
