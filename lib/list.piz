@@ -12,11 +12,18 @@ head : NE(a) -- a
 tail : NE(a) -- a
      := [ `cons⁻¹ _ ]
 
-foldr : [ a b -- b ] b List(a) -- b
-      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip2 [swap $] dip foldr } ]
+# even this is running awry of our fanning-out... we're expanding type synonyms too eagerly (for one)
+# also stuff like dip2 gets screwed up by our over-eager fanning-out
 
+foldr0 : [a b -- b] b a -- b
+      := [ rotl $ ]
+
+# foldr1 : [a b -- b] b a `cons -- [a b -- b] b `cons
+      # := [ `cons⁻¹ [dup] dip3 [rotl $] dip ]
+
+foldr : [ a b -- b ] b List(a) -- b
+      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip3 [rotl $] dip foldr } ]
+
+# lol infinite loop we definitely need to defer type expansion
 free : List(a) --
      := [ { `nil⁻¹ & `cons⁻¹ _ free } ]
-
-# concat : List(a) List(a) -- List(a)
-       # := [ ]
