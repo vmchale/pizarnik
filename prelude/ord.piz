@@ -2,7 +2,7 @@
 
 %-
 
-type Ord = `lt ⊕ `eq ⊕ `gt;
+type Ord = {`lt ⊕ `eq ⊕ `gt};
 
 # from Kempe, from Mirth
 # cmpInt : Int Int -- Ord

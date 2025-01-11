@@ -2,7 +2,7 @@
 
 %-
 
-type Maybe a = a `just ⊕ `nothing;
+type Maybe a = {a `just ⊕ `nothing};
 
 isJust : Maybe(a) -- Bool
        := [ { `just⁻¹ _ True & `nothing⁻¹ False } ]

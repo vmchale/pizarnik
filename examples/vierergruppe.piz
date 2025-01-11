@@ -1,6 +1,6 @@
 %-
 
-type K = `e ⊕ `a ⊕ `b ⊕ `c;
+type K = {`e ⊕ `a ⊕ `b ⊕ `c};
 
 # https://mathworld.wolfram.com/Vierergruppe.html
 mult : K K -- K

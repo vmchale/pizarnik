@@ -2,7 +2,7 @@
 
 %-
 
-type B = `t ⊕ `f;
+type B = {`t ⊕ `f};
 
 if : a b `t -- a
    := [ `t⁻¹ drop ]

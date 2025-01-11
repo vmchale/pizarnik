@@ -2,7 +2,7 @@
 
 %-
 
-type Maybe a = a `just ⊕ `nil;
+type Maybe a = {a `just ⊕ `nil};
 
 fromJust : Maybe(a) -- a
          := [ { `just⁻¹ } ]

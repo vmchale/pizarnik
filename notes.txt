@@ -4,28 +4,12 @@
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
 
-'A {a b `t ⊕ a a `f} and a a B
-(split)
-
-
-`e --
-{`e ⊕ `a ⊕ `b ⊕ `c} `a -- {`e ⊕ `a ⊕ `b ⊕ `c}
-
-1 0
-2 1
-
-a `just -- Bool
-`nothing -- Bool
-
-2 1
-1 1
-
 `just --
 `nothing -- `nothing
-1 0
-1 1
 
 sol'n: A `just -- A
-       B `nothing -- `nothing B
+       C `nothing -- C `nothing
 
-instead of A=B
+instead of A=C, then in matching w/ Maybe(a) aka C=ø, A=Maybe(a)
+
+write B ⊂ { `just -- ø, `nothing -- `nothing}
