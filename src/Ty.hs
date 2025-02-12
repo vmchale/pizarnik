@@ -30,14 +30,15 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a }
+-- TODO: associate tag w/ arity... now tags have to be declared hm
+data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: IM.IntMap Int }
 
-instance Semigroup (Ext a) where (<>) (Ext f0 td0) (Ext f1 td1) = Ext (f0<>f1) (td0<>td1)
-instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty
+instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
+instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty IM.empty
 
 data TE a = UF (T a) (T a) F | MF (T a) (T a) F
           | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
-          | PM (TSeq a)
+          | PM (TSeq a) | AM (Nm a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
@@ -47,6 +48,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (USF ts0 ts1 f) = tsc ts0 f $ "Failed to unify" <+> sq (pSeq ts0) <+> "with" <+> sq (pSeq ts1)
     pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> sq (pretty t0) <+> "against" <+> sq (pretty t1)
     pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> sq (pSeq ts0) <+> "against" <+> sq (pSeq ts1)
+    pretty (AM n)          = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
     pretty (BE e)          = pretty e
     pretty (PM ts)         = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
 
@@ -68,7 +70,7 @@ data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 type TM x = StateT (TSt x) (Either (TE x))
 
 runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
-runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty))
+runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty IM.empty))
 
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
@@ -86,10 +88,6 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
--- maybe I need a proper kind system so List(a) is known to be fully applied in NE
--- type List a = `nil ⊕ List(a) a `cons;
--- type NE a = List(a) a `cons;
-
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
@@ -102,10 +100,13 @@ lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
 
 iFn :: Nm a -> TS b -> TM b ()
-iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c)) -> TSt m (Ext (IM.insert i ts f) c))
+iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
+
+cA :: T a -> TM b ()
+cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)<>a)))
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
-iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c)) -> TSt m (Ext f (IM.insert i (vs,t) c)))
+iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f (IM.insert i (vs,t) c) a))
 
 {-# SCC (@*) #-}
 (@*) :: Subst a -> TS a -> TM a (TS a)
@@ -125,8 +126,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@@) _ []          = pure []
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
 (@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
-
--- when does a US get concretized? (look at type annotations)
 
 (@~>) :: Subst a -> Nm a -> TM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
@@ -298,6 +297,7 @@ mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' (𝜙 tsig')}
   where 𝜙 (TS l r) = (TS&:φ) l r
         ʙ c (TS l r) = TS <$> lΒth c l <*> lΒth c r
+        -- can we defer type synonym expansion further?
         lΒth c=fmap concat.traverse (fmap sun.lΒ c)
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
@@ -326,7 +326,7 @@ tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
 tD0 :: D a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n ts
-tD0 (TD _ n vs t) = iTD n vs t
+tD0 (TD _ n vs t) = iTD n vs t *> cA t
 
 tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
@@ -395,7 +395,13 @@ ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
 ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
 ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
-ta _ s (C l tt)       = let ts=TS [] [TT l tt] in pure (C ts (tt$>ts), s)
+ta _ s (C l tt)       = do
+    ars <- gets (arit.lo)
+    p <- case IM.lookup (unU$un tt) ars of
+        Just k  -> pure k
+        Nothing -> throwError $ AM tt
+    ρ <- pad l p
+    let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
@@ -419,9 +425,9 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
-    ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
-    let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
-    l' <- dL ls'; (r',s') <- uss s rs'
+    -- ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
+    -- let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
+    l' <- dL ls; (r',s') <- uss s rs
     (,s') <$> exps (tL l') (TS [l'] r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
