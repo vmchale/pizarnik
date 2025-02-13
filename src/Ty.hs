@@ -425,9 +425,9 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
-    -- ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
-    -- let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
-    l' <- dL ls; (r',s') <- uss s rs
+    ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
+    let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
+    l' <- dL ls'; (r',s') <- uss s rs'
     (,s') <$> exps (tL l') (TS [l'] r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
