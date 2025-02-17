@@ -14,6 +14,7 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import           Data.List                        (uncons, unsnoc)
+import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
@@ -152,6 +153,8 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
+
+st f = fmap S.fromList . traverse f . S.toList
 
 {-# SCC usc #-}
 usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
@@ -431,7 +434,7 @@ uss s [t]    = pure (t, s)
 uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 
 pad :: a -> Int -> TM a (TSeq a)
-pad l n = traverse (\i -> ftv l ("ρ"<>pᵤ i)) [1..n]
+pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
