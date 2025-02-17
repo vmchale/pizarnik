@@ -294,7 +294,7 @@ sun :: T a -> TSeq a
 sun (Σ x as) | Just (n, s) <- Nm.the as = s++[TT x (n x)]; sun t = [t]
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' (𝜙 tsig')}
+mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsig; mSig asig' tsig'}
   where 𝜙 (TS l r) = (TS&:φ) l r
         ʙ c (TS l r) = TS <$> lΒth c l <*> lΒth c r
         -- can we defer type synonym expansion further?
@@ -421,7 +421,7 @@ uss s [t]    = pure (t, s)
 uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 
 pad :: a -> Int -> TM a (TSeq a)
-pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
+pad l n = traverse (\i -> ftv l ("ρ"<>pᵤ i)) [1..n]
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
