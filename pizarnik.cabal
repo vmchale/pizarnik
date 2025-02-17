@@ -46,7 +46,6 @@ library
     build-depends:    base >=4.19.0.0
                     , array
                     , bytestring
-                    , composition-prelude >=3.0.0.0
                     , containers >=0.6.2.1
                     , directory
                     , filepath
