@@ -213,6 +213,8 @@ ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 ua RF s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
 ua RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua RF s t@TP{} (RV x n r) = pure (RV x n (S.insert t r), s)
+ua _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
+ua RF s (RV l n r) t@Σ{} = pure (RV l n (S.insert t r), s)
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
