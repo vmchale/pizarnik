@@ -153,6 +153,7 @@ instance Pretty (T a) where
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
     pretty (TA _ t t') = pretty t <> tupled (pretty<$>tunroll t')
     pretty (TI _ t) = pretty t <+> "⁻¹"
+    pretty (RV _ n s) | S.null s = pretty n
     pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " (pretty<$>S.toList s))))
 
 pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
