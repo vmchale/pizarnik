@@ -297,20 +297,6 @@ mtsc s asig tsig = do {asig' <- s@*asig; cs <- gets (tds.lo); tsig' <- ʙ cs tsi
         -- can we defer type synonym expansion further?
         lΒth c=fmap concat.traverse (fmap sun.lΒ c)
 
-upre :: Subst a -> a -> NmMap (TSeq a) -> TM a (TSeq a, Subst a)
-upre s l splat =
-    case unconss splat of
-        Nothing -> pure ([Σ l splat], s)
-        Just mu -> let uu=fst<$>Nm.elems mu
-                   in if any isSV uu
-                        then pure ([Σ l splat], s)
-                        else catchError (do {(tϵ,s') <- tU s uu; first (tϵ:)<$>upre s' l (fmap snd mu)}) (\_ -> pure ([Σ l splat], s))
-  where
-    unconss :: NmMap [x] -> Maybe (NmMap (x, [x]))
-    unconss = traverse uncons
-
-    isSV SV{}=True; isSV _=False
-
 tU :: Subst a -> [T a] -> TM a (T a, Subst a)
 tU s (t0:t1:ts) = do {(t',s') <- uac RF s t0 t1; tU s' (t':ts)}
 tU s [t]        = pure (t, s)
@@ -438,25 +424,27 @@ uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
+-- fan-out informed by arity
+φ :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
+φ as = do
+    ars <- gets (arit.lo)
+    let a :: Nm a -> TM a Int
+        a n = case IM.lookup (unU$un n) ars of Just i -> pure i; Nothing -> throwError$AM n
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft n ts}) as
+    pure (Σ l$Nm.fromList (zip (map fst as) tas), tss)
+  where l=loc (fst$head as)
+
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
-    l' <- dL ls'; (r',s') <- uss s rs'
-    (l'', s'') <- tP s' [l']
-    (,s'') <$> exps (tLs l'') (TS l'' r')
+    (,s) <$> exps (tLs$head ls') undefined
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
 
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
-
-tP :: Subst a -> [T a] -> TM a ([T a], Subst a)
-tP s [] = pure ([], s)
-tP s (t:ts) = do {(t',s') <- g s t; first (t'++)<$>tP s' ts}
-  where
-    g v (Σ x ss) = upre v x ss; g v a = pure ([a], v)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
