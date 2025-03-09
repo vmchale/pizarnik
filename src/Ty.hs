@@ -6,8 +6,8 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (foldM, unless, zipWithM)
-import           Control.Monad.Except             (catchError, liftEither, throwError)
+import           Control.Monad                    (unless, zipWithM)
+import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
@@ -18,7 +18,6 @@ import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
-import           Nm.Map                           (NmMap)
 import qualified Nm.Map                           as Nm
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
@@ -408,14 +407,6 @@ ta b s (Pat _ as)     = do
     sigs <- traverse (peekS s0.aLs) as'
     (t, s1) <- dU s0 sigs
     pure (Pat t (SL t as'), s1)
-
-σs :: (a, NmMap (TSeq a)) -> TSeq a -> TM a (a, NmMap (TSeq a))
-σs (x, ps) t | Just (a0, TT _ n0) <- unsnoc t = pure (x, Nm.insert n0 a0 ps)
-             | otherwise = throwError (PM t)
-
-dL :: [TSeq a] -> TM a (T a)
-dL (t:ts) | Just (a, TT x n) <- unsnoc t = uncurry Σ<$>foldM σs (x, Nm.singleton n a) ts
-          | otherwise = throwError (PM t)
 
 uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
 uss s [t]    = pure (t, s)
