@@ -415,27 +415,37 @@ uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
--- fan-out informed by arity
 φ :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ as = do
     ars <- gets (arit.lo)
     let a :: Nm a -> TM a Int
         a n = case IM.lookup (unU$un n) ars of Just i -> pure i; Nothing -> throwError$AM n
     (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft n ts}) as
-    pure (Σ l$Nm.fromList (zip (map fst as) tas), tss)
-  where l=loc (fst$head as)
+    pure (Σ l$Nm.fromList (zip nms tas), tss)
+  where l=loc (fst$head as); nms=map fst as
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
-    (,s) <$> exps (tLs$head ls') undefined
+    al <- traverse ai ls'
+    -- maybe padding could be implicit...?
+    (σ,ul) <- φ al
+    (l',s') <- uss s ul
+    -- unify remainder after fan-out
+    (r',s'') <- uss s' rs'
+    (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
 
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
+
+        ai :: [T a] -> TM a (Nm a, [T a])
+        ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure (n, tsϵ)
+              | otherwise = throwError (PM ts)
+
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
