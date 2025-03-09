@@ -420,7 +420,7 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
     ars <- gets (arit.lo)
     let a :: Nm a -> TM a Int
         a n = case IM.lookup (unU$un n) ars of Just i -> pure i; Nothing -> throwError$AM n
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft n ts}) as
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft (n+1) ts}) as
     pure (Σ l$Nm.fromList (zip nms tas), tss)
   where l=loc (fst$head as); nms=map fst as
 
@@ -431,9 +431,7 @@ dU s tss = do
     al <- traverse ai ls'
     -- maybe padding could be implicit...?
     (σ,ul) <- φ al
-    (l',s') <- uss s ul
-    -- unify remainder after fan-out
-    (r',s'') <- uss s' rs'
+    (l',s') <- uss s ul; (r',s'') <- uss s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
