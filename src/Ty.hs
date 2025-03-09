@@ -416,8 +416,8 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
     ars <- gets (arit.lo)
     let a :: Nm a -> TM a Int
         a n = case IM.lookup (unU$un n) ars of Just i -> pure i; Nothing -> throwError$AM n
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft (n+1) ts}) as
-    pure (Σ l$Nm.fromList (zip nms tas), tss)
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-a nm;pure$splitFromLeft n ts}) as
+    pure (Σ l$Nm.fromList (zip nms tss), tas)
   where l=loc (fst$head as); nms=map fst as
 
 dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
