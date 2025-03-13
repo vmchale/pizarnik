@@ -2,15 +2,16 @@
 
 %-
 
-type List a = {`nil ⊕ List(a) a `cons};
+type List a = { `nil ⊕ List(a) a `cons };
 
-type NE a = {List(a) a `cons};
+type NE a = { List(a) a `cons };
 
+# TODO: right now the braces are necessary
 head : NE(a) -- a
-     := [ `cons⁻¹ nip ]
+     := [ { `cons⁻¹ nip } ]
 
 tail : NE(a) -- a
-     := [ `cons⁻¹ _ ]
+     := [ { `cons⁻¹ _ } ]
 
 # even this is running awry of our fanning-out... we're expanding type synonyms too eagerly (for one)
 # also stuff like dip2 gets screwed up by our over-eager fanning-out
