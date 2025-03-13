@@ -244,6 +244,9 @@ mσ f s σ0 σ1 =
     mss sϵ [] []         = pure sϵ
     mss sϵ (x:xs) (y:ys) = do {s' <- msc f sϵ x y; mss s' xs ys}
 
+em :: T a -> T a -> F -> TM a b
+em t0 t1 f = throwError $ MF t0 t1 f
+
 {-# SCC ma #-}
 ma :: F -> T a -> T a -> TM a (Subst a)
 ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
@@ -254,25 +257,25 @@ ma _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
 ma f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
     s <- ma f e t1
     pure (iTV n t1 s)
-ma f t0 t1@TV{} = throwError $ MF t0 t1 f
+ma f t0 t1@TV{} = em t0 t1 f
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
-ma f t0@QT{} t1 = throwError $ MF t0 t1 f
+ma f t0@QT{} t1 = em t0 t1 f
 -- on the left: type annotation must be narrower than what it accepts
 -- on the right: type annotation can be more general
 ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (throwError $ MF t0 t1 LF) *> mσ LF mempty σ0 σ1
+        (em t0 t1 LF) *> mσ LF mempty σ0 σ1
 ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
-        (throwError $ MF t0 t1 RF) *> mσ RF mempty σ0 σ1
+        (em t0 t1 RF) *> mσ RF mempty σ0 σ1
 ma LF t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
-        (throwError $ MF t0 t1 LF) $> mempty
+        (em t0 t1 LF) $> mempty
 ma RF t0@(TT _ n) t1@(Σ _ σ) =
     unless (n `Nm.member` σ)
-        (throwError $ MF t0 t1 RF) $> mempty
-ma RF t0@Σ{} t1@TT{} = throwError $ MF t0 t1 RF
-ma LF t0@TT{} t1@Σ{} = throwError $ MF t0 t1 LF
+        (em t0 t1 RF) $> mempty
+ma RF t0@Σ{} t1@TT{} = em t0 t1 RF
+ma LF t0@TT{} t1@Σ{} = em t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1 | eA t0 = do
     cs <- gets (tds.lo)
