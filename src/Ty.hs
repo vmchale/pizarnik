@@ -28,7 +28,6 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
--- TODO: associate tag w/ arity... now tags have to be declared hm
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: IM.IntMap Int }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
@@ -287,9 +286,6 @@ ma f t0 t1 | eA t1 = do
     cs <- gets (tds.lo)
     t1' <- lΒ cs t1
     ma f t0 t1'
-
-sun :: T a -> TSeq a
-sun (Σ x as) | Just (n, s) <- Nm.the as = s++[TT x (n x)]; sun t = [t]
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
