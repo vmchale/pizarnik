@@ -2,10 +2,10 @@
 
 %-
 
-type LEnd = a DL(a) `left;
+type LEnd a = {a DL(a) `left};
 
-type REnd = DL(a) a `right;
+type REnd a = {DL(a) a `right};
 
 type DL a = {LEnd(a) ⊕ DL(a) a DL(a) ⊕ REnd};
 
-type Deque a = DL(a) DL(a);
+type Deque a = {DL(a) DL(a)};

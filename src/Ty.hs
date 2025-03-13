@@ -338,7 +338,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 {-# SCC cat #-}
 cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- usc LF s r0 l1 -- narrow supplied arguments (r0 can be expanded, l1 not...)
+    (_, s') <- usc LF s r0 l1 -- r0 can be expanded, l1 not...
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
