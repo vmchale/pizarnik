@@ -210,6 +210,13 @@ ua RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua RF s t@TP{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
 ua _ s (RV l n r) t@Σ{} = pure (RV l n (S.insert t r), s)
+ua f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+    (a',s') <- uas f s a0 a1
+    pure undefined
+ua f s t0 t1 | Just (TC{}, _) <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ua f s t0' t1}
+ua f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ua f s t0 t1'}
+ua f _ t0@QT{} t1@Σ{} = throwError $ UF t0 t1 f
+ua f _ t0@Σ{} t1@QT{} = throwError $ UF t0 t1 f
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
