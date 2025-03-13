@@ -63,8 +63,8 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
   \quad(\textsc{Inv})
 
   \inferrule
-  {\Judge x : -- \alpha}
-  {\Judge x : -- \alpha \oplus \beta}
+  {\Judge x : A -- B \tag{b}}
+  {\Judge x : A -- B \tag{b} \oplus C \tag{c}}
   \quad(\textsc{Disjunction})
   % cut? modus ponens
 
@@ -87,7 +87,7 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 
 \end{mathpar}
 
-Note that this is not algorithmic typing, one could go awry in applying \textsc{Disjunction} spuriously.
+Note that this is declarative, rather than algorithmic typing, one could go awry in applying \textsc{Disjunction} spuriously.
 
 % We justify $\textsc{(Pattern-Match)}$ by noting that if $x_1 : \alpha_1 -- A$ and $x_2 : \alpha_2 -- A$, then $x_1 : -- \alpha_1^{-1} A$ and $x_2 : -- \alpha_2^{-1} A$, $\{x_1 \with x_2\} :$
 
@@ -101,17 +101,12 @@ $\alpha$ unifies with $\alpha \oplus \beta$ on the right, but not on the left---
 
 $\alpha \biguplus_\sphericalangle \{\alpha \oplus \beta\}$
 
-\subsection{Type Rewrite Rules}
-
-If $\alpha \biguplus \beta = \gamma$, $\braces{\alpha~A \oplus \beta~B} \Rightarrow \gamma~\braces{A \oplus B}$
-
-% α unifies with α⊕β on the right only...
-
 \subsection{Monomorphization}
+
+Rather than computing a most general unifier, as
 % unlike Diggins, we also want monomorphization, hence mgu, match approach
 
 % unlike most general unifier, we wish to have the most specific disjuctive type
-
 % "right permeable" girard uses
 
 \end{document}
