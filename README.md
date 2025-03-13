@@ -12,7 +12,7 @@ Example:
 type B = {`t ⊕ `f};
 
 if : a b `t -- a
-   := [ `t⁻¹ _ ]
+   := [ `t⁻¹ drop ]
 
 else : a b `f -- b
      := [ `f⁻¹ nip ]
