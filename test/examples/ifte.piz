@@ -5,7 +5,7 @@
 type B = {`t ⊕ `f};
 
 if : a b `t -- a
-   := [ `t⁻¹ drop ]
+   := [ `t⁻¹ _ ]
 
 else : a b `f -- b
      := [ `f⁻¹ nip ]
