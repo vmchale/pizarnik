@@ -5,7 +5,5 @@ import           P
 
 main = defaultMain
     [ bgroup "t"
-        [ bench "test/examples/ifte.piz" $ whnfIO $ tMs ["."] "test/examples/ifte.piz"
-        , bench "examples/vierergruppe.piz" $ whnfIO $ tMs ["."] "examples/vierergruppe.piz"
-        ]
-    ]
+        [ b fp | fp <- ["test/examples/maybe.piz", "lib/list.piz", "examples/vierergruppe.piz" ] ]
+    ] where b fp = bench fp $ whnfIO $ tMs ["."] fp
