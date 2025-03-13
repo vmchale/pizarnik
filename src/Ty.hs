@@ -220,22 +220,18 @@ mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
 msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc f s = ms f s `onM` peek s
 
--- TODO: type synonym expansion (atom lengh hm)
+-- TODO: type synonym expansion for atom length (e.g. Escardó-Oliva functional)
 ms :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1) =
-    let n0=length t0; n1=length t1 in
-    if n0>n1
-        then throwError $ MSF t0e t1e f
-        else let (uws, res) = splitFromLeft n0 t1
-             in msc f (iSV sn1 uws s) t0 res
-ms f s t0e@(SV _ v0:t0) t1 = do
-    cs <- gets (tds.lo)
-    t1ϵ <- traverse (lΒ cs) t1
-    let n0=length t0; n1=length t1ϵ
-    if n0>n1
-        then throwError $ MSF t0e t1ϵ f
-        else let (uws, res) = splitFromLeft n0 t1ϵ
-             in msc f (iSV v0 uws s) t0 res
+ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
+    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
+                   in msc f (iSV sn1 uws s) t0 res
+    | otherwise = throwError $ MSF t0e t1e f
+  where n0=length t0; n1=length t1
+ms f s t0e@(SV _ v0:t0) t1
+    | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
+                    in msc f (iSV v0 uws s) t0 res
+    | otherwise = throwError $ MSF t0e t1 f
+  where n0=length t0; n1=length t1
 ms f s (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f (s<>s') ts0 ts1}
 ms _ s [] [] = pure s
 ms f _ ts0 [] = throwError$ MSF ts0 [] f
