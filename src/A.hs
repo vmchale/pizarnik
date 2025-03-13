@@ -8,7 +8,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , taseq
-         , sE
+         , unA
          , am
          , tTS
          , pSeq
@@ -99,8 +99,8 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | TI { tL :: a, tI :: T a } | RV { tL :: a, tvar :: Nm a, uS :: S.Set (T a) }
 
-sE :: T a -> Maybe (T a, [T a])
-sE t@TC{}=Just (t, []); sE (TA _ t a)=second (++[a]) <$> sE t; sE _=Nothing
+unA :: T a -> Maybe (T a, [T a])
+unA t@TC{}=Just (t, []); unA (TA _ t a)=second (++[a]) <$> unA t; unA _=Nothing
 
 instance Eq (T a) where
     (==) (TV _ n0) (TV _ n1) = n0==n1; (==) (TP _ t0) (TP _ t1) = t0==t1

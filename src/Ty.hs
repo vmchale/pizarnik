@@ -274,9 +274,9 @@ ma RF t0@(TT _ n) t1@(Σ _ σ) =
 ma RF t0@Σ{} t1@TT{} = em t0 t1 RF
 ma LF t0@TT{} t1@Σ{} = em t0 t1 LF
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
-ma f t0 t1 | Just (TC _ n0, a0) <- sE t0, Just (TC _ n1, a1) <- sE t1, n0==n1 = ms f mempty a0 a1
-ma f t0 t1 | Just{} <- sE t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ma f t0' t1}
-ma f t0 t1 | Just{} <- sE t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ma f t0 t1'}
+ma f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms f mempty a0 a1
+ma f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ma f t0' t1}
+ma f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ma f t0 t1'}
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}

@@ -23,8 +23,8 @@ bS st (TV _ n@(Nm _ (U j) _)) =
         Nothing -> Left $ TCA n
         Just t  -> Right t
 -- avoid TCA errors not by user when substituting
-bS st t@(TA x t0 t1) | Nothing <- sE t = TA x <$> bS st t0 <*> bS st t1
-                     | otherwise = pure t
+bS st t@(TA x t0 t1) | Just{} <- unA t = pure t -- TODO: bS on arguments...?
+                     | otherwise = TA x <$> bS st t0 <*> bS st t1
 bS st (TI x t) = TI x <$> bS st t
 bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
