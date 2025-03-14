@@ -1,3 +1,8 @@
+@i prelude/fn
+
 %-
 
-type Tree a = `leaf ⊕ `node a Tree(a) Tree(a);
+type Tree a = { a `leaf ⊕ Tree(a) Tree(a) a `node };
+
+map : [a -- b] Tree(a) -- Tree(b)
+    := [ { `leaf⁻¹ swap $ `leaf } ]

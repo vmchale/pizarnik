@@ -67,5 +67,8 @@ dip2 : 'A a b ['A -- 'B] -- 'B a b
 dip3 : 'A a b c ['A -- 'B] -- 'B a b c
      := [ swap [dip2] dip ]
 
+dip4 : 'A a b c d ['A -- 'B] -- 'B a b c d
+     := [ swap [dip3] dip ]
+
 both : [a -- b] a a -- b b
      := [ [dup] dip2 [swap] dip [swap $] dip2 rotl [$] dip swap ]
