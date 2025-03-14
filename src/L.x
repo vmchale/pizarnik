@@ -45,7 +45,7 @@ $follow_char = [$latin $digit \_\-]
 
 @name = $lowercase $follow_char*
 @tyname = $uppercase $follow_char*
-@tag = $latin+
+@tag = $latin [$latin $digit]*
 @modname = @dir* $follow_char+
 
 tokens :-
