@@ -147,7 +147,6 @@ tunroll :: T a -> [T a]
 tunroll (TA _ t t') = t:tunroll t'
 tunroll t           = [t]
 
--- ⊂
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
