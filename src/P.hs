@@ -40,10 +40,10 @@ tMs :: [FilePath]
     -> FilePath -- ^ Root module
     -> IO (Either (TE AlexPosn) (IM.IntMap (M AlexPosn (TS AlexPosn))))
 tMs incls fp = do
-    (u, s, rms) <- yIO =<< rMs incls fp
+    (u, s, rms) <- io =<< rMs incls fp
     pure (tR rms u s)
   where
-    yIO = either throwIO pure
+    io = either throwIO pure
 
 rMs :: [FilePath] -- ^ Include dirs
     -> FilePath -- ^ Root module
