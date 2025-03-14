@@ -21,7 +21,7 @@ import           Nm
 import           Nm.Map         (NmMap)
 import qualified Nm.Map         as Nm
 import           Pr
-import           Prettyprinter  (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, tupled, (<+>))
+import           Prettyprinter  (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, space, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -123,7 +123,7 @@ instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n t
 
 instance Pretty (D a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
-    pretty (TD _ n vs t) = "type" <+> pretty n <+> pSeq vs <+> "=" <+> pretty t <> ";"
+    pretty (TD _ n vs t) = "type" <+> pretty n <> (if null vs then mempty else space <> pSeq vs) <+> "=" <+> pretty t <> ";"
 
 am :: M a (TS b) -> Doc ann
 am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
