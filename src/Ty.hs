@@ -100,7 +100,7 @@ iFn :: Nm a -> TS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
 
 cA :: T a -> TM b ()
-cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)<>a)))
+cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)<>a))); cA _=pure ()
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f (IM.insert i (vs,t) c) a))
