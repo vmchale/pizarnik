@@ -14,14 +14,14 @@ module A ( A (..)
          , pSeq
          ) where
 
-import           Data.Bifunctor (second)
-import qualified Data.Set       as S
-import qualified Data.Text      as T
+import qualified Data.Set      as S
+import qualified Data.Text     as T
 import           Nm
-import           Nm.Map         (NmMap)
-import qualified Nm.Map         as Nm
+import           Nm.Map        (NmMap)
+import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter  (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, space, tupled, (<+>))
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, encloseSep, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate, space,
+                                tupled, (<+>))
 
 infixl 9 <:>
 
@@ -143,20 +143,21 @@ instance Pretty (TS a) where
 
 instance Show (TS a) where show=show.pretty
 
+-- TODO: hutton trick?
 tunroll :: T a -> [T a]
-tunroll (TA _ t t') = t:tunroll t'
+tunroll (TA _ t t') = tunroll t++[t']
 tunroll t           = [t]
 
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = braces (pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts))
-    pretty (TA _ t t') = pretty t <> tupled (pretty<$>tunroll t')
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts)
+    pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
     pretty (TI _ t) = pretty t <+> "⁻¹"
     pretty (RV _ n s) | S.null s = pretty n
     pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " (pretty<$>S.toList s))))
 
-pΣ = concatWith (\x y -> x <+> "⊕" <+> y)
+pΣ = group.align.encloseSep (flatAlt "{ " "{") (flatAlt (hardline<>"}") "}") (flatAlt "⊕ " " ⊕ ")
 
 instance Show (T a) where show=show.pretty
 
