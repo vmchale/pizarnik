@@ -22,16 +22,16 @@
 
 Pizarnik's approach to pattern-matching is original, based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$).
 
-\section{Structural Sum Types}
+\section{Extensible Pattern Matches}
 
-Tags such as \verb|`true| are Pizarnik atoms, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|. It can also be said to have type $-- \mathtt{`true}~\oplus~\mathtt{`false}$. To see why we would wish to admit $\mathtt{`true}~\oplus~\mathtt{`false}$, consider
+Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|. It can also be said to have type $-- \{ \mathtt{`true}~\oplus~\mathtt{`false} \}$. To see why we would wish to admit $\mathtt{`true}~\oplus~\mathtt{`false}$, consider
 
 % even then, we should only generalize on the left.
 % negative polarity <-> "left permeable"
 % insisting on specificity on the right=pattern-match exhaustiveness checking
 
 \begin{verbatim}
-type Bool = `true ⊕ `false;
+type Bool = { `true ⊕ `false };
 
 not : Bool -- Bool
     := [ { `false⁻¹ `true & `true⁻¹ `false } ]
@@ -55,18 +55,18 @@ To invert a sum type, we supply a product of its inverses (pattern match clauses
 
 \subsection{Reusing Pattern-Match Arms}
 
-With tags, we could define a function
+We can define a function
 
 \begin{verbatim}
 if : a a `true -- a
-   := [ `true⁻¹ drop ]
+   := [ { `true⁻¹ drop } ]
 \end{verbatim}
 
 This is not so useful on its own---it requires the programmer to supply exactly one value and then discards it---but see how it unifies:
 
 \begin{verbatim}
 else : a a `false -- a
-     := [ `false⁻¹ nip ]
+     := [ { `false⁻¹ nip } ]
 
 choice : a a Bool -- a
        := [ { if & else } ]
@@ -92,12 +92,12 @@ isZero : Int -- Bool
 \subsection{Typesafe Head}
 
 \begin{verbatim}
-type List a = `nil ⊕ List(a) a `cons;
+type List a = { `nil ⊕ List(a) a `cons };
 
-type NE a = List(a) a `cons;
+type NE a = { List(a) a `cons };
 
 head : NE a -- a
-     := [ `cons⁻¹ nip ]
+     := [ { `cons⁻¹ nip } ]
 \end{verbatim}
 
 Any nonempty list can be supplied as an argument to a function on lists.
@@ -111,14 +111,17 @@ Any nonempty list can be supplied as an argument to a function on lists.
 Suppose we have
 
 \begin{verbatim}
-type Ord = `lt ⊕ `eq ⊕ `gt;
+type Ord = { `lt ⊕ `eq ⊕ `gt };
 \end{verbatim}
 
 Then we can define
 
 \begin{verbatim}
-lte : {`lt ⊕ `eq} --
-    := [ `lt⁻¹ & `eq⁻¹ ]
+lte : { `lt ⊕ `eq } --
+    := [ { `lt⁻¹ & `eq⁻¹ } ]
+
+gt : Ord -- Bool
+      := [ { lte `false & `gt⁻¹ `true } ]
 \end{verbatim}
 
 So we get or-patterns for free and they are reusable as functions.
@@ -128,15 +131,10 @@ So we get or-patterns for free and they are reusable as functions.
 % { 0⁻¹ `true & _ `false }
 % type rewriting/expansion rules... Int + a = a for a universal, inv
 % insight: wildcard is drop
-% inverse of a type: swap left/right on stack
+% inverse of a type: swap left/right on stack (peek lens...)
 
 % negation of types (constructive)
 % inspired by linear logic?
-
-% "right permeable" girard uses
-
-% convince myself that "always unify everything" and putting stack variables everywhere works (greedy but also we put them everywhere soooo probably yeah)
-% unlike Diggins, we also want monomorphization, hence mgu, match approach
 
 \section{Error Hierarchies}
 

@@ -17,42 +17,28 @@
 
 Blume, Acar, and Chae present a functional language in which sum type variants (and dually, pattern match arms) are handled like row types \cite{blume2006}.
 
+% also this: https://osa1.net/posts/2025-01-18-fir-error-handling.html
+
 % Point being: there's lots more room for FP to win!
-% https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
-
-\section{Expression Problem}
-
-Blume, Acar, and Chae note that they solve the expression problem for functional languages.
 
 % also emphasizes duality
 
 % { 0⁻¹ `true & _ `false }
 % type rewriting/expansion rules... Int + a = a for a universal, inv
 % insight: wildcard is drop
-% inverse of a type: swap left/right on stack
+% inverse of a type: swap left/right on stack (view?)
 
-% negation of types (constructive)
-% inspired by linear logic?
-
+% inspired by linear logic
 % "right permeable" girard uses
-
-% convince myself that "always unify everything" and putting stack variables everywhere works (greedy but also we put them everywhere soooo probably yeah)
-% unlike Diggins, we also want monomorphization, hence mgu, match approach
-
-\section{Error Hierarchies}
 
 % https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
 
-\bibliographystyle{plain}
-\bibliography{bib.bib}
-
-\appendix
-
 \section{The Expression Problem}
+
+Blume, Acar, and Chae note that they solve the expression problem for functional languages.
 
 % http://lambda-the-ultimate.org/node/4394#comment-68007
 
-% basically same as Haskell but without the globality of typeclasses
 % more "natural"; don't have to change approach entirely/start out w/ right approach
 
 % http://lambda-the-ultimate.org/node/4394#comment-68060
@@ -73,9 +59,12 @@ which is known to be superseded by row types.
 
 % https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
 
-Both entail the globality of typeclasses and the esoteric
-% https://www.tumblr.com/ezyang/62157468762/haskell-haskell-and-ghc-too-big-to-fail-panel
+Both entail the globality of typeclasses and depend on esoteric compiler extensions \cite{ghc}.
+% 
 
 The Haskell solutions are more convoluted, but it is precisely this maladroitness that attests to the appetite for a solution to this problem.
+
+\bibliographystyle{plain}
+\bibliography{bib.bib}
 
 \end{document}
