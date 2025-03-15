@@ -401,7 +401,7 @@ ta b s (C l tt)       = do
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    (t, s1) <- dU s0 sigs
+    (t, s1) <- dU (arit b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
 uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
@@ -411,19 +411,19 @@ uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
-φ :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
-φ as = do
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT undefined nm;pure$splitFromLeft n ts}) as
+φ :: IM.IntMap Int -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
+φ ar as = do
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm;pure$splitFromLeft n ts}) as
     pure (Σ l$Nm.fromList (zip nms tss), tas)
   where l=loc (fst$head as); nms=map fst as
 
-dU :: Subst a -> [TS a] -> TM a (TS a, Subst a)
-dU s tss = do
+dU :: IM.IntMap Int -> Subst a -> [TS a] -> TM a (TS a, Subst a)
+dU e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
     -- maybe padding could be implicit...?
-    (σ,ul) <- φ al
+    (σ,ul) <- φ e al
     (l',s') <- uss s ul; (r',s'') <- uss s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
