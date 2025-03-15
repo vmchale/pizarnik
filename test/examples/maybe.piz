@@ -20,5 +20,8 @@ just : b [a -- b] a `just -- b
 maybe : b [a -- b] Maybe(a) -- b
       := [ { just & `nothing⁻¹ _ } ]
 
+maybe0 : b [a -- b] Maybe(a) -- b
+       := [ { `just⁻¹ nip2 swap $ & `nothing⁻¹ _ } ]
+
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
