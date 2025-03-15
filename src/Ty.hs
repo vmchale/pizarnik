@@ -299,10 +299,12 @@ us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
-lT :: Nm a -> TM a Int
-lT n = do
+lT :: IM.IntMap Int -> Nm a -> TM a Int
+lT ex n@(Nm _ (U u) _) = do
     ars <- gets (arit.lo)
-    case IM.lookup (unU$un n) ars of Just i -> pure i; Nothing -> throwError$AM n
+    case IM.lookup u ars of
+        Just i  -> pure i
+        Nothing -> case IM.lookup u ex of Just i -> pure i; Nothing -> throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
 lA es (Nm _ (U i) _) = do
@@ -392,8 +394,9 @@ ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
 ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
 ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
-ta _ s (C l tt)       = do
-    p <- lT tt; ρ <- pad l p
+ta b s (C l tt)       = do
+    p <- lT (arit b) tt
+    ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
@@ -410,7 +413,7 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 φ :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ as = do
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT nm;pure$splitFromLeft n ts}) as
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT undefined nm;pure$splitFromLeft n ts}) as
     pure (Σ l$Nm.fromList (zip nms tss), tas)
   where l=loc (fst$head as); nms=map fst as
 
