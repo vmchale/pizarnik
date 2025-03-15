@@ -87,8 +87,7 @@ some(p)
     : some(p) p { $2 : $1 }
     | p { [$1] }
 
-seq(p,q)
-    : p q { $2 }
+seq(p,q) : p q { $2 }
 
 sepBy(p,q)
     : sepBy(p,q) q p { $3 : $1 }
@@ -98,14 +97,9 @@ sepTup(p,q)
     : sepTup(p,q) q p { $3 : $1 }
     | p q p { [$3, $1] }
 
-brackets(p)
-    : lbracket p rbracket { ($1, $2) }
-
-braces(p)
-    : lbrace p rbrace { ($1, $2) }
-
-parens(p)
-    : lparen p rparen { $2 }
+brackets(p) : lbracket p rbracket { ($1, $2) }
+braces(p) : lbrace p rbrace { ($1, $2) }
+parens(p) : lparen p rparen { $2 }
 
 Arm :: { (Nm AlexPosn, TSeq AlexPosn) }
     : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwError =<< fmap AnonymousArm (lift get_pos) } }
@@ -158,7 +152,6 @@ M :: { M AlexPosn AlexPosn }
 locArms :: [(Nm a, TSeq a)] -> a
 locArms = Nm.loc . fst . head
 
-mkΣ :: [(Nm a, TSeq a)] -> NmMap (TSeq a)
 mkΣ = Nm.fromList
 
 troll :: T a -> [T a] -> T a
@@ -181,7 +174,6 @@ instance Exception ParseE
 
 type Parse = ExceptT ParseE Alex
 
-pM :: AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
 pM = parseA 0
 
 parseA :: Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
