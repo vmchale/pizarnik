@@ -9,6 +9,7 @@
              , alexMonadScan
              , alexInitUserState
              , withAlexSt
+             , pret, pref
              -- * Lexer states
              , postImp
              , get_pos
@@ -101,14 +102,14 @@ tokens :-
         swap                    { builtin Swap }
         "$"                     { builtin Doll }
 
-        "type"                  { kw Ty }
+        type                    { kw Ty }
 
         Int                     { builtin Int }
-        Bool                    { builtin Bool }
+        Bool                    { builtin Bool } -- TODO: shorthand...
         String                  { builtin String }
 
-        True                    { builtin TrueTok }
-        False                   { builtin FalseTok }
+        True                    { tok (\p _ -> alex $ TokT p (pret p)) }
+        False                   { tok (\p _ -> alex $ TokT p (pref p)) }
 
         @name                   { tok (\p s -> TokN p <$> nIdent p (mkText s)) }
         @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
@@ -120,6 +121,8 @@ tokens :-
     }
 
 {
+
+pret=Nm "True" (U (-2)); pref=Nm "False" (U (-1))
 
 mkText :: BSL.ByteString -> T.Text
 mkText = decodeUtf8 . BSL.toStrict
@@ -200,12 +203,11 @@ instance Pretty Kw where pretty I="@i"; pretty Ty="type"
 
 data B = Dup | Dip | Swap | Doll
        | Int | Bool | String
-       | TrueTok | FalseTok
 
 instance Pretty B where
     pretty Dup = "dup"; pretty Dip = "dip"; pretty Doll = "$"
     pretty Int = "Int"; pretty Bool = "Bool"; pretty String = "String"
-    pretty Swap = "swap"; pretty TrueTok = "True"; pretty FalseTok = "False"
+    pretty Swap = "swap"
 
 data Tok = EOF { loc :: AlexPosn }
          | TokI { loc :: AlexPosn, int :: Integer }

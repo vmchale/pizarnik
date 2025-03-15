@@ -36,11 +36,10 @@ instance Pretty B where
     pretty Swap = "swap"; pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"
     pretty Doll = "$"
 
-data L = I !Integer | R !Double | Str !T.Text | BL !Bool
+data L = I !Integer | R !Double | Str !T.Text
 
 instance Pretty L where
     pretty (I i) = pretty i; pretty (R x) = pretty x; pretty (Str s) = dquotes (pretty s)
-    pretty (BL b) = pretty b
 
 data SL a b = SL { aLs :: a, aas :: [b] }
 type ASeq a = SL a (A a)
@@ -84,9 +83,9 @@ instance Traversable A where
     traverse f (Pat x (SL y ys)) = Pat <$> f x <*> (SL <$> f y <*> traverse (taseq f) ys)
     traverse f (Inv x a) = Inv <$> f x <*> traverse f a
 
-data Prim = Int | Bool | String deriving (Eq, Ord)
+data Prim = Int | String deriving (Eq, Ord)
 
-instance Pretty Prim where pretty Int="Int"; pretty Bool="Bool"; pretty String="String"
+instance Pretty Prim where pretty Int="Int"; pretty String="String"
 
 data TS a = TS { tlefts, trights :: TSeq a } deriving (Eq, Ord)
 type TSeq a = [T a]

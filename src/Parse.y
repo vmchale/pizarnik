@@ -68,9 +68,6 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     swap { TokB $$ L.Swap }
     doll { TokB $$ L.Doll }
 
-    true { TokB $$ TrueTok }
-    false { TokB $$ FalseTok }
-
     name { TokN _ $$ }
     tyname { TokTN _ $$ }
     sv { TokSV _ $$ }
@@ -125,7 +122,7 @@ T :: { T AlexPosn }
   | sv { SV (Nm.loc $1) $1 }
   | tyname { TC (Nm.loc $1) $1 }
   | intTy { TP $1 A.Int }
-  | boolTy { TP $1 A.Bool }
+  | boolTy { let tt=pret $1; ft=pref $1 in Σ $1 (Nm.fromList [(tt,[]), (ft,[])]) }
   | stringTy { TP $1 A.String }
   | tag { TT (Nm.loc $1) $1 }
   | lbracket TS rbracket { QT $1 $2 }
@@ -144,9 +141,6 @@ A :: { A AlexPosn }
   | tag { C (Nm.loc $1) $1 }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
   | braces(sepBy(some(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
-  | false inv { Inv $1 (L $1 (BL False)) }
-  | true inv { Inv $1 (L $1 (BL True)) }
-  | false { L $1 (BL False) } | true { L $1 (BL True) }
   | ilit { L (loc $1) (A.I (int $1)) }
 
 D :: { D AlexPosn AlexPosn }

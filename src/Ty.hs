@@ -31,7 +31,7 @@ infixr 6 @*
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: IM.IntMap Int }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
-instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty IM.empty
+instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
 data TE a = UF (T a) (T a) F | MF (T a) (T a) F
           | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
@@ -67,7 +67,7 @@ data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 type TM x = StateT (TSt x) (Either (TE x))
 
 runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
-runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty IM.empty))
+runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])))
 
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
@@ -215,8 +215,11 @@ ua f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0=
     pure undefined
 ua f s t0 t1 | Just (TC{}, _) <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ua f s t0' t1}
 ua f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ua f s t0 t1'}
-ua f _ t0@QT{} t1@Σ{} = throwError $ UF t0 t1 f
-ua f _ t0@Σ{} t1@QT{} = throwError $ UF t0 t1 f
+ua f _ t0@QT{} t1@Σ{} = eu f t0 t1
+ua f _ t0@Σ{} t1@QT{} = eu f t0 t1
+
+eu :: F -> T a -> T a -> TM a b
+eu f t0 t1 = throwError $ UF t0 t1 f
 
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
@@ -284,6 +287,8 @@ ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms f mempty a0 a1
 ma f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ma f t0' t1}
 ma f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ma f t0 t1'}
+ma f t0@TP{} t1@Σ{} = em t0 t1 f
+ma f t0@Σ{} t1@TP{} = em t0 t1 f
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
@@ -376,7 +381,6 @@ tae b s a = do
 
 ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
 ta _ s (L l lit@I{})  = pure (L (TS [] [TP l Int]) lit, s)
-ta _ s (L l lit@BL{}) = pure (L (TS [] [TP l Bool]) lit, s)
 ta b s (V _ n)        = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)       = do {n <- ftv l "a"; pure (B (TS [n] []) Un, s)}
 ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
