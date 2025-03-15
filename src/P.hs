@@ -5,7 +5,6 @@ import           Control.Exception    (throwIO)
 import           Control.Monad        (foldM)
 import           Data.Bifunctor       (second)
 import qualified Data.ByteString.Lazy as BSL
-import           Data.Foldable        (fold)
 import qualified Data.IntMap          as IM
 import           L
 import           M
@@ -31,7 +30,7 @@ tR rms = loop IM.empty where
     loop _ _ [] = Right IM.empty
     loop b u (MN _ (U i):mns) =
         let m@(M is _)=m'lookup i rms
-            ctx=fold (map (`mnlookup` b) is)
+            ctx=foldMap (`mnlookup` b) is
         in do
             (res, c, u') <- tM u ctx m
             IM.insert i res <$> loop (IM.insert i c b) u' mns
