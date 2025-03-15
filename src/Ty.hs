@@ -13,7 +13,7 @@ import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
-import           Data.List                        (uncons, unsnoc)
+import           Data.List                        (unsnoc)
 import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
@@ -134,7 +134,7 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@>) :: Subst a -> T a -> TM a (T a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
-(@>) _ t@TC{} = pure t
+(@>) _ t@TC{}          = pure t
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
 (@>) s (QT x sig)      = QT x<$>s@*sig
 (@>) s (TI x t)        = TI x <$> s@>t
