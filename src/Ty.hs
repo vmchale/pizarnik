@@ -422,7 +422,6 @@ dU e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
-    -- maybe padding could be implicit...?
     (σ,ul) <- φ e al
     (l',s') <- uss s ul; (r',s'') <- uss s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
