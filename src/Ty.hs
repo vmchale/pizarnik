@@ -85,6 +85,13 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
+ems :: TSeq a -> TSeq a -> F -> TM a b
+ems t0 t1 f = throwError $ MSF t0 t1 f
+
+eu,em :: F -> T a -> T a -> TM a b
+eu f t0 t1 = throwError $ UF t0 t1 f
+em f t0 t1 = throwError $ MF t0 t1 f
+
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
@@ -218,9 +225,6 @@ ua f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs
 ua f _ t0@QT{} t1@Σ{} = eu f t0 t1
 ua f _ t0@Σ{} t1@QT{} = eu f t0 t1
 
-eu :: F -> T a -> T a -> TM a b
-eu f t0 t1 = throwError $ UF t0 t1 f
-
 mSig :: TS a -> TS a -> TM a (Subst a)
 mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
 
@@ -232,17 +236,17 @@ ms :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                    in msc f (iSV sn1 uws s) t0 res
-    | otherwise = throwError $ MSF t0e t1e f
+    | otherwise = ems t0e t1e f
   where n0=length t0; n1=length t1
 ms f s t0e@(SV _ v0:t0) t1
     | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
                     in msc f (iSV v0 uws s) t0 res
-    | otherwise = throwError $ MSF t0e t1 f
+    | otherwise = ems t0e t1 f
   where n0=length t0; n1=length t1
 ms f s (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f (s<>s') ts0 ts1}
 ms _ s [] [] = pure s
-ms f _ ts0 [] = throwError$ MSF ts0 [] f
-ms f _ [] ts1 = throwError$ MSF ts1 [] f
+ms f _ ts0 [] = ems ts0 [] f
+ms f _ [] ts1 = ems [] ts1 f
 
 mσ f s σ0 σ1 =
     let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
@@ -250,9 +254,6 @@ mσ f s σ0 σ1 =
   where
     mss sϵ [] []         = pure sϵ
     mss sϵ (x:xs) (y:ys) = do {s' <- msc f sϵ x y; mss s' xs ys}
-
-em :: T a -> T a -> F -> TM a b
-em t0 t1 f = throwError $ MF t0 t1 f
 
 {-# SCC ma #-}
 ma :: F -> T a -> T a -> TM a (Subst a)
@@ -264,31 +265,31 @@ ma _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
 ma f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
     s <- ma f e t1
     pure (iTV n t1 s)
-ma f t0 t1@TV{} = em t0 t1 f
+ma f t0 t1@TV{} = em f t0 t1
 ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
-ma f t0@QT{} t1 = em t0 t1 f
+ma f t0@QT{} t1 = em f t0 t1
 -- on the left: type annotation must be narrower than what it accepts
 -- on the right: type annotation can be more general
 ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (em t0 t1 LF) *> mσ LF mempty σ0 σ1
+        (em LF t0 t1) *> mσ LF mempty σ0 σ1
 ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
-        (em t0 t1 RF) *> mσ RF mempty σ0 σ1
+        (em RF t0 t1) *> mσ RF mempty σ0 σ1
 ma LF t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
-        (em t0 t1 LF) $> mempty
+        (em LF t0 t1) $> mempty
 ma RF t0@(TT _ n) t1@(Σ _ σ) =
     unless (n `Nm.member` σ)
-        (em t0 t1 RF) $> mempty
-ma RF t0@Σ{} t1@TT{} = em t0 t1 RF
-ma LF t0@TT{} t1@Σ{} = em t0 t1 LF
+        (em RF t0 t1) $> mempty
+ma RF t0@Σ{} t1@TT{} = em RF t0 t1
+ma LF t0@TT{} t1@Σ{} = em LF t0 t1
 ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
 ma f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms f mempty a0 a1
 ma f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ma f t0' t1}
 ma f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ma f t0 t1'}
-ma f t0@TP{} t1@Σ{} = em t0 t1 f
-ma f t0@Σ{} t1@TP{} = em t0 t1 f
+ma f t0@TP{} t1@Σ{} = em f t0 t1
+ma f t0@Σ{} t1@TP{} = em f t0 t1
 
 mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
