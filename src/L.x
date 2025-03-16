@@ -90,6 +90,7 @@ tokens :-
         ≔                       { sym DefEq }
         "--"                    { sym Sig }
         ⊕                       { sym DSum }
+        ∪                       { sym Up }
         ⁻¹                      { sym PInv }
         =                       { sym Eq }
         _                       { sym Under }
@@ -182,7 +183,7 @@ instance Pretty AlexPosn where
 
 data Sym = Add | Sub | Mul | Div | IDiv
          | Colon | LBracket | RBracket
-         | DefEq | Sig | DSum | PInv
+         | DefEq | Sig | DSum | Up | PInv
          | Amp | Semicolon | LBrace | RBrace
          | Eq | IT | LParen | RParen
          | Comma | Under | Gt | Lt
@@ -190,7 +191,7 @@ data Sym = Add | Sub | Mul | Div | IDiv
 instance Pretty Sym where
     pretty Add = "+"; pretty Sub = "-"; pretty Mul = "*"; pretty Div = "/"
     pretty Colon = ":"; pretty LBracket = "["; pretty RBracket = "]"
-    pretty DefEq = ":="; pretty Sig = "--"; pretty DSum = "⊕"
+    pretty DefEq = ":="; pretty Sig = "--"; pretty DSum = "⊕"; pretty Up = "∪"
     pretty PInv = "⁻¹"; pretty Amp = "&"; pretty Semicolon = ";"
     pretty LBrace = "{"; pretty RBrace = "}"; pretty Eq = "="
     pretty IT = "%-"; pretty LParen = "("; pretty RParen = ")"
