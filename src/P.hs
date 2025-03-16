@@ -21,7 +21,7 @@ fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pFmt
     pFmt = parseA 0 alexInitUserState
 
 pex :: MN -> Ex -> Ex -> Either (RE a) Ex
-pex n (Ex bv0 bc0) (Ex bv1 bc1) = Ex <$> m'merge bv0 bv1 MDF <*> m'merge bc0 bc1 MDC
+pex n (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> m'merge bv0 bv1 MDF <*> m'merge bc0 bc1 MDC <*> m'merge a0 a1 MDT
   where
     m'merge b0 b1 err | IM.disjoint b0 b1 = Right (b0<>b1) | otherwise = Left (err n)
 
@@ -63,4 +63,4 @@ rMs incls fp = do
 mnlookup (MN _ (U i)) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")
 
-eex = Ex IM.empty IM.empty
+eex = Ex IM.empty IM.empty IM.empty

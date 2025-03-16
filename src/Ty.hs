@@ -304,7 +304,9 @@ lT ex n@(Nm _ (U u) _) = do
     ars <- gets (arit.lo)
     case IM.lookup u ars of
         Just i  -> pure i
-        Nothing -> case IM.lookup u ex of Just i -> pure i; Nothing -> throwError$AM n
+        Nothing -> case IM.lookup u ex of
+            Just i  -> pure i
+            Nothing -> throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
 lA es (Nm _ (U i) _) = do

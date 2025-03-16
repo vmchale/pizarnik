@@ -3,7 +3,7 @@
 module R ( Ex (..)
          , Bd, Bt
          , Rs (..)
-         , RE (MDF, MDC)
+         , RE (MDF, MDC, MDT)
          , rM
          ) where
 
@@ -13,42 +13,46 @@ import           Control.Exception                (Exception (..))
 import           Control.Monad                    ((<=<))
 import           Control.Monad.Except             (throwError)
 import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, put, runStateT)
+import           Data.Bifunctor                   (first, second)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import           Data.Typeable                    (Typeable)
 import           Lens.Micro                       (Lens', set)
 import           Lens.Micro.Extras                (view)
 import           Nm
+import           Nm.Map                           (NmMap (NmMap))
 import           Pr
 import           Prettyprinter                    (Pretty (..), (<+>))
 
 infixr 5 @~
 
-data RE a = IllScoped (Nm a) | D (Nm a) | MDF !MN | MDC !MN
+data RE a = IllScoped (Nm a) | D (Nm a) | MDF !MN | MDC !MN | MDT !MN
 
 instance Pretty a => Pretty (RE a) where
     pretty (IllScoped n) = pretty (loc n) <> ":" <+> "Not in scope:" <+> sq (pretty n)
     pretty (D n)         = pretty (loc n) <> ":" <+> sq (pretty n) <+> "has already been defined"
     pretty (MDF m)       = "Module" <+> sq (pretty m) <+> "imports the same function from different sources."
     pretty (MDC m)       = "Module" <+> sq (pretty m) <+> "imports the same type from different sources."
+    pretty (MDT m)       = "Module" <+> sq (pretty m) <+> "imports the same constructor from different sources."
 
 instance Pretty a => Show (RE a) where show=show.pretty
 instance (Pretty a, Typeable a) => Exception (RE a)
 
 type Bd=IM.IntMap Int; type Bt=IM.IntMap Int
 
-data Ex = Ex { bf, bt :: Bd }
-data Rs = Rs { max_ :: !Int, ex :: !Ex, btv :: Bt, bsv :: Bt }
+data Ex = Ex { bf, bt, btt :: Bd }
+data Rs = Rs { max_ :: !Int, ex :: !Ex, btv, bsv :: Bt }
 
-instance Pretty Ex where pretty (Ex v t) = pBound v <##> pBound t
+instance Pretty Ex where pretty (Ex v t a) = pBound v <##> pBound t <##> pBound a
 
 instance Show Ex where show=show.pretty
 
 stv tv r = r { btv = tv }; ssv sv r = r { bsv = sv }
 
-bfl,btl :: Lens' Ex Bd
-btl f (Ex ff t) = Ex ff <$> f t
-bfl f (Ex ff t) = (\x -> Ex x t) <$> f ff
+bfl,btl,bal :: Lens' Ex Bd
+btl f (Ex ff t a) = (\x -> Ex ff x a) <$> f t
+bfl f (Ex ff t a) = (\x -> Ex x t a) <$> f ff
+bal f (Ex ff t a) = Ex ff t <$> f a
 
 bvl,bsl :: Lens' Rs Bt
 bsl f (Rs m e t v) = Rs m e t <$> f v
@@ -57,7 +61,8 @@ bvl f (Rs m e t v) = (\x -> Rs m e x v) <$> f t
 type RM x = StateT Rs (Either (RE x))
 
 runRM :: Int -> RM a (f a) -> Either (RE a) (Int, Ex, f a)
-runRM u = fmap (\(x,Rs u' b _ _) -> (u',b,x)).flip runStateT (Rs u (Ex IM.empty IM.empty) IM.empty IM.empty)
+-- TODO: true, false special cases?
+runRM u = fmap (\(x,Rs u' b _ _) -> (u',b,x)).flip runStateT (Rs u (Ex IM.empty IM.empty IM.empty) IM.empty IM.empty)
 
 rTs :: Ex -> TSeq a -> RM a (TSeq a)
 rTs b = traverse (b@~)
@@ -67,22 +72,19 @@ rSig b (TS l r) = TS <$> rTs b l <*> rTs b r
 
 (@~) :: Ex -> T a -> RM a (T a)
 (@~) _ t@TP{}      = pure t
-(@~) _ t@TT{}      = pure t
+(@~) b (TT x n)    = TT x <$> lA b n
 (@~) b (TC x n)    = TC x <$> lT b n
 (@~) _ (TV x n)    = TV x <$> fr n
 (@~) _ (SV x n)    = SV x <$> frs n
-(@~) b (TA x t t') = TA x <$> b @~ t <*> b @~ t'
+(@~) b (TA x t t') = TA x <$> b@~t <*> b@~t'
 (@~) b (QT x tS)   = QT x <$> rSig b tS
-(@~) b (Σ x ts)    = Σ x <$> traverse (rTs b) ts
+(@~) b (Σ x ts)    = Σ x <$> traverse (rTs b) (rkeys (btt b) ts)
 (@~) b (TI x t)    = TI x <$> b@~t
 
 doLocal :: RM a b -> RM a b
 doLocal act = do
     (tvs,svs) <- gets (btv &&& bsv)
     act <* modify (stv tvs.ssv svs)
-
-ct :: Ex -> TS a -> RM a (TS a)
-ct b (TS l r) = doLocal $ TS <$> rTs b l <*> rTs b r
 
 frv :: Lens' Rs Bt -> Nm a -> RM x (Nm a)
 frv l (Nm t (U i) x) = do
@@ -94,6 +96,15 @@ frv l (Nm t (U i) x) = do
 
 fr, frs :: Nm a -> RM x (Nm a)
 fr=frv bvl; frs=frv bsl
+
+fra :: Ex -> [Int] -> RM a [(Int,Int)]
+fra b i = do
+    s <- get
+    let ex'=ex s; t=btt ex'; (i',i_) = g (t<>btt b) i
+        u=max_ s; u'=u+length i'; m=zip i' [u..u']
+    put (s { max_ = u', ex = set bal (IM.fromList m<>t) ex' }) $> m<>i_
+  where g _ []     = ([], [])
+        g e (n:ii) = (case IM.lookup n e of {Just iϵ -> second ((n,iϵ):); Nothing -> first (n:)}) (g e ii)
 
 frd :: Lens' Ex Bd -> Ex -> Nm a -> RM a (Nm a)
 frd l b n@(Nm t (U i) x) | i `IM.member` view l b = throwError (D n)
@@ -114,13 +125,16 @@ lD g b n@(Nm t (U j) x) = do
             Just k  -> pure $ Nm t (U k) x
             Nothing -> throwError (IllScoped n)
 
-lT, lV :: Ex -> Nm a -> RM a (Nm a)
+lT, lV,lA :: Ex -> Nm a -> RM a (Nm a)
 lT=lD bt; lV=lD bf
+lA _ n@(Nm _ (U (-1)) _) = pure n
+lA _ n@(Nm _ (U (-2)) _) = pure n
+lA b n                   = lD btt b n
 
 rA :: Ex -> A a -> RM a (A a)
 rA b (V x n)           = V x <$> lV b n
 rA _ a@B{}             = pure a
-rA _ a@C{}             = pure a
+rA b (C x tt)          = C x <$> lA b tt
 rA _ a@L{}             = pure a
 rA b (Q x as)          = Q x <$> rAs b as
 rA b (Inv x a)         = Inv x <$> rA b a
@@ -129,10 +143,30 @@ rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
 rM :: Int -> Ex -> M a a -> Either (RE a) (Int, Ex, M a a)
 rM u b (M is ds) = runRM u (M is <$> (traverse (rD1 b) <=< traverse (rD0 b)) ds)
 
+t0s b = traverse (t0 b)
+
+rkeys :: Bd -> NmMap (TSeq a) -> NmMap (TSeq a)
+rkeys b = nmMapKeys (\i -> IM.findWithDefault i i b) -- b IM.!)
+
+fkeys :: Ex -> NmMap (TSeq a) -> RM a (NmMap (TSeq a))
+fkeys b m@(NmMap x _) = do
+    e <- fra b (IM.keys x)
+    pure $ rkeys (IM.fromList e) m
+
+nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
+
+t0 :: Ex -> T a -> RM a (T a)
+t0 b (TT x n) = undefined; t0 b (Σ x ts) = Σ x <$> fkeys b ts
+t0 b (TI x t) = TI x <$> t0 b t; t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
+t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 _ t@TC{} = pure t
+t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
+
 rD0 :: Ex -> D a a -> RM a (D a a)
 rD0 b (F l n t as)  = F l <$> frn b n <*> pure t <*> pure as
-rD0 b (TD l n vs t) = TD l <$> frt b n <*> pure vs <*> pure t
+rD0 b (TD l n vs t) = TD l <$> frt b n <*> pure vs <*> t0 b t
+
+ttl (Ex f c t) t' = Ex f c (t<>t')
 
 rD1 :: Ex -> D a a -> RM a (D a a)
-rD1 b (F l n t as)  = F l n <$> ct b t <*> rAs b as
-rD1 b (TD l n vs t) = do {(vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (b @~ t); pure (TD l n vs' t')}
+rD1 b (F l n t as)  = do {tt <- gets (btt.ex); F l n <$> doLocal (rSig (ttl b tt) t) <*> rAs b as}
+rD1 b (TD l n vs t) = do {tt <- gets (btt.ex); (vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (ttl b tt@~t); pure (TD l n vs' t')}
