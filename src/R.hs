@@ -141,7 +141,7 @@ rA b (Inv x a)         = Inv x <$> rA b a
 rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
 
 rM :: Int -> Ex -> M a a -> Either (RE a) (Int, Ex, M a a)
-rM u b (M is ds) = runRM u (M is <$> (traverse (rD1 b) <=< traverse (rD0 b)) ds)
+rM u b (M is ds) = runRM u (M is <$> ((\d -> do {t <- gets (btt.ex); traverse (rD1 (ttl b t)) d}) <=< traverse (rD0 b)) ds)
 
 t0s b = traverse (t0 b)
 
@@ -168,5 +168,5 @@ rD0 b (TD l n vs t) = TD l <$> frt b n <*> pure vs <*> t0 b t
 ttl (Ex f c t) t' = Ex f c (t<>t')
 
 rD1 :: Ex -> D a a -> RM a (D a a)
-rD1 b (F l n t as)  = do {tt <- gets (btt.ex); F l n <$> doLocal (rSig (ttl b tt) t) <*> rAs b as}
-rD1 b (TD l n vs t) = do {tt <- gets (btt.ex); (vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (ttl b tt@~t); pure (TD l n vs' t')}
+rD1 b (F l n t as)  = F l n <$> doLocal (rSig b t) <*> rAs b as
+rD1 b (TD l n vs t) = do {(vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (b@~t); pure (TD l n vs' t')}
