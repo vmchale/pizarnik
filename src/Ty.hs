@@ -313,7 +313,7 @@ lA es (Nm _ (U i) _) = do
         Just ts -> liftClone ts
         Nothing -> case IM.lookup i es of
             Just ts -> liftClone ts
-            Nothing -> pure $ IM.findWithDefault (error "Internal error. Name lookup failed during type resolution.") i es
+            Nothing -> error "Internal error. Name lookup failed during type resolution."
 
 tM :: Int -> Ext a -> M a a -> Either (TE a) (M a (TS a), Ext a, Int)
 tM i ex = runTM i.tMM ex
