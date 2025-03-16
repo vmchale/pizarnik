@@ -118,8 +118,6 @@ anD :: D a (TS b) -> Doc ann
 anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (align (fillSep (map ana (aas as)))))
 anD d@TD{}       = pretty d
 
-instance Functor (D a) where fmap _ (TD x n vs t) = TD x n vs t; fmap f (F x n ts as) = F (f x) (f<$>n) ts (faseq f as)
-
 instance Pretty (D a b) where
     pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
     pretty (TD _ n vs t) = "type" <+> pretty n <> (if null vs then mempty else space <> pSeq vs) <+> "=" <+> pretty t <> ";"
