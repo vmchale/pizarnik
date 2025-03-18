@@ -97,6 +97,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | TI { tL :: a, tI :: T a } | RV { tL :: a, tvar :: Nm a, uS :: S.Set (T a) }
+         | UU { tL :: a, uts :: [T a] }
 
 unA :: T a -> Maybe (T a, [T a])
 unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing
@@ -152,9 +153,10 @@ instance Pretty (T a) where
     pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
     pretty (TI _ t) = pretty t <+> "⁻¹"
     pretty (RV _ n s) | S.null s = pretty n
-    pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> braces (mconcat (punctuate ", " (pretty<$>S.toList s))))
+    pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> brsep ", " (pretty<$>S.toList s)) where brsep = encloseSep "{" "}"
+    pretty (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (pretty<$>t)
 
-pΣ = group.align.encloseSep (flatAlt "{ " "{") (flatAlt (hardline<>"}") "}") (flatAlt "⊕ " " ⊕ ")
+pΣ = group.align.braces.fillSep.punctuate " ⊕ "
 
 instance Show (T a) where show=show.pretty
 
@@ -163,12 +165,12 @@ instance Pretty (A a) where
     pretty (L _ l) = pretty l; pretty (Pat _ as) = group (braces (align (pA (map pASeq (aas as)))))
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
 
+pA = concatWith (\x y -> x <+> "&" <> line <> y)
+
 pSeq :: Pretty a => [a] -> Doc ann
 pSeq = hsep.fmap pretty
 
 pASeq :: ASeq a -> Doc ann
 pASeq = pSeq.aas
-
-pA = concatWith (\x y -> x <+> "&" <> line <> y)
 
 instance Show (A a) where show=show.pretty
