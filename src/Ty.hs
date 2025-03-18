@@ -9,7 +9,7 @@ import           Control.Exception                (Exception)
 import           Control.Monad                    (unless, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
-import           Data.Bifunctor                   (first, second)
+import           Data.Bifunctor                   (first)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
