@@ -51,7 +51,7 @@ data A a = B { aL :: a, builtin :: !B }
          | Inv { aL :: a, inva :: A a }
 
 aT :: SL b (A (TS a)) -> Doc ann
-aT = align.fillSep.fmap ana.aas
+aT = align.fillSep.map ana.aas
 
 (<:>) x y = x <+> ":" <+> y
 
@@ -116,7 +116,7 @@ instance Ord (T a) where
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
 anD :: D a (TS b) -> Doc ann
-anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (align (fillSep (map ana (aas as)))))
+anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (aT as))
 anD d@TD{}       = pretty d
 
 instance Pretty (D a b) where
