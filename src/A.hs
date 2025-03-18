@@ -141,10 +141,10 @@ instance Pretty (TS a) where
 
 instance Show (TS a) where show=show.pretty
 
--- TODO: hutton trick?
+-- §16.6 Hutton
 tunroll :: T a -> [T a]
-tunroll (TA _ t t') = tunroll t++[t']
-tunroll t           = [t]
+tunroll = flip tg [] where tg (TA _ t t') s = tg t (t':s)
+                           tg t s           = t:s
 
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
