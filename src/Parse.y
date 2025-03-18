@@ -44,6 +44,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     semicolon { TokS $$ Semicolon }
     comma { TokS $$ Comma }
     amp { TokS $$ Amp }
+    un { TokS $$ Up }
     eq { TokS $$ L.Eq }
     gt { TokS $$ L.Gt }
     lt { TokS $$ L.Lt }
@@ -104,10 +105,6 @@ parens(p) : lparen p rparen { $2 }
 Arm :: { (Nm AlexPosn, TSeq AlexPosn) }
     : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwError =<< fmap AnonymousArm (lift get_pos) } }
 
-TDef :: { T AlexPosn }
-     : braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
-     | T { $1 }
-
 TS :: { TS AlexPosn }
    : many(T) sig many(T) { TS (reverse $1) (reverse $3) }
 
@@ -122,6 +119,7 @@ T :: { T AlexPosn }
   | lbracket TS rbracket { QT $1 $2 }
   | T parens(sepBy(T,comma)) { troll $1 (reverse $2) }
   | braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
+  | T un T { UU $2 [$1,$3] }
 
 A :: { A AlexPosn }
   : dip { B $1 A.Dip } | swap { B $1 A.Swap }
@@ -139,7 +137,7 @@ A :: { A AlexPosn }
 
 D :: { D AlexPosn AlexPosn }
   : name colon TS defEq brackets(many(A)) { F $2 $1 $3 (SL $4 (reverse (snd $5))) }
-  | type tyname many(name) eq TDef semicolon { TD $1 $2 (reverse $3) $5 }
+  | type tyname many(name) eq T semicolon { TD $1 $2 (reverse $3) $5 }
 
 M :: { M AlexPosn AlexPosn }
   : many(seq(i,modname)) imp many(D) { M (reverse $1) (reverse $3) }

@@ -80,6 +80,7 @@ rSig b (TS l r) = TS <$> rTs b l <*> rTs b r
 (@~) b (QT x tS)   = QT x <$> rSig b tS
 (@~) b (Σ x ts)    = Σ x <$> traverse (rTs b) (rkeys (btt b) ts)
 (@~) b (TI x t)    = TI x <$> b@~t
+(@~) b (UU x ts)   = UU x <$> rTs b ts
 
 doLocal :: RM a b -> RM a b
 doLocal act = do
@@ -158,8 +159,8 @@ nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
 t0 :: Ex -> T a -> RM a (T a)
 t0 b (TT x n) = undefined; t0 b (Σ x ts) = Σ x <$> fkeys b ts
 t0 b (TI x t) = TI x <$> t0 b t; t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
-t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 _ t@TC{} = pure t
-t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
+t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> traverse (t0 b) ts
+t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
 
 rD0 :: Ex -> D a a -> RM a (D a a)
 rD0 b (F l n t as)  = F l <$> frn b n <*> pure t <*> pure as
