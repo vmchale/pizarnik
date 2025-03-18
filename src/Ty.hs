@@ -407,10 +407,6 @@ ta b s (Pat _ as)     = do
     (t, s1) <- dU (arit b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
-uss :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
-uss s [t]    = pure (t, s)
-uss s (t:ts) = do {(tr,s0) <- uss s ts; usc RF s0 tr t}
-
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
@@ -426,11 +422,15 @@ dU e s tss = do
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
     (σ,ul) <- φ e al
-    (l',s') <- uss s ul; (r',s'') <- uss s' rs'
+    (l',s') <- urs s ul; (r',s'') <- urs s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
+
+        urs :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
+        urs sϵ [t]    = pure (t, sϵ)
+        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc RF s0 tr t}
 
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
