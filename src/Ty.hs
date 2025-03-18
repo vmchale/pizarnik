@@ -96,9 +96,9 @@ tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
 tun :: T a -> Maybe (Nm a, [T a])
-tun (TC _ n)     = Just (n, [])
-tun (TA _ t0 t1) = fmap (second (++[t1])) (tun t0)
-tun _            = Nothing
+tun t = g [] t where g s (TC _ n)     = Just (n, s)
+                     g s (TA _ t0 t1) = g (t1:s) t0
+                     g _ _            = Nothing
 
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
