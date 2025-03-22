@@ -9,7 +9,7 @@
              , alexMonadScan
              , alexInitUserState
              , withAlexSt
-             , pret, pref
+             , tt, ft
              -- * Lexer states
              , postImp
              , get_pos
@@ -109,8 +109,8 @@ tokens :-
         Bool                    { builtin Bool } -- TODO: shorthand...
         String                  { builtin String }
 
-        True                    { tok (\p _ -> alex $ TokT p (pret p)) }
-        False                   { tok (\p _ -> alex $ TokT p (pref p)) }
+        True                    { tok (\p _ -> alex $ TokT p (tt p)) }
+        False                   { tok (\p _ -> alex $ TokT p (ft p)) }
 
         @name                   { tok (\p s -> TokN p <$> nIdent p (mkText s)) }
         @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
@@ -123,7 +123,7 @@ tokens :-
 
 {
 
-pret=Nm "True" (U (-2)); pref=Nm "False" (U (-1))
+tt=Nm "True" (U (-2)); ft=Nm "False" (U (-1))
 
 mkText :: BSL.ByteString -> T.Text
 mkText = decodeUtf8 . BSL.toStrict
