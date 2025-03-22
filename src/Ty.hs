@@ -56,9 +56,9 @@ instance Pretty a => Show (TE a) where show=show.pretty
 
 instance (Typeable a, Pretty a) => Exception (TE a) where
 
-data F = LF | RF
+data F = LF | RF | CF
 
-instance Pretty F where pretty LF="⦠"; pretty RF="∢"
+instance Pretty F where pretty LF="⦠"; pretty RF="∢"; pretty CF="≬"
 
 instance Show F where show=show.pretty
 
@@ -95,6 +95,7 @@ em f t0 t1 = throwError $ MF t0 t1 f
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
+-- Hutton §16.6
 tun :: T a -> Maybe (Nm a, [T a])
 tun t = g [] t where g s (TC _ n)     = Just (n, s)
                      g s (TA _ t0 t1) = g (t1:s) t0
@@ -197,7 +198,8 @@ uac f s = ua f s `onM` (s@>)
 {-# SCC ua #-}
 ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
-ua LF _ t0@TP{} t1@TP{} = throwError $ UF t0 t1 LF
+ua LF _ t0@TP{} t1@TP{} = eu LF t0 t1
+ua CF _ t0@TP{} t1@TP{} = eu CF t0 t1
 ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
 ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
 ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
@@ -208,15 +210,18 @@ ua f s (TA x t0 t1) (TA _ t0' t1') = do
 ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
 ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua RF s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-ua LF _ t0@TT{} t1@TT{} = throwError $ UF t0 t1 LF
+ua LF _ t0@TT{} t1@TT{} = eu LF t0 t1
+ua CF _ t0@TT{} t1@TT{} = eu CF t0 t1
 ua RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
 ua RF s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
 ua RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
-ua RF s t@TP{} (RV x n r) = pure (RV x n (S.insert t r), s)
+ua RF s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
 ua _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
-ua _ s (RV l n r) t@Σ{} = pure (RV l n (S.insert t r), s)
+-- CF (application): supplied return type can be narrower than function argument type
+-- is "CF" same as matching (argument type is right-argument?)
+ua CF s (RV l n r) t@Σ{} = pure (RV l n (S.insert t r), s)
 ua f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- uas f s a0 a1
     pure undefined
@@ -360,7 +365,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 {-# SCC cat #-}
 cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- usc LF s r0 l1 -- r0 can be expanded, l1 not...
+    (_, s') <- usc CF s r0 l1
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
