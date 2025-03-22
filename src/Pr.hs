@@ -1,6 +1,5 @@
 module Pr ( pBound, pB
-          , (<#>)
-          , (<##>)
+          , (<##>), (<#>)
           , sq
           ) where
 

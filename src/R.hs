@@ -47,8 +47,6 @@ instance Pretty Ex where pretty (Ex v t a) = pBound v <##> pBound t <##> pBound 
 
 instance Show Ex where show=show.pretty
 
-stv tv r = r { btv = tv }; ssv sv r = r { bsv = sv }
-
 bfl,btl,bal :: Lens' Ex Bd
 btl f (Ex ff t a) = (\x -> Ex ff x a) <$> f t
 bfl f (Ex ff t a) = (\x -> Ex x t a) <$> f ff
@@ -85,7 +83,7 @@ rSig b (TS l r) = TS <$> rTs b l <*> rTs b r
 doLocal :: RM a b -> RM a b
 doLocal act = do
     (tvs,svs) <- gets (btv &&& bsv)
-    act <* modify (stv tvs.ssv svs)
+    act <* modify (\r -> r { btv = tvs, bsv = svs })
 
 frv :: Lens' Rs Bt -> Nm a -> RM x (Nm a)
 frv l (Nm t (U i) x) = do
@@ -159,7 +157,7 @@ nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
 t0 :: Ex -> T a -> RM a (T a)
 t0 b (TT x n) = undefined; t0 b (Σ x ts) = Σ x <$> fkeys b ts
 t0 b (TI x t) = TI x <$> t0 b t; t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
-t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> traverse (t0 b) ts
+t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> t0s b ts
 t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
 
 rD0 :: Ex -> D a a -> RM a (D a a)

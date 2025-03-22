@@ -359,6 +359,9 @@ traceCat a as t0 t1 tRes = pretty a <+> ":" <+> pretty t0
     <#> indent 4 (hsep(pretty<$>a:as) <+> ":" <+> pretty tRes)
     <> hardline
 
+(/|) :: [a] -> Int -> ([a], [a])
+xs /| n = splitFromLeft n xs
+
 splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
@@ -417,7 +420,7 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 φ :: IM.IntMap Int -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ ar as = do
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm;pure$splitFromLeft n ts}) as
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm;pure (ts /| n)}) as
     pure (Σ l$Nm.fromList (zip nms tss), tas)
   where l=loc (fst$head as); nms=map fst as
 
