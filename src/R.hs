@@ -142,10 +142,8 @@ rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
 rM :: Int -> Ex -> M a a -> Either (RE a) (Int, Ex, M a a)
 rM u b (M is ds) = runRM u (M is <$> ((\d -> do {t <- gets (btt.ex); traverse (rD1 (ttl b t)) d}) <=< traverse (rD0 b)) ds)
 
-t0s b = traverse (t0 b)
-
 rkeys :: Bd -> NmMap (TSeq a) -> NmMap (TSeq a)
-rkeys b = nmMapKeys (\i -> IM.findWithDefault i i b) -- b IM.!)
+rkeys b = nmMapKeys (\i -> IM.findWithDefault i i b)
 
 fkeys :: Ex -> NmMap (TSeq a) -> RM a (NmMap (TSeq a))
 fkeys b m@(NmMap x _) = do
@@ -153,6 +151,8 @@ fkeys b m@(NmMap x _) = do
     pure $ rkeys (IM.fromList e) m
 
 nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
+
+t0s b = traverse (t0 b)
 
 t0 :: Ex -> T a -> RM a (T a)
 t0 b (TT x n) = undefined; t0 b (Σ x ts) = Σ x <$> fkeys b ts
