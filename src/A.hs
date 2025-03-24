@@ -160,7 +160,7 @@ instance Pretty (T a) where
     pretty (RV _ n s) = parens (pretty n <+> "⊃" <+> brsep ", " (pretty<$>S.toList s)) where brsep = encloseSep "{" "}"
     pretty (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (pretty<$>t)
 
-pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕ " " ⊕")
+pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
 
 instance Show (T a) where show=show.pretty
 
