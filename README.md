@@ -45,6 +45,8 @@ The same `foldr` works on nonempty lists and lists (unlike Haskell) while `head`
 
 # Or-Patterns
 
+`&` (with) brings some insight to or-patterns, viz.
+
 ```
 @i prelude/fn
 
@@ -52,11 +54,8 @@ The same `foldr` works on nonempty lists and lists (unlike Haskell) while `head`
 
 type Ord = {`lt ⊕ `eq ⊕ `gt};
 
-lte : { `lt ⊕ `eq } --
-    := [ { `lt⁻¹ & `eq⁻¹ } ]
-
 gt : Ord -- Bool
-   := [ { lte False & `gt⁻¹ True } ]
+   := [ { { `lt⁻¹ & `eq⁻¹ } False & `gt⁻¹ True } ]
 ```
 
 # Solving the Expression Problem
