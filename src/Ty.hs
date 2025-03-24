@@ -9,7 +9,7 @@ import           Control.Exception                (Exception)
 import           Control.Monad                    (unless, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
-import           Data.Bifunctor                   (first)
+import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
@@ -429,7 +429,7 @@ dU e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
-    (σ,ul) <- φ e al
+    (σ,ul) <- φ e (concat al)
     (l',s') <- urs s ul; (r',s'') <- urs s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
@@ -443,8 +443,10 @@ dU e s tss = do
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
-        ai :: [T a] -> TM a (Nm a, [T a])
-        ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure (n, tsϵ)
+        ai :: [T a] -> TM a [(Nm a, [T a])]
+        ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
+              | Just (tsϵ, (Σ l as)) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
+              | null ts = error "?"
               | otherwise = throwError (PM ts)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
