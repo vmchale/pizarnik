@@ -4,7 +4,5 @@
 
 type Tree a = { a `leaf ⊕ Tree(a) Tree(a) a `node };
 
-# depth
-
-map : [a -- b] Tree(a) -- Tree(b)
-    := [ { `leaf⁻¹ swap $ `leaf } ]
+depth : Tree(a) -- Int
+      := [ { `leaf⁻¹ 0 & `node⁻¹ _ [depth] dip depth max } ]
