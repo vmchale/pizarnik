@@ -2,6 +2,5 @@
 
 %-
 
-# FIXME also '11:9: Pattern match arms must begin with an inverse constructor.'
 gt : Ord -- Bool
-   := [ { lte False & `gt True } ]
+   := [ { lte False & `gt⁻¹ True } ]

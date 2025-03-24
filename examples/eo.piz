@@ -1,3 +1,3 @@
 %-
 
-type J r x = [x -- r] -- x;
+type J r x = [[x -- r] -- x];

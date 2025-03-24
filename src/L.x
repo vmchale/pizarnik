@@ -106,7 +106,7 @@ tokens :-
         type                    { kw Ty }
 
         Int                     { builtin Int }
-        Bool                    { builtin Bool } -- TODO: shorthand...
+        Bool                    { builtin Bool }
         String                  { builtin String }
 
         True                    { tok (\p _ -> alex $ TokT p (tt p)) }

@@ -6,4 +6,4 @@ odd : Int -- Bool
     := [ dup 0 = { False⁻¹ even not & True⁻¹ False } ]
 
 even : Int -- Bool
-     := [ dup 0 = { False⁻¹ odd not & id } ]
+     := [ dup 0 = { False⁻¹ odd not & } ]
