@@ -105,12 +105,17 @@ instance Eq (T a) where
     (==) (TV _ n0) (TV _ n1) = n0==n1; (==) (TP _ t0) (TP _ t1) = t0==t1
     (==) (TT _ t0) (TT _ t1) = t0==t1; (==) (SV _ v0) (SV _ v1) = v0==v1
     (==) (TC _ n0) (TC _ n1) = n0==n1; (==) (TI _ t0) (TI _ t1) = t0==t1
+    (==) (TA _ t0 t1) (TA _ t0' t1') = t0==t0'&&t1==t1'
+    (==) (QT _ ts0) (QT _ ts1) = ts0==ts1; (==) (Σ _ w0) (Σ _ w1) = w0==w1
+    (==) (RV _ n0 ρ0) (RV _ n1 ρ1) = n0==n1&&ρ0==ρ1
 
 instance Ord (T a) where
     compare (TV _ n0) (TV _ n1) = compare n0 n1; compare (TP _ t0) (TP _ t1) = compare t0 t1
     compare (TT _ t0) (TT _ t1) = compare t0 t1; compare (SV _ n0) (SV _ n1) = compare n0 n1
     compare (TC _ n0) (TC _ n1) = compare n0 n1; compare (TI _ t0) (TI _ t1) = compare t0 t1
     compare (QT _ t0) (QT _ t1) = compare t0 t1; compare (Σ _ as) (Σ _ as') = compare as as'
+    compare (TA _ t0 t0') (TA _ t1 t1') = compare [t0,t1] [t0',t1']
+    compare (RV _ n0 ρ0) (RV _ n1 ρ1) = case compare n0 n1 of EQ -> compare ρ0 ρ1; o -> o
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
