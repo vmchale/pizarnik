@@ -141,6 +141,7 @@ rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
 
 rM :: Int -> Ex -> M a a -> Either (RE a) (Int, Ex, M a a)
 rM u b (M is ds) = runRM u (M is <$> ((\d -> do {t <- gets (btt.ex); traverse (rD1 (ttl b t)) d}) <=< traverse (rD0 b)) ds)
+    where ttl (Ex f c t) t' = Ex f c (t<>t')
 
 rkeys :: Bd -> NmMap (TSeq a) -> NmMap (TSeq a)
 rkeys b = nmMapKeys (\i -> IM.findWithDefault i i b)
@@ -164,8 +165,6 @@ rD0 :: Ex -> D a a -> RM a (D a a)
 rD0 b (F l n t as)  = F l <$> frn b n <*> pure t <*> pure as
 rD0 b (TD l n vs t) = TD l <$> frt b n <*> pure vs <*> t0 b t
 
-ttl (Ex f c t) t' = Ex f c (t<>t')
-
 rD1 :: Ex -> D a a -> RM a (D a a)
 rD1 b (F l n t as)  = F l n <$> doLocal (rSig b t) <*> rAs b as
-rD1 b (TD l n vs t) = do {(vs',t') <- doLocal $ (,) <$> traverse fr vs <*> (b@~t); pure (TD l n vs' t')}
+rD1 b (TD l n vs t) = do {(vs',t') <- doLocal ((,) <$> traverse fr vs <*> (b@~t)); pure (TD l n vs' t')}
