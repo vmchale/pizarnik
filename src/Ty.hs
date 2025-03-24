@@ -85,12 +85,11 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-ems :: TSeq a -> TSeq a -> F -> TM a b
-ems t0 t1 f = throwError $ MSF t0 t1 f
+ems, eus :: F -> TSeq a -> TSeq a -> TM a b
+ems f t0 t1 = throwError (MSF t0 t1 f); eus f t0 t1 = throwError (USF t0 t1 f)
 
 eu,em :: F -> T a -> T a -> TM a b
-eu f t0 t1 = throwError $ UF t0 t1 f
-em f t0 t1 = throwError $ MF t0 t1 f
+eu f t0 t1 = throwError (UF t0 t1 f); em f t0 t1 = throwError (MF t0 t1 f)
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -176,20 +175,20 @@ uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
 uas f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
-        GT -> throwError $ USF t0 t1 f
+        GT -> eus f t0 t1
         _ -> let (uws, res) = splitFromLeft n0 t1
              in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
 uas f s t0 t1@((SV _ sn1):t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
-        LT -> throwError $ USF t0 t1 f
+        LT -> eus f t0 t1
         _ -> let (uws, res) = splitFromLeft n1 t0
              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
 uas f s (t0:ts0) (t1:ts1) = do
     (tϵ, s') <- ua f s t0 t1
     first (tϵ:) <$> usc f s' ts0 ts1
-uas f _ t0 [] = throwError $ USF t0 [] f
-uas f _ [] t1 = throwError $ USF t1 [] f
+uas f _ t0 [] = eus f t0 []
+uas f _ [] t1 = eus f [] t1
 
 {-# SCC uac #-}
 uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -230,74 +229,74 @@ ua f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs
 ua f _ t0@QT{} t1@Σ{} = eu f t0 t1
 ua f _ t0@Σ{} t1@QT{} = eu f t0 t1
 
-mSig :: TS a -> TS a -> TM a (Subst a)
-mSig (TS l0 r0) (TS l1 r1) = do {s <- ms RF mempty r0 r1; msc LF s l0 l1}
+mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
+mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c RF mempty r0 r1; msc c LF s l0 l1}
 
-msc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-msc f s = ms f s `onM` peek s
+msc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+msc c f s = ms c f s `onM` peek s
 
 -- TODO: type synonym expansion for atom length (e.g. Escardó-Oliva functional)
-ms :: F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-ms f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
+ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-                   in msc f (iSV sn1 uws s) t0 res
-    | otherwise = ems t0e t1e f
+                   in msc c f (iSV sn1 uws s) t0 res
+    | otherwise = ems f t0e t1e
   where n0=length t0; n1=length t1
-ms f s t0e@(SV _ v0:t0) t1
+ms c f s t0e@(SV _ v0:t0) t1
     | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
-                    in msc f (iSV v0 uws s) t0 res
-    | otherwise = ems t0e t1 f
+                    in msc c f (iSV v0 uws s) t0 res
+    | otherwise = ems f t0e t1
   where n0=length t0; n1=length t1
-ms f s (t0:ts0) (t1:ts1) = do {s' <- ma f t0 t1; msc f (s<>s') ts0 ts1}
-ms _ s [] [] = pure s
-ms f _ ts0 [] = ems ts0 [] f
-ms f _ [] ts1 = ems [] ts1 f
+ms c f s (t0:ts0) (t1:ts1) = do {s' <- ma c f t0 t1; msc c f (s<>s') ts0 ts1}
+ms _ _ s [] [] = pure s
+ms _ f _ ts0 [] = ems f ts0 []
+ms _ f _ [] ts1 = ems f [] ts1
 
-mσ f s σ0 σ1 =
+mσ c f s σ0 σ1 =
     let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
     in mss s t0s t1s
   where
     mss sϵ [] []         = pure sϵ
-    mss sϵ (x:xs) (y:ys) = do {s' <- msc f sϵ x y; mss s' xs ys}
+    mss sϵ (x:xs) (y:ys) = do {s' <- msc c f sϵ x y; mss s' xs ys}
 
 {-# SCC ma #-}
-ma :: F -> T a -> T a -> TM a (Subst a)
-ma _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
-ma _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
-ma _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-ma _ (TV _ n0) t = pure (sTV n0 t)
-ma _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
-ma f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
-    s <- ma f e t1
+ma :: Cs a -> F -> T a -> T a -> TM a (Subst a)
+ma _ _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
+ma _ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
+ma _ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+ma _ _ (TV _ n0) t = pure (sTV n0 t)
+ma _ _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
+ma c f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
+    s <- ma c f e t1
     pure (iTV n t1 s)
-ma f t0 t1@TV{} = em f t0 t1
-ma _ (QT _ ts0) (QT _ ts1) = mSig ts0 ts1
-ma f t0@QT{} t1 = em f t0 t1
+ma _ f t0 t1@TV{} = em f t0 t1
+ma c _ (QT _ ts0) (QT _ ts1) = mSig c ts0 ts1
+ma _ f t0@QT{} t1 = em f t0 t1
 -- on the left: type annotation must be narrower than what it accepts
 -- on the right: type annotation can be more general
-ma LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+ma c LF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (em LF t0 t1) *> mσ LF mempty σ0 σ1
-ma RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+        (em LF t0 t1) *> mσ c LF mempty σ0 σ1
+ma c RF t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
-        (em RF t0 t1) *> mσ RF mempty σ0 σ1
-ma LF t0@(Σ _ σ) t1@(TT _ n) =
+        (em RF t0 t1) *> mσ c RF mempty σ0 σ1
+ma _ LF t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
         (em LF t0 t1) $> mempty
-ma RF t0@(TT _ n) t1@(Σ _ σ) =
+ma _ RF t0@(TT _ n) t1@(Σ _ σ) =
     unless (n `Nm.member` σ)
         (em RF t0 t1) $> mempty
-ma RF t0@Σ{} t1@TT{} = em RF t0 t1
-ma LF t0@TT{} t1@Σ{} = em LF t0 t1
-ma _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
-ma f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms f mempty a0 a1
-ma f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ma f t0' t1}
-ma f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ma f t0 t1'}
-ma f t0@TP{} t1@Σ{} = em f t0 t1
-ma f t0@Σ{} t1@TP{} = em f t0 t1
+ma _ RF t0@Σ{} t1@TT{} = em RF t0 t1
+ma _ LF t0@TT{} t1@Σ{} = em LF t0 t1
+ma _ _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
+ma c f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms c f mempty a0 a1
+ma c f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ (c<>cs) t0; ma c f t0' t1}
+ma c f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ (c<>cs) t1; ma c f t0 t1'}
+ma _ f t0@TP{} t1@Σ{} = em f t0 t1
+ma _ f t0@Σ{} t1@TP{} = em f t0 t1
 
-mtsc :: Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc s asig tsig = do {asig' <- s@*asig; mSig asig' tsig}
+mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
+mtsc c s asig tsig = do {asig' <- s@*asig; mSig c asig' tsig}
 
 us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
@@ -332,15 +331,17 @@ tMM b (M is ds) = M is <$> tD b ds
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
+{-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n ts
 tD0 (TD _ n vs t) = iTD n vs t *> cA t
 
+{-# SCC tD1 #-}
 tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
-tD1 b (F _ n ts as) = do
+tD1 b@(Ext _ c _) (F _ n ts as) = do
     (as', s) <- tseq b mempty as
-    s' <- mtsc s (aLs as') ts
+    s' <- mtsc c s (aLs as') ts
     as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
@@ -421,9 +422,10 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 φ :: IM.IntMap Int -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ ar as = do
     (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm;pure (ts /| n)}) as
-    pure (Σ l$Nm.fromList (zip nms tss), tas)
+    pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
 
+{-# SCC dU #-}
 dU :: IM.IntMap Int -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
@@ -446,7 +448,6 @@ dU e s tss = do
         ai :: [T a] -> TM a [(Nm a, [T a])]
         ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
               | Just (tsϵ, (Σ l as)) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
-              | null ts = error "?"
               | otherwise = throwError (PM ts)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)

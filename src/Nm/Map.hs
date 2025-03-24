@@ -5,6 +5,7 @@ module Nm.Map ( NmMap (..)
               , isSubmapOf
               , elems
               , fromList
+              , nmlist
               , toList
               ) where
 
@@ -43,11 +44,14 @@ intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0
 elems :: NmMap a -> [a]
 elems (NmMap x _) = IM.elems x
 
-toList :: NmMap a -> [(T.Text, a)]
-toList (NmMap x ns) = map (first (ns IM.!)) (IM.toList x)
+toList :: a -> NmMap b -> [(Nm a, b)]
+toList l (NmMap x ns) = map (first (\u -> Nm (ns IM.! u) (U u) l)) (IM.toList x)
+
+nmlist :: NmMap a -> [(T.Text, a)]
+nmlist (NmMap x ns) = map (first (ns IM.!)) (IM.toList x)
 
 instance Pretty a => Pretty (NmMap a) where
-    pretty nms = vsep (pB<$>Nm.Map.toList nms)
+    pretty nms = vsep (pB<$>nmlist nms)
 
 instance Pretty a => Show (NmMap a) where show=show.pretty
 

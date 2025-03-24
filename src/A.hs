@@ -17,8 +17,7 @@ module A ( A (..)
 import qualified Data.Set      as S
 import qualified Data.Text     as T
 import           Nm
-import           Nm.Map        (NmMap)
-import qualified Nm.Map        as Nm
+import           Nm.Map        (NmMap, nmlist)
 import           Pr
 import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, encloseSep, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate, space,
                                 tupled, (<+>))
@@ -149,7 +148,7 @@ tunroll = flip tg [] where tg (TA _ t t') s = tg t (t':s)
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>Nm.toList ts)
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>nmlist ts)
     pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
     pretty (TI _ t) = pretty t <+> "⁻¹"
     pretty (RV _ n s) | S.null s = pretty n
