@@ -109,8 +109,8 @@ frd :: Lens' Ex Bd -> Ex -> Nm a -> RM a (Nm a)
 frd l b n@(Nm t (U i) x) | i `IM.member` view l b = throwError (D n)
                          | otherwise = do {st <- get; let exϵ=ex st; bl=view l exϵ in if i `IM.member` bl then throwError (D n) else let j=max_ st+1 in put (st { max_ = j, ex=set l (IM.insert i j bl) exϵ }) $> Nm t (U j) x}
 
-frt, frn :: Ex -> Nm a -> RM a (Nm a)
-frt=frd btl; frn=frd bfl
+frt, frn, frtt :: Ex -> Nm a -> RM a (Nm a)
+frt=frd btl; frn=frd bfl; frtt=frd bal
 
 rAs :: Ex -> ASeq a -> RM a (ASeq a)
 rAs b (SL x as) = SL x <$> traverse (rA b) as
@@ -156,7 +156,7 @@ nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
 t0s b = traverse (t0 b)
 
 t0 :: Ex -> T a -> RM a (T a)
-t0 b (TT x n) = undefined; t0 b (Σ x ts) = Σ x <$> fkeys b ts
+t0 b (TT x n) = TV x<$>frtt b n; t0 b (Σ x ts) = Σ x <$> fkeys b ts
 t0 b (TI x t) = TI x <$> t0 b t; t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
 t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> t0s b ts
 t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
