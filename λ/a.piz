@@ -1,0 +1,5 @@
+type Var = String;
+
+type ArithOp = { `add ⊕ `sub ⊕ `mul ⊕ `div };
+
+type A = { Int `const ⊕ Var `var ⊕ A Var `lam ⊕ A A ArithOp `binOp };
