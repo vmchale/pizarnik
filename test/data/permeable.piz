@@ -1,0 +1,8 @@
+@i lib/list
+
+%-
+
+type U = `u;
+
+x : -- `u
+  := [ `nil `u `cons head ]

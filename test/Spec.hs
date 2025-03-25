@@ -18,6 +18,7 @@ main = defaultMain $
                         , "test/examples/pat.piz"
                         , "test/data/beta.piz"
                         , "test/examples/exp.piz"
+                        , "test/data/permeable.piz"
                         ] ]
       ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz" ] ])
     where tI = tFile ["."]; tNo = tFile []

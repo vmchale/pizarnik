@@ -5,12 +5,15 @@
 \usepackage{hyperref}
 \usepackage{fontspec}
 \usepackage{amsmath}
+\usepackage{fancyvrb}
 
 \begin{document}
 
 \title{Pattern Matching in Pizarnik}
 \author {V. E. McHale}
 \maketitle
+
+\VerbatimFootnotes
 
 \tableofcontents
 
@@ -20,9 +23,11 @@
 
 \section{Introduction}
 
-Pizarnik's approach to pattern-matching is original, based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$).
+Pizarnik's approach to pattern-matching is based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$).
 
 \section{Extensible Pattern Matches}
+
+% mention Blume, Acar, Chae
 
 Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|. It can also be said to have type $-- \{ \mathtt{`true}~\oplus~\mathtt{`false} \}$. To see why we would wish to admit $\mathtt{`true}~\oplus~\mathtt{`false}$, consider
 
@@ -41,15 +46,12 @@ not : Bool -- Bool
 % inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
 % true inverse
 
-Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts.
+Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
 
 To invert a sum type, we supply a product of its inverses (pattern match clauses). This is precisely the de Morgan laws.
 
-% one can match a term of type `true against a type signature of type `true+`false, though one cannot match a term of type 1 against a type signature a
-% Idea: types like row types {σ : σ -> Nil} "hasVariant" like row types idk
+% We have true (constructive) inverses; \verb|`true⁻¹| is inverse to type \verb|`true| and has type \verb|`true --| (inverses exchange left and right).
 
-% $\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required.
-% pattern matches are a product too...
 % maybe Dhall does this with merge? lexical scoping..
 % TypeScript: 1 has type 1 | String so pattern-match exhaustiveness checking is bunk.
 
@@ -72,21 +74,13 @@ choice : a a Bool -- a
        := [ { if & else } ]
 \end{verbatim}
 
-Pattern-match arms are defined just as functions and can be reused. % referenced
-% one can even "cut" two in a row...
-% desugar to a narrower ast (convenient)
-
-% true inverses! `true⁻¹ is inverse to `true and has type `true --
-% we get the de Morgan laws
+Pattern-match arms are terms like builtin functions \verb|+| etc. and can be reused (referenced); one enjoys cut elimination for sequences of such.
 
 \subsection{Wildcards}
 
 \verb|drop : a --| is one of the building blocks of stack programming. We denote it as \verb|_| as it functions like a wildcard in pattern-matching.
 
-\begin{verbatim}
-isZero : Int -- Bool
-       := [ 0⁻¹ `true & _ `false ]
-\end{verbatim}
+% TODO: pattern match on integers, wildcard existential hm
 % narrowing: we can narrow supplied arguments, but not ⊕-generalize
 
 \subsection{Typesafe Head}
@@ -117,6 +111,13 @@ type Ord = { `lt ⊕ `eq ⊕ `gt };
 Then we can define
 
 \begin{verbatim}
+gt : Ord -- Bool
+      := [ { { `lt⁻¹ & `eq⁻¹ } `false & `gt⁻¹ `true } ]
+\end{verbatim}
+
+or
+
+\begin{verbatim}
 lte : { `lt ⊕ `eq } --
     := [ { `lt⁻¹ & `eq⁻¹ } ]
 
@@ -124,7 +125,7 @@ gt : Ord -- Bool
       := [ { lte `false & `gt⁻¹ `true } ]
 \end{verbatim}
 
-So we get or-patterns for free and they are reusable as functions.
+So we get or-patterns and they are reusable as functions.
 
 % also emphasizes duality
 
@@ -140,6 +141,12 @@ So we get or-patterns for free and they are reusable as functions.
 
 % also we can say "throw this X or Y" but let top-level be X | Y | W
 % e.g. "module resolution" error could be IO or parse
+
+\section{Syntactic Sugar}
+
+% do-notation, [x+y] in k etc.
+% syntactic sugar, register/IR expression expression
+% Haskell compromise: give up pattern-match exhaustiveness checking OR error case "internal error"
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
