@@ -96,9 +96,9 @@ tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
 -- Hutton §16.6
 tun :: T a -> Maybe (Nm a, [T a])
-tun t = g [] t where g s (TC _ n)     = Just (n, s)
-                     g s (TA _ t0 t1) = g (t1:s) t0
-                     g _ _            = Nothing
+tun = g [] where g s (TC _ n)     = Just (n, s)
+                 g s (TA _ t0 t1) = g (t1:s) t0
+                 g _ _            = Nothing
 
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
@@ -222,7 +222,6 @@ ua _ RF s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
 ua _ _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
 -- CF (application): supplied return type can be narrower than function argument type
 -- CF r0 l1: r0 is return being supplied as argument to l1
-ua _ CF s (RV x n r) t@Σ{} = pure (RV x n (S.insert t r), s)
 ua _ CF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua c f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- uas c f s a0 a1
@@ -455,7 +454,7 @@ dU c e s tss = do
 
         ai :: [T a] -> TM a [(Nm a, [T a])]
         ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
-              | Just (tsϵ, (Σ l as)) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
+              | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
               | otherwise = throwError (PM ts)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
