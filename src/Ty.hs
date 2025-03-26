@@ -159,75 +159,78 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 st f = fmap S.fromList . traverse f . S.toList
 
 {-# SCC usc #-}
-usc :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-usc f s = uas f s `onM` peek s
+usc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+usc c f s = uas c f s `onM` peek s
 
 {-# SCC uas #-}
-uas :: F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-uas _ s [] [] = pure ([], s)
-uas f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
+uas :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+uas _ _ s [] [] = pure ([], s)
+uas c f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
+              in first (uws++) <$> usc c f (iSV sn1 uws s) t1d res
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
-uas f s t0@((SV _ sn0):t0d) t1 =
+             in first (uws++) <$> usc c f (iSV sn0 uws s) t0d res
+uas c f s t0@((SV _ sn0):t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
         GT -> eus f t0 t1
         _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc f (iSV sn0 uws s) t0d res
-uas f s t0 t1@((SV _ sn1):t1d) =
+             in first (uws++) <$> usc c f (iSV sn0 uws s) t0d res
+uas c f s t0 t1@((SV _ sn1):t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
         LT -> eus f t0 t1
         _ -> let (uws, res) = splitFromLeft n1 t0
-             in first (uws++) <$> usc f (iSV sn1 uws s) t1d res
-uas f s (t0:ts0) (t1:ts1) = do
-    (tϵ, s') <- ua f s t0 t1
-    first (tϵ:) <$> usc f s' ts0 ts1
-uas f _ t0 [] = eus f t0 []
-uas f _ [] t1 = eus f [] t1
+             in first (uws++) <$> usc c f (iSV sn1 uws s) t1d res
+uas c f s (t0:ts0) (t1:ts1) = do
+    (tϵ, s') <- ua c f s t0 t1
+    first (tϵ:) <$> usc c f s' ts0 ts1
+uas _ f _ t0 [] = eus f t0 []
+uas _ f _ [] t1 = eus f [] t1
 
 {-# SCC uac #-}
-uac :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-uac f s = ua f s `onM` (s@>)
+uac :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+uac c f s = ua c f s `onM` (s@>)
 
 {-# SCC ua #-}
-ua :: F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-ua _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
-ua LF _ t0@TP{} t1@TP{} = eu LF t0 t1
-ua CF _ t0@TP{} t1@TP{} = eu CF t0 t1
-ua _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
-ua _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
-ua _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
-ua f s (TA x t0 t1) (TA _ t0' t1') = do
-    (t0ϵ, s0) <- ua f s t0 t0'
-    (t1ϵ, s1) <- uac f s0 t1 t1'
+ua :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+ua _ _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
+ua _ LF _ t0@TP{} t1@TP{} = eu LF t0 t1
+ua _ CF _ t0@TP{} t1@TP{} = eu CF t0 t1
+ua _ _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
+ua _ _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
+ua _ _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
+ua c f s (TA x t0 t1) (TA _ t0' t1') = do
+    (t0ϵ, s0) <- ua c f s t0 t0'
+    (t1ϵ, s1) <- uac c f s0 t1 t1'
     pure (TA x t0ϵ t1ϵ, s1)
-ua _ s (QT x t0) (QT _ t1) = first (QT x) <$> us s t0 t1
-ua _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua RF s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-ua LF _ t0@TT{} t1@TT{} = eu LF t0 t1
-ua CF _ t0@TT{} t1@TT{} = eu CF t0 t1
-ua RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
-ua RF s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
-ua RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
-ua RF s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
-ua _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
+ua c _ s (QT x t0) (QT _ t1) = first (QT x) <$> us c s t0 t1
+ua _ _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
+ua _ RF s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
+ua _ LF _ t0@TT{} t1@TT{} = eu LF t0 t1
+ua _ CF _ t0@TT{} t1@TT{} = eu CF t0 t1
+ua _ RF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
+ua _ CF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
+ua _ RF s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
+ua _ RF s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
+-- TODO: when do we substitute?
+ua _ RF s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
+ua _ RF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
+ua _ RF s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
+ua _ _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
 -- CF (application): supplied return type can be narrower than function argument type
--- is "CF" same as matching (argument type is right-argument?)
-ua CF s (RV l n r) t@Σ{} = pure (RV l n (S.insert t r), s)
-ua f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
-    (a',s') <- uas f s a0 a1
+-- CF r0 l1: r0 is return being supplied as argument to l1
+ua _ CF s (RV x n r) t@Σ{} = pure (RV x n (S.insert t r), s)
+ua _ CF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
+ua c f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+    (a',s') <- uas c f s a0 a1
     pure undefined
-ua f s t0 t1 | Just (TC{}, _) <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ cs t0; ua f s t0' t1}
-ua f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ cs t1; ua f s t0 t1'}
-ua f _ t0@QT{} t1@Σ{} = eu f t0 t1
-ua f _ t0@Σ{} t1@QT{} = eu f t0 t1
+ua c f s t0 t1 | Just (TC{}, _) <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ (cs<>c) t0; ua c f s t0' t1}
+ua c f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ (cs<>c) t1; ua c f s t0 t1'}
+ua _ f _ t0@QT{} t1@Σ{} = eu f t0 t1
+ua _ f _ t0@Σ{} t1@QT{} = eu f t0 t1
 
 mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
 mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c RF mempty r0 r1; msc c LF s l0 l1}
@@ -235,16 +238,22 @@ mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c RF mempty r0 r1; msc c LF s l0 l1}
 msc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc c f s = ms c f s `onM` peek s
 
--- TODO: type synonym expansion for atom length (e.g. Escardó-Oliva functional)
+hasC = any (\t -> case unA t of Just(TC{},_) -> True; _ -> False)
+
+cc c = traverse g where g t | Just (TC{}, _) <- unA t = do {cs <- gets (tds.lo); lΒ (cs<>c) t}
+                            | otherwise = pure t
+
 ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                    in msc c f (iSV sn1 uws s) t0 res
+    | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
     | otherwise = ems f t0e t1e
   where n0=length t0; n1=length t1
 ms c f s t0e@(SV _ v0:t0) t1
     | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
                     in msc c f (iSV v0 uws s) t0 res
+    | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
     | otherwise = ems f t0e t1
   where n0=length t0; n1=length t1
 ms c f s (t0:ts0) (t1:ts1) = do {s' <- ma c f t0 t1; msc c f (s<>s') ts0 ts1}
@@ -298,8 +307,8 @@ ma _ f t0@Σ{} t1@TP{} = em f t0 t1
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mSig c asig' tsig}
 
-us :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-us s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc LF s l0 l1; (r,s'') <- usc RF s' r0 r1; pure (TS l r, s'')}
+us :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
+us c s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc c LF s l0 l1; (r,s'') <- usc c RF s' r0 r1; pure (TS l r, s'')}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
@@ -350,7 +359,7 @@ tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
-    (t, s2) <- cat s1 (aL a') tϵ
+    (t, s2) <- cat (tds b) s1 (aL a') tϵ
     -- pure $ traceShow (traceCat a' as' (aL a') tϵ t) (SL t (a':as'), s2)
     pure (SL t (a':as'), s2)
 
@@ -367,9 +376,9 @@ splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
-cat :: Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-cat s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- usc CF s r0 l1
+cat :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
+cat c s (TS l0 r0) (TS l1 r1) = do
+    (_, s') <- usc c CF s r0 l1
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
@@ -413,11 +422,8 @@ ta b s (C l tt)       = do
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    (t, s1) <- dU (arit b) s0 sigs
+    (t, s1) <- dU (tds b) (arit b) s0 sigs
     pure (Pat t (SL t as'), s1)
-
-pad :: a -> Int -> TM a (TSeq a)
-pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 φ :: IM.IntMap Int -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ ar as = do
@@ -425,9 +431,12 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
 
+pad :: a -> Int -> TM a (TSeq a)
+pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
+
 {-# SCC dU #-}
-dU :: IM.IntMap Int -> Subst a -> [TS a] -> TM a (TS a, Subst a)
-dU e s tss = do
+dU :: Cs a -> IM.IntMap Int -> Subst a -> [TS a] -> TM a (TS a, Subst a)
+dU c e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
@@ -438,9 +447,8 @@ dU e s tss = do
         ls=map tlefts tss'; rs=map trights tss'
         rm=maximum (length<$>rs)
 
-        urs :: Subst a -> [TSeq a] -> TM a (TSeq a, Subst a)
         urs sϵ [t]    = pure (t, sϵ)
-        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc RF s0 tr t}
+        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c RF s0 tr t}
 
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
