@@ -73,7 +73,7 @@ instance Functor A where
     fmap f (Pat x (SL y ys)) = Pat (f x) (SL (f y) (map (faseq f) ys))
     fmap f (Inv x a) = Inv (f x) (f<$>a)
 
-instance Foldable A where
+instance Foldable A where foldr=undefined
 
 instance Traversable A where
     traverse f (B x b) = B <$> f x <*> pure b; traverse f (L x l) = L <$> f x <*> pure l
@@ -118,6 +118,12 @@ instance Ord (T a) where
     compare (QT _ t0) (QT _ t1) = compare t0 t1; compare (Σ _ as) (Σ _ as') = compare as as'
     compare (TA _ t0 t0') (TA _ t1 t1') = compare [t0,t1] [t0',t1']
     compare (RV _ n0 ρ0) (RV _ n1 ρ1) = case compare n0 n1 of EQ -> compare ρ0 ρ1; o -> o
+    compare UU{} _ = undefined; compare _ UU{} = undefined
+    compare TV{} _ = GT; compare _ TV{} = LT; compare TP{} _ = GT; compare _ TP{} = LT
+    compare TT{} _ = GT; compare _ TT{} = LT; compare SV{} _ = GT; compare _ SV{} = LT
+    compare TC{} _ = GT; compare _ TC{} = LT; compare RV{} _ = GT; compare _ RV{} = LT
+    compare TA{} _ = GT; compare _ TA{} = LT; compare Σ{} _ = GT; compare _ Σ{} = LT
+    compare TI{} _ = GT; compare _ TI{} = LT
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
