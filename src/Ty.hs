@@ -28,7 +28,9 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: IM.IntMap Int }
+type Ar = IM.IntMap Int
+
+data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
@@ -323,7 +325,7 @@ us c s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc c N s l0 l1; (r,s'') <- usc c G
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
-lT :: IM.IntMap Int -> Nm a -> TM a Int
+lT :: Ar -> Nm a -> TM a Int
 lT ex n@(Nm _ (U u) _) = do
     ars <- gets (arit.lo)
     case IM.lookup u ars of
@@ -436,17 +438,20 @@ ta b s (Pat _ as)     = do
     (t, s1) <- dU (tds b) (arit b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
-φ :: IM.IntMap Int -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
+φ :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 φ ar as = do
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm;pure (ts /| n)}) as
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) undefined $> (ts /| n)}) as
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
+
+ap :: a -> Int -> TM a (TSeq a)
+ap l n = traverse (\i -> ftv l ("a"<>pᵤ i)) [1..n]
 
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 {-# SCC dU #-}
-dU :: Cs a -> IM.IntMap Int -> Subst a -> [TS a] -> TM a (TS a, Subst a)
+dU :: Cs a -> Ar -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
