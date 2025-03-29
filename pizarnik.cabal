@@ -29,7 +29,6 @@ library
                       Ty
     other-modules:    B
                       Nm
-                      E
                       Imp
                       S
                       L
