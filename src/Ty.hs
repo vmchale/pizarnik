@@ -245,8 +245,16 @@ hasC = any (\t -> case unA t of Just(TC{},_) -> True; _ -> False)
 cc c = traverse g where g t | Just (TC{}, _) <- unA t = do {cs <- gets (tds.lo); lΒ (cs<>c) t}
                             | otherwise = pure t
 
+cap :: IM.IntMap Int -> [T a] -> TM a (Maybe (T a), [T a])
+cap r ts | Just (ts', TT _ nm) <- unsnoc ts = do
+    n <- lT r nm
+    pure $ if (n>length ts')
+        then (Nothing, ts)
+        else (Just$Σ (loc nm) (Nm.singleton nm undefined), undefined)
+         | otherwise = pure (Nothing, ts)
+
 -- encapsulate by arity... hm
--- ρ₀ ρ₁ `cons is length 1 yanno
+-- ρ₀ ρ₁ `cons is length 1
 ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
