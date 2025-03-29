@@ -108,6 +108,8 @@ instance Eq (T a) where
     (==) (TA _ t0 t1) (TA _ t0' t1') = t0==t0'&&t1==t1'
     (==) (QT _ ts0) (QT _ ts1) = ts0==ts1; (==) (Σ _ w0) (Σ _ w1) = w0==w1
     (==) (RV _ n0 ρ0) (RV _ n1 ρ1) = n0==n1&&ρ0==ρ1
+    (==) UU{} _ = undefined; (==) _ UU{} = undefined
+    (==) _ _ = False
 
 instance Ord (T a) where
     compare (TV _ n0) (TV _ n1) = compare n0 n1; compare (TP _ t0) (TP _ t1) = compare t0 t1
