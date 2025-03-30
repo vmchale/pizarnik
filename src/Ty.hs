@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase    #-}
 {-# LANGUAGE TupleSections #-}
 
 module Ty ( TE, Ext (..), tM ) where
@@ -6,7 +7,7 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (unless, zipWithM)
+import           Control.Monad                    (unless, when, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
@@ -35,24 +36,21 @@ data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
-data TE a = UF (T a) (T a) F | MF (T a) (T a) F
-          | USF (TSeq a) (TSeq a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
+data TE a = MF (T a) (T a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
+          | AF (TSeq a) (TSeq a)
           | PM (TSeq a) | AM (Nm a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (UF t0 t1 f)    = tc t0 f $ "Failed to unify" <+> sq (pretty t0) <+> "with" <+> sq (pretty t1)
-    pretty (USF ts0 ts1 f) = tsc ts0 f $ "Failed to unify" <+> sq (pSeq ts0) <+> "with" <+> sq (pSeq ts1)
-    pretty (MF t0 t1 f)    = tc t0 f $ "Failed to match" <+> sq (pretty t0) <+> "against" <+> sq (pretty t1)
-    pretty (MSF ts0 ts1 f) = tsc ts0 f $ "Failed to match" <+> sq (pSeq ts0) <+> "against" <+> sq (pSeq ts1)
-    pretty (AM n)          = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
-    pretty (BE e)          = pretty e
-    pretty (PM ts)         = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+    pretty (AF ts0 ts1) = tsc ts0$sq (pretty ts0) <+> "is not an acceptable argument to" <+> sq (pretty ts1)
+    pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
+    pretty (BE e)       = pretty e
+    pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
 
-tc t f p = pretty (tL t) <> ":" <+> pretty f <+> p
-tsc t f p = pretty (tLs t) <> ":" <+> pretty f <+> p
+tc t p = pretty (tL t) <> ":" <+> p
+tsc t p = pretty (tLs t) <> ":" <+> p
 
 instance Pretty a => Show (TE a) where show=show.pretty
 
@@ -88,11 +86,11 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-ems, eus :: F -> TSeq a -> TSeq a -> TM a b
-ems f t0 t1 = throwError (MSF t0 t1 f); eus f t0 t1 = throwError (USF t0 t1 f)
+ems :: F -> TSeq a -> TSeq a -> TM a b
+ems f t0 t1 = throwError (MSF t0 t1 f)
 
-eu,em :: F -> T a -> T a -> TM a b
-eu f t0 t1 = throwError (UF t0 t1 f); em f t0 t1 = throwError (MF t0 t1 f)
+em :: F -> T a -> T a -> TM a b
+em f t0 t1 = throwError (MF t0 t1 f)
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -152,88 +150,68 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> s\-u@>t'
-(@>) s (RV l n@(Nm _ (U u) _) r) =
+(@>) s (Ρ l n@(Nm _ (U u) _) r) =
     case IM.lookup u (tvs s) of
-        Nothing -> RV l n <$> st (s@>) r
+        Nothing -> Ρ l n <$> st (s@>) r
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
 
 st f = fmap S.fromList . traverse f . S.toList
 
-{-# SCC usc #-}
-usc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-usc c f s = uas c f s `onM` peek s
+ϝ :: Cs a
+  -> Subst a
+  -> T a -- ^ Argument supplied (narrower than)
+  -> T a -- ^ Argument accepted
+  -> TM a (T a, Subst a)
+ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+-- FIXME occurs check lol
+ϝ _ s (TV _ n) t = pure (t, iTV n t s)
+ϝ _ s t (TV _ n) = pure (t, iTV n t s)
+ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
+    -- contravariance of subtyping w.r.t. function arrow
+    (l',s₀) <- ϝs c s l1 l0
+    (r',s₁) <- ϝs c s₀ r0 r1
+    pure (QT x (TS l' r'), s₁)
+ϝ _ _ t0 t1 = error (show (t0,t1))
 
-{-# SCC uas #-}
-uas :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-uas _ _ s [] [] = pure ([], s)
-uas c f s t0@((SV _ sn0):t0d) t1@((SV _ sn1):t1d) =
+ϝs :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+ϝs _ s [] [] = pure ([], s)
+ϝs c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> usc c f (iSV sn1 uws s) t1d res
-        _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc c f (iSV sn0 uws s) t0d res
-uas c f s t0@((SV _ sn0):t0d) t1 =
+              in first (uws++) <$> ϝsc c (iSV sn1 uws s) t1d res
+        _  -> let (uws, res) = splitFromLeft n0 t1
+              in first (uws++) <$> ϝsc c (iSV sn0 uws s) t0d res
+ϝs c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
-        GT -> eus f t0 t1
-        _ -> let (uws, res) = splitFromLeft n0 t1
-             in first (uws++) <$> usc c f (iSV sn0 uws s) t0d res
-uas c f s t0 t1@((SV _ sn1):t1d) =
+        GT -> throwError$AF t0 t1
+        _  -> let (uws, res) = splitFromLeft n0 t1
+              in first (uws++) <$> ϝsc c (iSV sn0 uws s) t0d res
+ϝs c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
-        LT -> eus f t0 t1
-        _ -> let (uws, res) = splitFromLeft n1 t0
-             in first (uws++) <$> usc c f (iSV sn1 uws s) t1d res
-uas c f s (t0:ts0) (t1:ts1) = do
-    (tϵ, s') <- ua c f s t0 t1
-    first (tϵ:) <$> usc c f s' ts0 ts1
-uas _ f _ t0 [] = eus f t0 []
-uas _ f _ [] t1 = eus f [] t1
+        LT -> throwError$AF t0 t1
+        _  -> let (uws, res) = splitFromLeft n1 t0
+              in first (uws++) <$> ϝsc c (iSV sn1 uws s) t1d res
+ϝs c s (t0:ts0) (t1:ts1) = do
+    (t',s') <- ϝ c s t0 t1
+    first (t':) <$> ϝs c s' ts0 ts1
 
-{-# SCC uac #-}
-uac :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-uac c f s = ua c f s `onM` (s@>)
+ϝsc :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+ϝsc c s = ϝs c s `onM` peek s
 
--- ϝ, φ
--- & (with) is "fan out" on left 🤯
+φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+φ = undefined
 
-{-# SCC ua #-}
-ua :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-ua _ _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
-ua _ _ _ t0@TP{} t1@TP{} = eu N t0 t1
-ua _ _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
-ua _ _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
-ua _ _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
-ua c f s (TA x t0 t1) (TA _ t0' t1') = do
-    (t0ϵ, s0) <- ua c f s t0 t0'
-    (t1ϵ, s1) <- uac c f s0 t1 t1'
-    pure (TA x t0ϵ t1ϵ, s1)
-ua c _ s (QT x t0) (QT _ t1) = first (QT x) <$> us c s t0 t1
-ua _ _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
-ua _ G s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-ua _ G s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua _ G s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua _ G s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
-ua _ f _ t0@TT{} t1@TT{} = eu f t0 t1
--- fan-out; no need to substitute
-ua _ CF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua _ G s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
-ua _ G s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
-ua _ G s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
-ua _ _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
--- CF r0 l1: r0 is return being supplied as argument to l1
-ua _ CF s (RV x n r) t@Σ{} = pure (RV x n (S.insert t r), s)
-ua _ CF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
-ua c f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
-    (a',s') <- uas c f s a0 a1
-    pure undefined
-ua c f s t0 t1 | Just (TC{}, _) <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ (cs<>c) t0; ua c f s t0' t1}
-ua c f s t0 t1 | Just (TC{}, _) <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ (cs<>c) t1; ua c f s t0 t1'}
-ua _ f _ t0@QT{} t1@Σ{} = eu f t0 t1
-ua _ f _ t0@Σ{} t1@QT{} = eu f t0 t1
+-- same approach to stack variables I think?
+φs :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+φs = undefined
+
+φsc :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+φsc c s = φs c s `onM` peek s
 
 mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
 mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c G mempty r0 r1; msc c N s l0 l1} -- FIXME invert G,N
@@ -242,29 +220,34 @@ msc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc c f s = ms c f s `onM` peek s
 
 hasC = any (\t -> case unA t of Just(TC{},_) -> True; _ -> False)
+hasT = any (\case TT{} -> True; _ -> False)
 
 cc c = traverse g where g t | Just (TC{}, _) <- unA t = do {cs <- gets (tds.lo); lΒ (cs<>c) t}
                             | otherwise = pure t
 
-cap :: IM.IntMap Int -> [T a] -> TM a (Maybe (T a), [T a])
-cap r ts | Just (ts', TT _ nm) <- unsnoc ts = do
+cap :: TE a -> Ar -> [T a] -> TM a (T a, [T a])
+cap err r ts | Just (ts', TT _ nm) <- unsnoc ts = do
     n <- lT r nm
-    pure $ if (n>length ts')
-        then (Nothing, ts)
-        else (Just$Σ (loc nm) (Nm.singleton nm undefined), undefined)
-         | otherwise = pure (Nothing, ts)
+    if n>length ts'
+        then case ts of
+            SV{}:_ -> error"nyi"
+            _      -> throwError err
+        else let (ts'',a) = ts'/|n in pure (Σ (loc nm) (Nm.singleton nm a), ts'')
+         | otherwise = throwError err
 
 ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                    in msc c f (iSV sn1 uws s) t0 res
     | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
+    | hasT t0 = undefined
     | otherwise = ems f t0e t1e
   where n0=length t0; n1=length t1
 ms c f s t0e@(SV _ v0:t0) t1
     | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
                     in msc c f (iSV v0 uws s) t0 res
     | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
+    | hasT t0 = undefined
     | otherwise = ems f t0e t1
   where n0=length t0; n1=length t1
 ms c f s (t0:ts0) (t1:ts1) = do {s' <- ma c f t0 t1; msc c f (s<>s') ts0 ts1}
@@ -310,8 +293,8 @@ ma _ _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 ma _ _ (TV _ n0) t = pure (sTV n0 t)
-ma _ _ (RV _ n r) t1 | S.null r = pure (sTV n t1)
-ma c f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
+ma _ _ (Ρ _ n r) t1 | S.null r = pure (sTV n t1)
+ma c f (Ρ _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
     s <- ma c f e t1
     pure (iTV n t1 s)
 ma _ f t0 t1@TV{} = em f t0 t1
@@ -329,9 +312,6 @@ ma _ f t0@Σ{} t1@TP{} = em f t0 t1
 
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mSig c asig' tsig}
-
-us :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
-us c s (TS l0 r0) (TS l1 r1) = do {(l,s') <- usc c N s l0 l1; (r,s'') <- usc c G s' r0 r1; pure (TS l r, s'')}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
@@ -401,7 +381,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 {-# SCC cat #-}
 cat :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat c s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- usc c CF s r0 l1
+    (_, s') <- ϝsc c s r0 l1
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
@@ -412,9 +392,8 @@ fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 
 ftv, fsv, erv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
-erv l n = RV l <$> fr l n <*> pure S.empty
+erv l n = Ρ l <$> fr l n <*> pure S.empty
 
--- invariants for our inverses: pops off atomic tags.
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
 exps :: a -> TS a -> TM a (TS a)
@@ -449,8 +428,8 @@ ta b s (Pat _ as)     = do
     (t, s1) <- dU (tds b) (arit b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
-φ :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
-φ ar as = do
+an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
+an ar as = do
     (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) undefined $> (ts /| n)}) as
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
@@ -467,7 +446,7 @@ dU c e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
     al <- traverse ai ls'
-    (σ,ul) <- φ e (concat al)
+    (σ,ul) <- an e (concat al)
     (l',s') <- urs s ul; (r',s'') <- urs s' rs'
     (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
   where tss'=map pare tss
@@ -475,7 +454,7 @@ dU c e s tss = do
         rm=maximum (length<$>rs)
 
         urs sϵ [t]    = pure (t, sϵ)
-        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c G s0 tr t}
+        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; φsc c s0 tr t}
 
         pare :: TS a -> TS a
         pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
