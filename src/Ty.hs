@@ -58,11 +58,10 @@ instance Pretty a => Show (TE a) where show=show.pretty
 
 instance (Typeable a, Pretty a) => Exception (TE a) where
 
--- generalize return values
--- narrow arguments
+-- generalize, narrow, cat
 data F = N | G | CF
 
-instance Pretty F where pretty N="⦠"; pretty G="∢"; pretty CF="≬"
+instance Pretty F where pretty N="⦠"; pretty G="∢"; pretty CF="@" -- "≬"
 
 instance Show F where show=show.pretty
 
@@ -198,11 +197,13 @@ uas _ f _ [] t1 = eus f [] t1
 uac :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 uac c f s = ua c f s `onM` (s@>)
 
+-- ϝ, φ
+-- & (with) is "fan out" on left 🤯
+
 {-# SCC ua #-}
 ua :: Cs a -> F -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ua _ _ s t@(TP _ p0) (TP _ p1) | p0==p1 = pure (t, s)
-ua _ N _ t0@TP{} t1@TP{} = eu N t0 t1
-ua _ CF _ t0@TP{} t1@TP{} = eu CF t0 t1
+ua _ _ _ t0@TP{} t1@TP{} = eu N t0 t1
 ua _ _ s t@(TV _ n0) (TV _ n1) | n0 == n1 = pure (t, s)
 ua _ _ s t0 (TV _ n) = pure (t0, iTV n t0 s)
 ua _ _ s (TV _ n) t1 = pure (t1, iTV n t1 s)
@@ -213,20 +214,18 @@ ua c f s (TA x t0 t1) (TA _ t0' t1') = do
 ua c _ s (QT x t0) (QT _ t1) = first (QT x) <$> us c s t0 t1
 ua _ _ s t0@(TT _ tt0) (TT _ tt1) | tt0 == tt1 = pure (t0, s)
 ua _ G s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-ua _ N _ t0@TT{} t1@TT{} = eu N t0 t1
-ua _ CF _ t0@TT{} t1@TT{} = eu CF t0 t1
--- probably need like List(a) List(Int) to int yeah
 ua _ G s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
-ua _ CF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua _ G s (TT x n1) (Σ _ ts) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua _ G s (Σ x0 σ0) (Σ _ σ1) = pure (Σ x0 (σ0<>σ1), s)
--- TODO: when do we substitute?
+ua _ f _ t0@TT{} t1@TT{} = eu f t0 t1
+-- fan-out; no need to substitute
+ua _ CF s (Σ _ ts) (TT x n1) = pure (Σ x (Nm.insert n1 [] ts), s)
 ua _ G s t@Σ{} (RV l n r) = pure (RV l n (S.insert t r), s)
 ua _ G s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua _ G s t@TP{} (RV x n r) | S.null r = pure (RV x n (S.singleton t), s)
 ua _ _ s t@(RV _ n0 r0) (RV _ n1 r1) | n0==n1 && r0==r1 = pure (t, s)
--- CF (application): supplied return type can be narrower than function argument type
 -- CF r0 l1: r0 is return being supplied as argument to l1
+ua _ CF s (RV x n r) t@Σ{} = pure (RV x n (S.insert t r), s)
 ua _ CF s t@TT{} (RV x n r) = pure (RV x n (S.insert t r), s)
 ua c f s t0 t1 | (Just (TC _ n0, a0)) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- uas c f s a0 a1
@@ -237,7 +236,7 @@ ua _ f _ t0@QT{} t1@Σ{} = eu f t0 t1
 ua _ f _ t0@Σ{} t1@QT{} = eu f t0 t1
 
 mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
-mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c G mempty r0 r1; msc c N s l0 l1}
+mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c G mempty r0 r1; msc c N s l0 l1} -- FIXME invert G,N
 
 msc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 msc c f s = ms c f s `onM` peek s
@@ -255,8 +254,6 @@ cap r ts | Just (ts', TT _ nm) <- unsnoc ts = do
         else (Just$Σ (loc nm) (Nm.singleton nm undefined), undefined)
          | otherwise = pure (Nothing, ts)
 
--- encapsulate by arity... hm
--- ρ₀ ρ₁ `cons is length 1
 ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
@@ -282,6 +279,31 @@ mσ c f s σ0 σ1 =
     mss sϵ [] []         = pure sϵ
     mss sϵ (x:xs) (y:ys) = do {s' <- msc c f sϵ x y; mss s' xs ys}
 
+-- ≺
+na :: Cs a
+   -> T a -- ^ Supplied argument
+   -> T a -- ^ Argument according to signature
+   -> TM a (Subst a)
+na c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+    unless (σ1 `Nm.isSubmapOf` σ0)
+        (em N t0 t1) *> mσ c N mempty σ0 σ1
+na _ t0@(Σ _ σ) t1@(TT _ n) =
+    unless (n `Nm.member` σ)
+        (em N t0 t1) $> mempty
+na _ t0@TT{} t1@Σ{} = em N t0 t1
+
+ga :: Cs a
+   -> T a -- ^ Supplied return value
+   -> T a -- ^ Return value according to signature
+   -> TM a (Subst a)
+ga _ t0@(TT _ n) t1@(Σ _ σ) =
+    unless (n `Nm.member` σ)
+        (em G t0 t1) $> mempty
+ga c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+    unless (σ0 `Nm.isSubmapOf` σ1)
+        (em G t0 t1) *> mσ c G mempty σ0 σ1
+ga _ t0@Σ{} t1@TT{} = em G t0 t1
+
 {-# SCC ma #-}
 ma :: Cs a -> F -> T a -> T a -> TM a (Subst a)
 ma _ _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
@@ -293,23 +315,12 @@ ma c f (RV _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
     s <- ma c f e t1
     pure (iTV n t1 s)
 ma _ f t0 t1@TV{} = em f t0 t1
-ma c _ (QT _ ts0) (QT _ ts1) = mSig c ts0 ts1
+ma c _ (QT _ ts0) (QT _ ts1) = mSig c ts0 ts1 -- FIXME: invert focus when "subtyping"
 ma _ f t0@QT{} t1 = em f t0 t1
-ma c N t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ1 `Nm.isSubmapOf` σ0)
-        (em N t0 t1) *> mσ c N mempty σ0 σ1
-ma c G t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ0 `Nm.isSubmapOf` σ1)
-        (em G t0 t1) *> mσ c G mempty σ0 σ1
-ma _ N t0@(Σ _ σ) t1@(TT _ n) =
-    unless (n `Nm.member` σ)
-        (em N t0 t1) $> mempty
-ma _ G t0@(TT _ n) t1@(Σ _ σ) =
-    unless (n `Nm.member` σ)
-        (em G t0 t1) $> mempty
-ma _ G t0@Σ{} t1@TT{} = em G t0 t1
-ma _ N t0@TT{} t1@Σ{} = em N t0 t1
 ma _ _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
+ma c f t0@TT{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
+ma c f t0@Σ{} t1@TT{} = (case f of {N -> na; G -> ga}) c t0 t1
+ma c f t0@Σ{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
 ma c f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms c f mempty a0 a1
 ma c f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ (c<>cs) t0; ma c f t0' t1}
 ma c f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ (c<>cs) t1; ma c f t0 t1'}
