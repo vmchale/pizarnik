@@ -172,37 +172,36 @@ st f = fmap S.fromList . traverse f . S.toList
     pure (QT x (TS l' r'), s₁)
 ϝ _ _ t0 t1 = error (show (t0,t1))
 
-ϝs = sv ϝ ϝsc ϝs
-ϝsc c s = ϝs c s `onM` peek s
+ϝs=sv ϝ;ϝsc=ctx'ize ϝs
 
-sv :: (Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a))
-   -> (Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a))
-   -> (Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a))
-   -> Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-sv _ _ _ _ s [] [] = pure ([], s)
-sv _ uc _ c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
+type UC v a = Cs a -> Subst a -> v -> v -> TM a (v, Subst a)
+
+sv :: UC (T a) a -> UC (TSeq a) a
+sv _ _ s [] [] = pure ([], s)
+sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> uc c (iSV sn1 uws s) t1d res
+              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
         _  -> let (uws, res) = splitFromLeft n0 t1
-              in first (uws++) <$> uc c (iSV sn0 uws s) t0d res
-sv _ uc _ c s t0@(SV _ sn0:t0d) t1 =
+              in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
+sv u c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
         GT -> throwError$AF t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
-              in first (uws++) <$> uc c (iSV sn0 uws s) t0d res
-sv _ uc _ c s t0 t1@(SV _ sn1:t1d) =
+              in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
+sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
         LT -> throwError$AF t0 t1
         _  -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> uc c (iSV sn1 uws s) t1d res
-sv u₁ _ u c s (t0:ts0) (t1:ts1) = do
-    (t',s') <- u₁ c s t0 t1
-    first (t':) <$> u c s' ts0 ts1
+              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
+sv u c s (t0:ts0) (t1:ts1) = do
+    (t',s') <- u c s t0 t1
+    first (t':) <$> sv u c s' ts0 ts1
 
+ctx'ize us c s = us c s `onM` peek s
 
 φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
@@ -210,8 +209,7 @@ sv u₁ _ u c s (t0:ts0) (t1:ts1) = do
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 
-φs = sv φ φsc φs
-φsc c s = φs c s `onM` peek s
+φs=sv φ;φsc=ctx'ize φs
 
 mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
 mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c G mempty r0 r1; msc c N s l0 l1} -- FIXME invert G,N
