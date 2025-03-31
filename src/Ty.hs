@@ -37,14 +37,14 @@ instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
 data TE a = MF (T a) (T a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
-          | AF (TSeq a) (TSeq a)
+          | LE (TSeq a) (TSeq a)
           | PM (TSeq a) | AM (Nm a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (AF ts0 ts1) = tsc ts0$sq (pretty ts0) <+> "is not an acceptable argument to" <+> sq (pretty ts1)
+    pretty (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq (pretty ts0) <+> "and" <+> sq (pretty ts1)
     pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
     pretty (BE e)       = pretty e
     pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
@@ -188,18 +188,20 @@ sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
 sv u c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
-        GT -> throwError$AF t0 t1
+        GT -> throwError$LE t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
 sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
-        LT -> throwError$AF t0 t1
+        LT -> throwError$LE t0 t1
         _  -> let (uws, res) = splitFromLeft n1 t0
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
     first (t':) <$> sv u c s' ts0 ts1
+sv _ f _ t0 [] = throwError$LE t0 []
+sv _ f _ [] t1 = throwError$LE [] t1
 
 ctx'ize us c s = us c s `onM` peek s
 
