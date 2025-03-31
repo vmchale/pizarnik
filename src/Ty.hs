@@ -159,58 +159,58 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 
 st f = fmap S.fromList . traverse f . S.toList
 
-ϝ :: Cs a
-  -> Subst a
-  -> T a -- ^ Argument supplied (narrower than)
-  -> T a -- ^ Argument accepted
-  -> TM a (T a, Subst a)
+-- "subsumes"
+ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
--- FIXME occurs check lol
+-- FIXME occurs check
 ϝ _ s (TV _ n) t = pure (t, iTV n t s)
 ϝ _ s t (TV _ n) = pure (t, iTV n t s)
 ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
-    -- contravariance of subtyping w.r.t. function arrow
+    -- contravariant
     (l',s₀) <- ϝs c s l1 l0
     (r',s₁) <- ϝs c s₀ r0 r1
     pure (QT x (TS l' r'), s₁)
 ϝ _ _ t0 t1 = error (show (t0,t1))
 
-ϝs :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-ϝs _ s [] [] = pure ([], s)
-ϝs c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
+ϝs = sv ϝ ϝsc ϝs
+ϝsc c s = ϝs c s `onM` peek s
+
+sv :: (Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a))
+   -> (Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a))
+   -> (Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a))
+   -> Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+sv _ _ _ _ s [] [] = pure ([], s)
+sv _ uc _ c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> ϝsc c (iSV sn1 uws s) t1d res
+              in first (uws++) <$> uc c (iSV sn1 uws s) t1d res
         _  -> let (uws, res) = splitFromLeft n0 t1
-              in first (uws++) <$> ϝsc c (iSV sn0 uws s) t0d res
-ϝs c s t0@(SV _ sn0:t0d) t1 =
+              in first (uws++) <$> uc c (iSV sn0 uws s) t0d res
+sv _ uc _ c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
         GT -> throwError$AF t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
-              in first (uws++) <$> ϝsc c (iSV sn0 uws s) t0d res
-ϝs c s t0 t1@(SV _ sn1:t1d) =
+              in first (uws++) <$> uc c (iSV sn0 uws s) t0d res
+sv _ uc _ c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
         LT -> throwError$AF t0 t1
         _  -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> ϝsc c (iSV sn1 uws s) t1d res
-ϝs c s (t0:ts0) (t1:ts1) = do
-    (t',s') <- ϝ c s t0 t1
-    first (t':) <$> ϝs c s' ts0 ts1
+              in first (uws++) <$> uc c (iSV sn1 uws s) t1d res
+sv u₁ _ u c s (t0:ts0) (t1:ts1) = do
+    (t',s') <- u₁ c s t0 t1
+    first (t':) <$> u c s' ts0 ts1
 
-ϝsc :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-ϝsc c s = ϝs c s `onM` peek s
 
 φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-φ = undefined
+φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
+φ _ s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
+φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
+φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 
--- same approach to stack variables I think?
-φs :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
-φs = undefined
-
-φsc :: Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (TSeq a, Subst a)
+φs = sv φ φsc φs
 φsc c s = φs c s `onM` peek s
 
 mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
