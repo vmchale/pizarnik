@@ -1,7 +1,9 @@
 module Nm.Map ( NmMap (..)
               , insert
               , member
+              , Nm.Map.null
               , singleton
+              , empty
               , intersectionWith
               , isSubmapOf
               , elems
@@ -38,6 +40,12 @@ singleton (Nm n (U i) _) x = NmMap (IM.singleton i x) (IM.singleton i n)
 
 member :: Nm a -> NmMap b -> Bool
 member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
+
+empty :: NmMap a
+empty = NmMap IM.empty IM.empty
+
+null :: NmMap a -> Bool
+null (NmMap x _) = IM.null x
 
 isSubmapOf :: NmMap a -> NmMap b -> Bool
 isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y

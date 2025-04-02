@@ -14,12 +14,14 @@ import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
+import qualified Data.IntSet                      as IS
 import           Data.List                        (unsnoc)
 import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
 import qualified Nm.Map                           as Nm
+import qualified Nm.Set                           as NmSet
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
 import           Ty.Clone
@@ -28,6 +30,7 @@ infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
+infixr 7 @<>
 
 type Ar = IM.IntMap Int
 
@@ -36,7 +39,7 @@ data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
-data TE a = MF (T a) (T a) F | MSF (TSeq a) (TSeq a) F | BE (BE a)
+data TE a = MF (T a) (T a) F | MSF (TSeq a) (TSeq a) F | BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
           | PM (TSeq a) | AM (Nm a)
 
@@ -48,6 +51,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
     pretty (BE e)       = pretty e
     pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+    pretty (O t₀ t₁)    = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -80,7 +84,7 @@ instance Show (Subst a) where show=show.pretty
 instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
 instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
-mapTV f (Subst tv sv) = Subst (f tv) sv; mapSV f (Subst tv sv) = Subst tv (f sv)
+mapTV f (Subst v s) = Subst (f v) s; mapSV f (Subst v s) = Subst v (f s)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
@@ -150,20 +154,36 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> s\-u@>t'
-(@>) s (Ρ l n@(Nm _ (U u) _) r) =
+(@>) s (Ρ l n@(Nm _ (U u) _) a r) =
     case IM.lookup u (tvs s) of
-        Nothing -> Ρ l n <$> st (s@>) r
+        -- FIXME: check for clashes if we substitute universal... move over to tag-section?
+        -- use maxView on set to pick TVs
+        Nothing -> Ρ l n <$> traverse (s@@) a <*> st (s@>) r
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
 
 st f = fmap S.fromList . traverse f . S.toList
 
+occ :: T a -> IS.IntSet
+occ (TV _ n)        = NmSet.singleton n
+occ (TA _ t0 t1)    = occ t0<>occ t1
+occ TP{}            = IS.empty
+occ (TI _ t)        = occ t
+occ (UU _ ts)       = occ@<>ts
+occ (QT _ (TS l r)) = occ@<>l <> occ@<>r
+occ TT{}            = IS.empty
+occ TC{}            = IS.empty
+occ SV{}            = IS.empty
+occ (Σ _ a)         = foldMap (occ@<>) a
+occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>(S.toList s)
+
 -- "subsumes"
 ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 -- FIXME occurs check
-ϝ _ s (TV _ n) t = pure (t, iTV n t s)
+ϝ _ s (TV _ n) t | n `NmSet.member` occ t = error"error message not yet implemented."
+                 | otherwise = pure (t, iTV n t s)
 ϝ _ s t (TV _ n) = pure (t, iTV n t s)
 ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
@@ -200,16 +220,25 @@ sv u c s t0 t1@(SV _ sn1:t1d) =
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
     first (t':) <$> sv u c s' ts0 ts1
-sv _ f _ t0 [] = throwError$LE t0 []
-sv _ f _ [] t1 = throwError$LE [] t1
+sv _ _ _ t0 [] = throwError$LE t0 []
+sv _ _ _ [] t1 = throwError$LE [] t1
 
 ctx'ize us c s = us c s `onM` peek s
 
+-- ψ to pick apart RVs
+
+-- fan out to principal type
 φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
 φ _ s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
+φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+                            | otherwise = pure (t, iTV n1 t s)
+φ _ _ t0@Σ{} t1@Ρ{} = error (show (t0,t1))
+φ _ _ (Ρ _ ρ σ a) t@TV{} = undefined
+φ _ _ t0 t1 = error (show (t0,t1))
+-- should ρ back-substitute hm
 
 φs=sv φ;φsc=ctx'ize φs
 
@@ -293,8 +322,8 @@ ma _ _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
 ma _ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 ma _ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 ma _ _ (TV _ n0) t = pure (sTV n0 t)
-ma _ _ (Ρ _ n r) t1 | S.null r = pure (sTV n t1)
-ma c f (Ρ _ n r) t1 | Just (e, q) <- S.minView r, S.null q = do
+ma _ _ (Ρ _ n a r) t1 | Nm.null a&&S.null r = pure (sTV n t1)
+ma c f (Ρ _ n a r) t1 | Just (e, q) <- S.minView r, Nm.null a&&S.null q = do
     s <- ma c f e t1
     pure (iTV n t1 s)
 ma _ f t0 t1@TV{} = em f t0 t1
@@ -305,10 +334,12 @@ ma c f t0@TT{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
 ma c f t0@Σ{} t1@TT{} = (case f of {N -> na; G -> ga}) c t0 t1
 ma c f t0@Σ{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
 ma c f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms c f mempty a0 a1
-ma c f t0 t1 | Just{} <- unA t0 = do {cs <- gets (tds.lo); t0' <- lΒ (c<>cs) t0; ma c f t0' t1}
-ma c f t0 t1 | Just{} <- unA t1 = do {cs <- gets (tds.lo); t1' <- lΒ (c<>cs) t1; ma c f t0 t1'}
+ma c f t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; ma c f t0' t1}
+ma c f t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; ma c f t0 t1'}
 ma _ f t0@TP{} t1@Σ{} = em f t0 t1
 ma _ f t0@Σ{} t1@TP{} = em f t0 t1
+
+βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mSig c asig' tsig}
@@ -392,7 +423,7 @@ fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 
 ftv, fsv, erv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
-erv l n = Ρ l <$> fr l n <*> pure S.empty
+erv l n = Ρ l <$> fr l n <*> pure Nm.empty <*> pure S.empty
 
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
@@ -470,3 +501,6 @@ tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
 
 onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
+
+(@<>) :: (Monoid m, Foldable f) => (a -> m) -> f a -> m
+(@<>) = foldMap

@@ -18,6 +18,7 @@ import qualified Data.Set      as S
 import qualified Data.Text     as T
 import           Nm
 import           Nm.Map        (NmMap, nmlist)
+import qualified Nm.Map        as Nm
 import           Pr
 import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, encloseSep, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate, space,
                                 tupled, (<+>))
@@ -97,7 +98,8 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          -- TODO: scope RV by "arms" so that { J(a) `a } and { J(Int) `a } produce a=Int
          -- (still allow a, b etc. as "heads"...)
-         | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, uS :: S.Set (T a) }
+         -- hm need some examples
+         | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a), uS :: S.Set (T a) }
          | UU { tL :: a, uts :: [T a] }
 
 unA :: T a -> Maybe (T a, [T a])
@@ -109,7 +111,7 @@ instance Eq (T a) where
     (==) (TC _ n0) (TC _ n1) = n0==n1; (==) (TI _ t0) (TI _ t1) = t0==t1
     (==) (TA _ t0 t1) (TA _ t0' t1') = t0==t0'&&t1==t1'
     (==) (QT _ ts0) (QT _ ts1) = ts0==ts1; (==) (Σ _ w0) (Σ _ w1) = w0==w1
-    (==) (Ρ _ n0 ρ0) (Ρ _ n1 ρ1) = n0==n1&&ρ0==ρ1
+    (==) (Ρ _ n0 σ0 ρ0) (Ρ _ n1 σ1 ρ1) = n0==n1&&σ0==σ1&&ρ0==ρ1
     (==) UU{} _ = undefined; (==) _ UU{} = undefined
     (==) _ _ = False
 
@@ -119,7 +121,7 @@ instance Ord (T a) where
     compare (TC _ n0) (TC _ n1) = compare n0 n1; compare (TI _ t0) (TI _ t1) = compare t0 t1
     compare (QT _ t0) (QT _ t1) = compare t0 t1; compare (Σ _ as) (Σ _ as') = compare as as'
     compare (TA _ t0 t0') (TA _ t1 t1') = compare [t0,t1] [t0',t1']
-    compare (Ρ _ n0 ρ0) (Ρ _ n1 ρ1) = case compare n0 n1 of EQ -> compare ρ0 ρ1; o -> o
+    compare (Ρ _ n0 σ0 ρ0) (Ρ _ n1 σ1 ρ1) = case compare n0 n1 of EQ -> case compare σ0 σ1 of {EQ -> compare ρ0 ρ1; o -> o}; o -> o
     compare UU{} _ = undefined; compare _ UU{} = undefined
     compare TV{} _ = GT; compare _ TV{} = LT; compare TP{} _ = GT; compare _ TP{} = LT
     compare TT{} _ = GT; compare _ TT{} = LT; compare SV{} _ = GT; compare _ SV{} = LT
@@ -166,8 +168,8 @@ instance Pretty (T a) where
     pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>nmlist ts)
     pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
     pretty (TI _ t) = pretty t <+> "⁻¹"
-    pretty (Ρ _ n s) | S.null s = pretty n
-    pretty (Ρ _ n s) = parens (pretty n <+> "⊃" <+> brsep ", " (pretty<$>S.toList s)) where brsep = encloseSep "{" "}"
+    pretty (Ρ _ n σ s) | Nm.null σ&&S.null s = pretty n
+    pretty (Ρ _ n σ s) | Nm.null σ = parens (pretty n <+> "⊃" <+> brsep ", " (pretty<$>S.toList s)) where brsep = encloseSep "{" "}"
     pretty (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (pretty<$>t)
 
 pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
