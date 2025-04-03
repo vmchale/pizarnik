@@ -306,14 +306,18 @@ lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ t0@TT{} t1@Σ{} = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ (TV _ n) t = pure (sTV n t)
-lt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0 -- TODO is this inverting subsumption properly each time
+lt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0 -- TODO is this what we want to invert subsumption
+lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
+lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
+lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
 lt _ t0 t1 = error (show (t0,t1))
 -- can this be more lenient with stack variables? (a -- 'B,'A a -- 'C)
 -- a (inferred) does not match 'A a (sig)? maybe it should idk
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
--- TODO: shouldn't it be inverting focus each time
+-- left: inferred can be more general than sig (propagate)
+-- right: inferred must be narrower than sig
 mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
 mTS c (TS l0 r0) (TS l1 r1) = do {s <- pvc (\cϵ t0 t1 -> lt cϵ t1 t0) c mempty l0 l1; pv lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
