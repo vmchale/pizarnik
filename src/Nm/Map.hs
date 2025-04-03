@@ -1,6 +1,7 @@
 module Nm.Map ( NmMap (..)
               , insert
               , member
+              , Nm.Map.lookup
               , Nm.Map.null
               , singleton
               , empty
@@ -40,6 +41,9 @@ singleton (Nm n (U i) _) x = NmMap (IM.singleton i x) (IM.singleton i n)
 
 member :: Nm a -> NmMap b -> Bool
 member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
+
+lookup :: Nm a -> NmMap b -> Maybe b
+lookup (Nm _ (U i) _) (NmMap x _) = IM.lookup i x
 
 empty :: NmMap a
 empty = NmMap IM.empty IM.empty

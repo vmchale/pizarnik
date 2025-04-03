@@ -39,19 +39,21 @@ data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
-data TE a = MF (T a) (T a) F | MSF (TSeq a) (TSeq a) F | BE (BE a) | O (T a) (T a)
+data TE a = MSF (TSeq a) (TSeq a) F | BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
+          | Subsumesn't (T a) (T a)
           | PM (TSeq a) | AM (Nm a)
 
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq (pretty ts0) <+> "and" <+> sq (pretty ts1)
-    pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
-    pretty (BE e)       = pretty e
-    pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
-    pretty (O t₀ t₁)    = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
+    pretty (LE ts0 ts1)        = tsc ts0$"length mismatch:" <+> sq (pretty ts0) <+> "and" <+> sq (pretty ts1)
+    pretty (AM n)              = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
+    pretty (BE e)              = pretty e
+    pretty (PM ts)             = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+    pretty (O t₀ t₁)           = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
+    pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -60,10 +62,9 @@ instance Pretty a => Show (TE a) where show=show.pretty
 
 instance (Typeable a, Pretty a) => Exception (TE a) where
 
--- generalize, narrow, cat
-data F = N | G | CF
+data F = LF | RF
 
-instance Pretty F where pretty N="⦠"; pretty G="∢"; pretty CF="@" -- "≬"
+instance Pretty F where pretty LF="⦠"; pretty RF="∢" -- "≬"
 
 instance Show F where show=show.pretty
 
@@ -93,8 +94,8 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 ems :: F -> TSeq a -> TSeq a -> TM a b
 ems f t0 t1 = throwError (MSF t0 t1 f)
 
-em :: F -> T a -> T a -> TM a b
-em f t0 t1 = throwError (MF t0 t1 f)
+sf :: T a -> T a -> TM a b
+sf t0 t1 = throwError (Subsumesn't t0 t1)
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -176,7 +177,7 @@ occ TT{}            = IS.empty
 occ TC{}            = IS.empty
 occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
-occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>(S.toList s)
+occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 
 -- "subsumes"
 ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -196,6 +197,7 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>(S.toList s)
 
 type UC v a = Cs a -> Subst a -> v -> v -> TM a (v, Subst a)
 
+-- 𝜐 upsilon
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
 sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
@@ -227,7 +229,12 @@ ctx'ize us c s = us c s `onM` peek s
 
 -- ψ to pick apart RVs
 
--- fan out to principal type
+nρ x n@(Nm t _ l) s a = do
+    n' <- fr l t
+    let t'=Ρ x n' s a
+    pure (t', iTV n t')
+
+-- fan out
 φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
 φ _ s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
@@ -235,114 +242,83 @@ ctx'ize us c s = us c s `onM` peek s
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
-φ _ _ t0@Σ{} t1@Ρ{} = error (show (t0,t1))
 φ _ _ (Ρ _ ρ σ a) t@TV{} = undefined
-φ _ _ t0 t1 = error (show (t0,t1))
--- should ρ back-substitute hm
+φ c s (Σ _ as) (Ρ x n σ a) = do
+    (ς, s') <- φσ c s x σ as
+    (n',g) <- nρ x n (σ<>as<>ς) a
+    pure (n', g s')
+φ _ s t@TP{} (Ρ x n σ a) = do
+    (n',g) <- nρ x n σ (S.insert t a)
+    pure (n',g s)
+φ _ s t@TV{} (Ρ x n σ a) = do
+    (n',g) <- nρ x n σ (S.insert t a)
+    pure (n',g s)
+φ _ s (TT _ tt) (Ρ x n σ a) =
+    case Nm.lookup tt σ of
+        Just (_:_) -> error "error message not implemented."
+        _ -> do
+            (n',g) <- nρ x n (Nm.insert tt [] σ) a
+            pure (n',g s)
+
+φσ c s l σ0 σ1 =
+    φss s (Nm.toList l ς)
+  where
+    ς=Nm.intersectionWith (,) σ0 σ1
+
+    φss sϵ []              = pure (Nm.empty, sϵ)
+    φss sϵ ((n,(x,y)):xys) = do {(xy,s') <- φsc c sϵ x y; first (Nm.insert n xy) <$> (φss s' xys)}
 
 φs=sv φ;φsc=ctx'ize φs
 
-mSig :: Cs a -> TS a -> TS a -> TM a (Subst a)
-mSig c (TS l0 r0) (TS l1 r1) = do {s <- ms c G mempty r0 r1; msc c N s l0 l1} -- FIXME invert G,N
-
-msc :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-msc c f s = ms c f s `onM` peek s
-
-hasC = any (\t -> case unA t of Just(TC{},_) -> True; _ -> False)
-hasT = any (\case TT{} -> True; _ -> False)
-
-cc c = traverse g where g t | Just (TC{}, _) <- unA t = do {cs <- gets (tds.lo); lΒ (cs<>c) t}
-                            | otherwise = pure t
-
-cap :: TE a -> Ar -> [T a] -> TM a (T a, [T a])
-cap err r ts | Just (ts', TT _ nm) <- unsnoc ts = do
-    n <- lT r nm
-    if n>length ts'
-        then case ts of
-            SV{}:_ -> error"nyi"
-            _      -> throwError err
-        else let (ts'',a) = ts'/|n in pure (Σ (loc nm) (Nm.singleton nm a), ts'')
-         | otherwise = throwError err
-
-ms :: Cs a -> F -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-ms c f s t0e@(SV{}:t0) t1e@((SV _ sn1):t1)
-    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-                   in msc c f (iSV sn1 uws s) t0 res
-    | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
-    | hasT t0 = undefined
-    | otherwise = ems f t0e t1e
-  where n0=length t0; n1=length t1
-ms c f s t0e@(SV _ v0:t0) t1
-    | n0<=n1 =  let (uws, res) = splitFromLeft n0 t1
-                    in msc c f (iSV v0 uws s) t0 res
-    | hasC t1 = do {t1' <- cc c t1; ms c f s t0e t1'}
-    | hasT t0 = undefined
-    | otherwise = ems f t0e t1
-  where n0=length t0; n1=length t1
-ms c f s (t0:ts0) (t1:ts1) = do {s' <- ma c f t0 t1; msc c f (s<>s') ts0 ts1}
-ms _ _ s [] [] = pure s
-ms _ f _ ts0 [] = ems f ts0 []
-ms _ f _ [] ts1 = ems f [] ts1
-
-mσ c f s σ0 σ1 =
+mσ c s σ0 σ1 =
     let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
     in mss s t0s t1s
   where
     mss sϵ [] []         = pure sϵ
-    mss sϵ (x:xs) (y:ys) = do {s' <- msc c f sϵ x y; mss s' xs ys}
+    mss sϵ (x:xs) (y:ys) = do {s' <- pvc lt c sϵ x y; mss s' xs ys}
 
--- ≺
-na :: Cs a
-   -> T a -- ^ Supplied argument
-   -> T a -- ^ Argument according to signature
-   -> TM a (Subst a)
-na c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+pvc u c s = pv u c s `onM` peek s
+
+pv :: (Cs a -> T a -> T a -> TM a (Subst a))
+   -> Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+pv u c s t0e@(SV{}:t0) t1e@(SV _ n:t1)
+    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
+               in pvc u c (iSV n uws s) t0 res
+    -- TODO: eat tags/constructors, β-expand
+    | otherwise = throwError$LE t0e t1e
+  where n0=length t0;n1=length t1
+pv u c s t0e@(SV _ n:t0) t1
+    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
+               in pvc u c (iSV n uws s) t0 res
+    | otherwise = throwError$LE t0e t1
+  where n0=length t0;n1=length t1
+    -- TODO: s<>s'? do we want to check overlap?
+pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
+pv _ _ _ [] [] = pure mempty
+pv _ _ _ t0 [] = throwError$LE t0 []
+pv _ _ _ [] t1 = throwError$LE [] t1
+
+lt :: Cs a -> T a -> T a -> TM a (Subst a)
+lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (em N t0 t1) *> mσ c N mempty σ0 σ1
-na _ t0@(Σ _ σ) t1@(TT _ n) =
+        (sf t0 t1) *> mσ c mempty σ0 σ1
+lt _ t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
-        (em N t0 t1) $> mempty
-na _ t0@TT{} t1@Σ{} = em N t0 t1
-
-ga :: Cs a
-   -> T a -- ^ Supplied return value
-   -> T a -- ^ Return value according to signature
-   -> TM a (Subst a)
-ga _ t0@(TT _ n) t1@(Σ _ σ) =
-    unless (n `Nm.member` σ)
-        (em G t0 t1) $> mempty
-ga c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ0 `Nm.isSubmapOf` σ1)
-        (em G t0 t1) *> mσ c G mempty σ0 σ1
-ga _ t0@Σ{} t1@TT{} = em G t0 t1
-
-{-# SCC ma #-}
-ma :: Cs a -> F -> T a -> T a -> TM a (Subst a)
-ma _ _ (TP _ p0) (TP _ p1) | p0==p1 = pure mempty
-ma _ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
-ma _ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-ma _ _ (TV _ n0) t = pure (sTV n0 t)
-ma _ _ (Ρ _ n a r) t1 | Nm.null a&&S.null r = pure (sTV n t1)
-ma c f (Ρ _ n a r) t1 | Just (e, q) <- S.minView r, Nm.null a&&S.null q = do
-    s <- ma c f e t1
-    pure (iTV n t1 s)
-ma _ f t0 t1@TV{} = em f t0 t1
-ma c _ (QT _ ts0) (QT _ ts1) = mSig c ts0 ts1 -- FIXME: invert focus when "subtyping"
-ma _ f t0@QT{} t1 = em f t0 t1
-ma _ _ (TC _ n0) (TC _ n1) | n0==n1 = pure mempty
-ma c f t0@TT{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
-ma c f t0@Σ{} t1@TT{} = (case f of {N -> na; G -> ga}) c t0 t1
-ma c f t0@Σ{} t1@Σ{} = (case f of {N -> na; G -> ga}) c t0 t1
-ma c f t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms c f mempty a0 a1
-ma c f t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; ma c f t0' t1}
-ma c f t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; ma c f t0 t1'}
-ma _ f t0@TP{} t1@Σ{} = em f t0 t1
-ma _ f t0@Σ{} t1@TP{} = em f t0 t1
+        (sf t0 t1) $> mempty
+lt _ t0@TT{} t1@Σ{} = sf t0 t1
+lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+lt _ (TV _ n) t = pure (sTV n t)
+lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
+-- can this be more lenient with stack variables? (a -- 'B,'A a -- 'C)
+-- a (inferred) does not match 'A a (sig)? maybe it should idk
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
+mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
+mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv lt c mempty r0 r1; pvc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1}
+
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc c s asig tsig = do {asig' <- s@*asig; mSig c asig' tsig}
+mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
