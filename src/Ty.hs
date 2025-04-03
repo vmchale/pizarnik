@@ -39,7 +39,7 @@ data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
-data TE a = MSF (TSeq a) (TSeq a) F | BE (BE a) | O (T a) (T a)
+data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
           | Subsumesn't (T a) (T a)
           | PM (TSeq a) | AM (Nm a)
@@ -54,6 +54,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (PM ts)             = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
     pretty (O t₀ t₁)           = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
     pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
+    -- also ⊁
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -90,9 +91,6 @@ iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) 
 sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
-
-ems :: F -> TSeq a -> TSeq a -> TM a b
-ems f t0 t1 = throwError (MSF t0 t1 f)
 
 sf :: T a -> T a -> TM a b
 sf t0 t1 = throwError (Subsumesn't t0 t1)
@@ -292,7 +290,6 @@ pv u c s t0e@(SV _ n:t0) t1
                in pvc u c (iSV n uws s) t0 res
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
-    -- TODO: s<>s'? do we want to check overlap?
 pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
 pv _ _ _ [] [] = pure mempty
 pv _ _ _ t0 [] = throwError$LE t0 []
@@ -305,17 +302,21 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
 lt _ t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
         (sf t0 t1) $> mempty
+lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ t0@TT{} t1@Σ{} = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ (TV _ n) t = pure (sTV n t)
-lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
+lt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0 -- TODO is this inverting subsumption properly each time
+lt _ t0 t1 = error (show (t0,t1))
 -- can this be more lenient with stack variables? (a -- 'B,'A a -- 'C)
 -- a (inferred) does not match 'A a (sig)? maybe it should idk
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
+-- TODO: shouldn't it be inverting focus each time
 mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
-mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv lt c mempty r0 r1; pvc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1}
+mTS c (TS l0 r0) (TS l1 r1) = do {s <- pvc (\cϵ t0 t1 -> lt cϵ t1 t0) c mempty l0 l1; pv lt c s r0 r1 $> s}
+-- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
@@ -440,9 +441,6 @@ an ar as = do
     (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) undefined $> (ts /| n)}) as
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
-
-ap :: a -> Int -> TM a (TSeq a)
-ap l n = traverse (\i -> ftv l ("a"<>pᵤ i)) [1..n]
 
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
