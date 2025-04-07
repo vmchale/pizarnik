@@ -11,7 +11,7 @@ import           Control.Monad                    (unless, when, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
-import           Data.Foldable                    (traverse_)
+import           Data.Foldable                    (fold, traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -240,7 +240,9 @@ nρ x n@(Nm t _ l) s a = do
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
-φ _ _ (Ρ _ ρ σ a) t@TV{} = undefined
+φ _ s (Ρ x n σ a) t@TV{} = do
+    (n',g) <- nρ x n σ (S.insert t a)
+    pure (n', g s)
 φ c s (Σ _ as) (Ρ x n σ a) = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- nρ x n (σ<>as<>ς) a
@@ -310,8 +312,7 @@ lt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0 -- TODO is this what we want to inver
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
-lt c (Σ _ ss) (Ρ _ n σ a) =
-    pure undefined
+lt c (Σ _ ss) (Ρ _ _ σ _) = mσ c mempty ss σ
 lt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
 lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt _ t0 t1 = error (show (t0,t1))

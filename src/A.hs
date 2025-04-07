@@ -20,7 +20,7 @@ import           Nm
 import           Nm.Map        (NmMap, nmlist)
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, encloseSep, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate, space,
+import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, pipe, punctuate, space,
                                 tupled, (<+>))
 
 infixl 9 <:>
@@ -165,14 +165,26 @@ tunroll = flip tg [] where tg (TA _ t t') s = tg t (t':s)
 instance Pretty (T a) where
     pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
     pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])<$>nmlist ts)
+    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (pNM (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])) ts)
     pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
     pretty (TI _ t) = pretty t <+> "⁻¹"
-    pretty (Ρ _ n σ s) | Nm.null σ&&S.null s = pretty n
-    pretty (Ρ _ n σ s) | Nm.null σ = parens (pretty n <+> "⊃" <+> brsep ", " (pretty<$>S.toList s)) where brsep = encloseSep "{" "}"
+    pretty (Ρ _ n σ s) | Nm.null σ = pρ n (pa s)
+    pretty (Ρ _ n σ s) | S.null s = pρ n (pΡ σ)
+    pretty (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:(pa s)))
     pretty (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (pretty<$>t)
 
+pρ n [] = pretty n
+pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
+
+pa :: S.Set (T a) -> [Doc ann]
+pa = punctuate ", ".map pretty.S.toList
+
 pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
+
+pΡ :: NmMap (TSeq a) -> [Doc ann]
+pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map pretty t)})
+
+pNM g = map g . nmlist
 
 instance Show (T a) where show=show.pretty
 
