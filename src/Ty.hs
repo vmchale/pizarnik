@@ -95,8 +95,8 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 (\-) s u = mapTV (IM.delete u) s
 
 sf, gf :: T a -> T a -> TM a b
-sf t0 t1 = throwError (Subsumesn't t0 t1)
-gf t0 t1 = throwError (GF t0 t1)
+sf t0 t1 = throwError$Subsumesn't t0 t1
+gf t0 t1 = throwError$GF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -180,12 +180,15 @@ occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
 occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 
+roll th a = foldr (\t₀ -> TA (tL t₀) t₀) th a
+
 -- "subsumes"
 ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 ϝ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                      | otherwise = pure (t1, iTV n t1 s)
-ϝ _ s t (TV _ n) = pure (t, iTV n t s)
+ϝ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
+                     | otherwise = pure (t0, iTV n t0 s)
 ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
     (l',s₀) <- ϝs c s l1 l0
@@ -193,7 +196,7 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
     pure (QT x (TS l' r'), s₁)
 ϝ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- ϝs c s a0 a1
-    pure (foldr (\t₀ -> TA (tL t₀) t₀) th a',s')
+    pure (roll th a',s')
 ϝ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; ϝ c s t0' t1}
 ϝ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; ϝ c s t0 t1'}
 
@@ -246,6 +249,10 @@ nρ n@(Nm t _ l) s a = do
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
+φ _ s t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
+                          | otherwise = pure (t1, iTV n t1 s)
+φ _ s t0@QT{} t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
+                          | otherwise = pure (t0, iTV n t0 s)
 φ _ s (Ρ _ n σ a) t@TV{} = do
     (n',g) <- nρ n σ (S.insert t a)
     pure (n', g s)
@@ -297,8 +304,8 @@ pv u c s t0e@(SV _ n:t0) t1
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
 pv u c s t0 t1e@(SV _ n:t1)
-    | n0>=n1 = let (uws, res) = splitFromLeft n1 t1
-               in pvc u c (iSV n uws s) t0 res
+    | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
+               in pvc u c (iSV n uws s) res t1
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
@@ -350,8 +357,9 @@ lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0 a) t1@(Σ _ σ1)
     | σ0 `Nm.isSubmapOf` σ1 && S.null a = mσ lt c σ0 σ1
-    -- wait (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
+    -- FIXME (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
     | otherwise = sf t0 t1
+lt _ t0@TV{} (Ρ _ _ _ a) | t0 `S.member` a = pure mempty
 lt _ t0 t1 = sf t0 t1
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
