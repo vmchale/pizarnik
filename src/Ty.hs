@@ -11,7 +11,7 @@ import           Control.Monad                    (unless, when, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
 import           Data.Bifunctor                   (first, second)
-import           Data.Foldable                    (fold, traverse_)
+import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -41,9 +41,10 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0
 
 data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
-          | Subsumesn't (T a) (T a)
+          | Subsumesn't (T a) (T a) | GF (T a) (T a)
           | PM (TSeq a) | AM (Nm a)
 
+{-# SCC tLs #-}
 tLs :: TSeq a -> a
 tLs = tL.head
 
@@ -54,7 +55,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (PM ts)             = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
     pretty (O t₀ t₁)           = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
     pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
-    -- also ⊁
+    pretty (GF t0 t1)          = tc t0$pretty t0 <+> "⊁" <+> pretty t1
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -92,8 +93,9 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-sf :: T a -> T a -> TM a b
+sf, gf :: T a -> T a -> TM a b
 sf t0 t1 = throwError (Subsumesn't t0 t1)
+gf t0 t1 = throwError (GF t0 t1)
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -180,7 +182,6 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 -- "subsumes"
 ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
--- FIXME occurs check
 ϝ _ s (TV _ n) t | n `NmSet.member` occ t = error"error message not yet implemented."
                  | otherwise = pure (t, iTV n t s)
 ϝ _ s t (TV _ n) = pure (t, iTV n t s)
@@ -189,7 +190,6 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
     (l',s₀) <- ϝs c s l1 l0
     (r',s₁) <- ϝs c s₀ r0 r1
     pure (QT x (TS l' r'), s₁)
-ϝ _ _ t0 t1 = error (show (t0,t1))
 
 ϝs=sv ϝ;ϝsc=ctx'ize ϝs
 
@@ -214,14 +214,14 @@ sv u c s t0@(SV _ sn0:t0d) t1 =
 sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
-        LT -> throwError$LE t0 t1
+        LT -> throwError$LE t1 t0
         _  -> let (uws, res) = splitFromLeft n1 t0
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
     first (t':) <$> sv u c s' ts0 ts1
 sv _ _ _ t0 [] = throwError$LE t0 []
-sv _ _ _ [] t1 = throwError$LE [] t1
+sv _ _ _ [] t1 = throwError$LE t1 []
 
 ctx'ize us c s = us c s `onM` peek s
 
@@ -270,20 +270,20 @@ nρ x n@(Nm t _ l) s a = do
 
 φs=sv φ;φsc=ctx'ize φs
 
-mσ c s σ0 σ1 =
+mσ u c s σ0 σ1 =
     let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
     in mss s t0s t1s
   where
     mss sϵ [] []         = pure sϵ
-    mss sϵ (x:xs) (y:ys) = do {s' <- pvc lt c sϵ x y; mss s' xs ys}
+    mss sϵ (x:xs) (y:ys) = do {s' <- pvc u c sϵ x y; mss s' xs ys}
 
 pvc u c s = pv u c s `onM` peek s
 
 pv :: (Cs a -> T a -> T a -> TM a (Subst a))
    -> Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-pv u c s t0e@(SV{}:t0) t1e@(SV _ n:t1)
+pv u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-               in pvc u c (iSV n uws s) t0 res
+               in pvc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
     -- TODO: eat tags/constructors, β-expand
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
@@ -292,38 +292,59 @@ pv u c s t0e@(SV _ n:t0) t1
                in pvc u c (iSV n uws s) t0 res
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
+pv u c s t0 t1e@(SV _ n:t1)
+    | n0>=n1 = let (uws, res) = splitFromLeft n1 t1
+               in pvc u c (iSV n uws s) t0 res
+    | otherwise = throwError$LE t1e t0
+  where n0=length t0; n1=length t1
 pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
 pv _ _ _ [] [] = pure mempty
 pv _ _ _ t0 [] = throwError$LE t0 []
-pv _ _ _ [] t1 = throwError$LE [] t1
+pv _ _ _ [] t1 = throwError$LE t1 []
 
+-- ≻
+gt :: Cs a -> T a -> T a -> TM a (Subst a)
+gt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
+    unless (σ1 `Nm.isSubmapOf` σ0)
+        (gf t0 t1) *> mσ gt c mempty σ0 σ1
+gt _ t0@(Σ _ σ) t1@(TT _ n) =
+    unless (n `Nm.member` σ)
+        (gf t0 t1) $> mempty
+gt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
+gt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+gt _ (TV _ n) t = pure (sTV n t)
+gt _ t0@TT{} t1@Σ{} = gf t0 t1
+gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
+gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; gt c t0' t1}
+gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; gt c t0 t1'}
+gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
+-- gt c (Σ _ a) (Ρ _ _ σ _) = mσ c mempty a σ
+gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
+-- lt _ (Ρ _ n σ a) t@TV{} | Nm.null σ && S.null a = pure (sTV n t)
+-- lt _ (Ρ _ n σ a) t@Σ{} | Nm.null σ && S.null a = pure (sTV n t)
+gt _ t0 t1 = gf t0 t1
+
+-- ≺
 lt :: Cs a -> T a -> T a -> TM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ1 `Nm.isSubmapOf` σ0)
-        (sf t0 t1) *> mσ c mempty σ0 σ1
-lt _ t0@(Σ _ σ) t1@(TT _ n) =
-    unless (n `Nm.member` σ)
-        (sf t0 t1) $> mempty
+    unless (σ0 `Nm.isSubmapOf` σ1)
+        (sf t0 t1) *> mσ lt c mempty σ0 σ1
 lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
-lt _ t0@TT{} t1@Σ{} = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ (TV _ n) t = pure (sTV n t)
-lt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0 -- TODO is this what we want to invert subsumption
+lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
+lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
-lt c (Σ _ ss) (Ρ _ _ σ _) = mσ c mempty ss σ
-lt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
-lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
-lt _ t0 t1 = error (show (t0,t1))
+lt _ t0 t1 = sf t0 t1
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
--- left: inferred can be more general than sig (propagate)
--- right: inferred must be narrower than sig
 mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
-mTS c (TS l0 r0) (TS l1 r1) = do {s <- pvc (\cϵ t0 t1 -> lt cϵ t1 t0) c mempty l0 l1; pv lt c s r0 r1 $> s}
+mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv gt c mempty l0 l1; pvc lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
+-- TODO: keep stack var subst. from right?
 
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
