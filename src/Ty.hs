@@ -9,7 +9,8 @@ import           C
 import           Control.Exception                (Exception)
 import           Control.Monad                    (unless, when, zipWithM)
 import           Control.Monad.Except             (liftEither, throwError)
-import           Control.Monad.Trans.State.Strict (StateT, gets, modify, runStateT, state)
+import           Control.Monad.Trans.Class        (lift)
+import           Control.Monad.Trans.State.Strict (StateT, execStateT, get, gets, modify, put, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
@@ -227,9 +228,9 @@ ctx'ize us c s = us c s `onM` peek s
 
 -- ψ to pick apart RVs
 
-nρ x n@(Nm t _ l) s a = do
+nρ n@(Nm t _ l) s a = do
     n' <- fr l t
-    let t'=Ρ x n' s a
+    let t'=Ρ l n' s a
     pure (t', iTV n t')
 
 -- fan out
@@ -240,24 +241,24 @@ nρ x n@(Nm t _ l) s a = do
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
-φ _ s (Ρ x n σ a) t@TV{} = do
-    (n',g) <- nρ x n σ (S.insert t a)
+φ _ s (Ρ _ n σ a) t@TV{} = do
+    (n',g) <- nρ n σ (S.insert t a)
     pure (n', g s)
 φ c s (Σ _ as) (Ρ x n σ a) = do
     (ς, s') <- φσ c s x σ as
-    (n',g) <- nρ x n (σ<>as<>ς) a
+    (n',g) <- nρ n (σ<>as<>ς) a
     pure (n', g s')
-φ _ s t@TP{} (Ρ x n σ a) = do
-    (n',g) <- nρ x n σ (S.insert t a)
+φ _ s t@TP{} (Ρ _ n σ a) = do
+    (n',g) <- nρ n σ (S.insert t a)
     pure (n',g s)
-φ _ s t@TV{} (Ρ x n σ a) = do
-    (n',g) <- nρ x n σ (S.insert t a)
+φ _ s t@TV{} (Ρ _ n σ a) = do
+    (n',g) <- nρ n σ (S.insert t a)
     pure (n',g s)
-φ _ s (TT _ tt) (Ρ x n σ a) =
+φ _ s (TT _ tt) (Ρ _ n σ a) =
     case Nm.lookup tt σ of
         Just (_:_) -> error "error message not implemented."
         _ -> do
-            (n',g) <- nρ x n (Nm.insert tt [] σ) a
+            (n',g) <- nρ n (Nm.insert tt [] σ) a
             pure (n',g s)
 
 φσ c s l σ0 σ1 =
@@ -270,12 +271,10 @@ nρ x n@(Nm t _ l) s a = do
 
 φs=sv φ;φsc=ctx'ize φs
 
-mσ u c s σ0 σ1 =
-    let (t0s,t1s)=unzip (Nm.elems$Nm.intersectionWith (,) σ0 σ1)
-    in mss s t0s t1s
+mσ u c σ0 σ1 =
+    execStateT (traverse (uncurry g) (Nm.intersectionWith (,) σ0 σ1)) mempty
   where
-    mss sϵ [] []         = pure sϵ
-    mss sϵ (x:xs) (y:ys) = do {s' <- pvc u c sϵ x y; mss s' xs ys}
+    g t0 t1 = do {s <- get; s' <- lift (pvc u c s t0 t1); put s'}
 
 pvc u c s = pv u c s `onM` peek s
 
@@ -306,7 +305,7 @@ pv _ _ _ [] t1 = throwError$LE t1 []
 gt :: Cs a -> T a -> T a -> TM a (Subst a)
 gt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
-        (gf t0 t1) *> mσ gt c mempty σ0 σ1
+        (gf t0 t1) *> mσ gt c σ0 σ1
 gt _ t0@(Σ _ σ) t1@(TT _ n) =
     unless (n `Nm.member` σ)
         (gf t0 t1) $> mempty
@@ -322,14 +321,16 @@ gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
 -- gt c (Σ _ a) (Ρ _ _ σ _) = mσ c mempty a σ
 gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
 -- lt _ (Ρ _ n σ a) t@TV{} | Nm.null σ && S.null a = pure (sTV n t)
--- lt _ (Ρ _ n σ a) t@Σ{} | Nm.null σ && S.null a = pure (sTV n t)
+gt c (Ρ _ n σ0 a) (Σ _ σ1) = do
+    (_,g) <- nρ n (σ0<>σ1) a
+    (g$) <$> mσ gt c σ0 σ1
 gt _ t0 t1 = gf t0 t1
 
 -- ≺
 lt :: Cs a -> T a -> T a -> TM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
-        (sf t0 t1) *> mσ lt c mempty σ0 σ1
+        (sf t0 t1) *> mσ lt c σ0 σ1
 lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ (TV _ n) t = pure (sTV n t)
