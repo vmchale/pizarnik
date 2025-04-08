@@ -183,14 +183,19 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 -- "subsumes"
 ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-ϝ _ s (TV _ n) t | n `NmSet.member` occ t = error"error message not yet implemented."
-                 | otherwise = pure (t, iTV n t s)
+ϝ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
+                     | otherwise = pure (t1, iTV n t1 s)
 ϝ _ s t (TV _ n) = pure (t, iTV n t s)
 ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
     (l',s₀) <- ϝs c s l1 l0
     (r',s₁) <- ϝs c s₀ r0 r1
     pure (QT x (TS l' r'), s₁)
+ϝ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+    (a',s') <- ϝs c s a0 a1
+    pure (foldr (\t₀ -> TA (tL t₀) t₀) th a',s')
+ϝ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; ϝ c s t0' t1}
+ϝ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; ϝ c s t0 t1'}
 
 ϝs=sv ϝ;ϝsc=ctx'ize ϝs
 
@@ -311,12 +316,15 @@ gt _ t0@(Σ _ σ) t1@(TT _ n) =
         (gf t0 t1) $> mempty
 gt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 gt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-gt _ (TV _ n) t = pure (sTV n t)
+gt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
+                    | otherwise = pure (sTV n t1)
 gt _ t0@TT{} t1@Σ{} = gf t0 t1
 gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
 gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; gt c t0' t1}
 gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; gt c t0 t1'}
-gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty
+gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty -- freshen+insert?
+gt _ (Ρ _ n σ a) t@TV{} | t `S.member` a = pure mempty
+                        | otherwise = ($mempty).snd<$>nρ n σ (S.insert t a)
 gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
 -- gt c (Σ _ a) (Ρ _ _ σ _) = mσ c mempty a σ
 gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
@@ -333,7 +341,8 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
         (sf t0 t1) *> mσ lt c σ0 σ1
 lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-lt _ t (TV _ n) = pure (sTV n t)
+lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
+                    | otherwise = pure (sTV n t0)
 lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
