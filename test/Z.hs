@@ -9,7 +9,7 @@ import           Test.Tasty.HUnit (assertFailure, testCase, (@?=))
 main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
-      ( tErr ["."] "test/data/pmfail.piz" "6:17: ⦠ Failed to match ‘{ρ₁ `just}’ against ‘{a `just ⊕ `nil}’"
+      ( tErr ["."] "test/data/pmfail.piz" "6:17: {ρ₁ `just} ⊁ {a `just ⊕ `nil}"
       : [ tI fp | fp <- [ "lib/list.piz", "prelude/ord.piz"
                         , "test/examples/bool.piz"
                         , "test/examples/mutual.piz"
