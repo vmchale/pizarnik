@@ -317,6 +317,7 @@ gt _ t0@TT{} t1@Σ{} = gf t0 t1
 gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
 gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; gt c t0' t1}
 gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; gt c t0 t1'}
+gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty
 gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
 -- gt c (Σ _ a) (Ρ _ _ σ _) = mσ c mempty a σ
 gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
