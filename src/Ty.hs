@@ -339,6 +339,10 @@ lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
+lt c t0@(Ρ _ _ σ0 a) t1@(Σ _ σ1)
+    | σ0 `Nm.isSubmapOf` σ1 && S.null a = mσ lt c σ0 σ1
+    -- wait (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
+    | otherwise = sf t0 t1
 lt _ t0 t1 = sf t0 t1
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
