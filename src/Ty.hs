@@ -333,7 +333,7 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
         (sf t0 t1) *> mσ lt c σ0 σ1
 lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-lt _ (TV _ n) t = pure (sTV n t)
+lt _ t (TV _ n) = pure (sTV n t)
 lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
