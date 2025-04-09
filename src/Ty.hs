@@ -65,12 +65,6 @@ instance Pretty a => Show (TE a) where show=show.pretty
 
 instance (Typeable a, Pretty a) => Exception (TE a) where
 
-data F = LF | RF
-
-instance Pretty F where pretty LF="⦠"; pretty RF="∢" -- "≬"
-
-instance Show F where show=show.pretty
-
 data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 
 type TM x = StateT (TSt x) (Either (TE x))
@@ -183,26 +177,28 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 roll th a = foldr (\t₀ -> TA (tL t₀) t₀) th a
 
 -- "subsumes"
-ϝ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-ϝ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-ϝ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
+su :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+su _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                      | otherwise = pure (t1, iTV n t1 s)
-ϝ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
+su _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                      | otherwise = pure (t0, iTV n t0 s)
-ϝ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
+su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
-    (l',s₀) <- ϝs c s l1 l0
-    (r',s₁) <- ϝs c s₀ r0 r1
+    (l',s₀) <- sus c s l1 l0
+    (r',s₁) <- sus c s₀ r0 r1
     pure (QT x (TS l' r'), s₁)
-ϝ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
-    (a',s') <- ϝs c s a0 a1
+su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+    (a',s') <- sus c s a0 a1
     pure (roll th a',s')
-ϝ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; ϝ c s t0' t1}
-ϝ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; ϝ c s t0 t1'}
-ϝ _ s (Ρ _ n σ0 a) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1 a; pure (n',g s)}
-ϝ _ s (Ρ _ n σ a) t@QT{} = do {(n',g) <- nρ n σ (S.insert t a); pure (n',g s)}
+su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; su c s t0' t1}
+su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; su c s t0 t1'}
+su _ s (Ρ _ n σ0 a) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1 a; pure (n',g s)}
+su _ s (Ρ _ n σ a) t@QT{} = do {(n',g) <- nρ n σ (S.insert t a); pure (n',g s)}
+su _ s t@TT{} (Ρ _ n σ a) | Nm.null σ&&S.null a = pure (t, iTV n t s)
+su _ _ t0 t1 = error (show (t0,t1))
 
-ϝs=sv ϝ;ϝsc=ctx'ize ϝs
+sus=sv su;susc=ctx'ize sus
 
 type UC v a = Cs a -> Subst a -> v -> v -> TM a (v, Subst a)
 
@@ -341,10 +337,10 @@ gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 
 gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; gt c t0' t1}
 gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; gt c t0 t1'}
 gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty -- freshen+insert?
-                        -- TODO:
+-- this is happening without substitution/context?
 gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
 gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
-gt c t0@(Ρ _ n σ0 a) t1@(Σ _ σ1) = do
+gt c (Ρ _ n σ0 a) (Σ _ σ1) = do
     (_,g) <- nρ n (σ0<>σ1) a
     (g$) <$> mσ gt c σ0 σ1
 
@@ -377,7 +373,6 @@ lt _ t0@(TV _ n) t1@Σ{} | n `NmSet.member` occ t1 = throwError$O t0 t1
 mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
 mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv gt c mempty l0 l1; pvc lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
--- TODO: keep stack var subst. from right?
 
 mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
@@ -450,7 +445,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 {-# SCC cat #-}
 cat :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat c s (TS l0 r0) (TS l1 r1) = do
-    (_, s') <- ϝsc c s r0 l1
+    (_, s') <- susc c s r0 l1
     pure (TS l0 r1, s')
 
   -- stack variables: at most one on left/right, occurs at the leftmost
