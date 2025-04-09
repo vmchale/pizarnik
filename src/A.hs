@@ -14,14 +14,17 @@ module A ( A (..)
          , pSeq
          ) where
 
-import qualified Data.Set      as S
-import qualified Data.Text     as T
+import           Control.Monad.Trans.State.Strict (State, evalState, get, modify, put)
+import           Data.Functor                     (($>))
+import qualified Data.IntMap                      as IM
+import qualified Data.Set                         as S
+import qualified Data.Text                        as T
 import           Nm
-import           Nm.Map        (NmMap, nmlist)
-import qualified Nm.Map        as Nm
+import           Nm.Map                           (NmMap, nmlist)
+import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, pipe, punctuate, space,
-                                tupled, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, pipe,
+                                                   punctuate, space, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -41,6 +44,35 @@ data L = I !Integer | R !Double | Str !T.Text
 instance Pretty L where
     pretty (I i) = pretty i; pretty (R x) = pretty x; pretty (Str s) = dquotes (pretty s)
 
+data RR = RR !Char !Char
+data W = W (RR->T.Text) (RR->RR)
+
+class PT a where pp :: a -> State (S.Set T.Text, IM.IntMap T.Text, RR) a
+
+class P0 a where p0 :: a -> Doc ann
+
+ppt :: PT a => a -> a
+ppt = flip evalState (S.empty, IM.empty, RR 'a' 'A').pp
+
+vr = W (\(RR x _) -> T.pack ['\'',x]) (\(RR v s) -> RR (succ v) s)
+sr = W (\(RR _ x) -> T.pack ['\'',x]) (\(RR v s) -> RR v (succ s))
+
+fr :: W -> Nm a -> State (S.Set T.Text, IM.IntMap T.Text, RR) (Nm a)
+fr s (Nm t (U i) l) = do
+    (ms,u,c) <- get
+    case IM.lookup i u of
+        Just n                 -> pure (Nm n (U i) l)
+        _ | t `S.notMember` ms -> put (S.insert t ms, IM.insert i t u, c) $> Nm t (U i) l
+        _                      -> do {t' <- next s; modify (bimap12 (S.insert t') (IM.insert i t')) $> Nm t' (U i) l}
+  where bimap12 f g ~(x,y,z) = (f x,g y,z)
+
+next l@(W g s) = do
+    (ms,_,c) <- get
+    let t=g c in if t `S.notMember` ms
+                      then pure t
+                      else modify (third3 s) *> next l
+  where third3 f ~(x,y,z) = (x,y,f z)
+
 data SL a b = SL { aLs :: a, aas :: [b] }
 type ASeq a = SL a (A a)
 
@@ -56,10 +88,10 @@ aT = align.fillSep.map ana.aas
 (<:>) x y = x <+> ":" <+> y
 
 ana :: A (TS b) -> Doc ann
-ana (B t a) = parens (pretty a <:> pretty t); ana (L t a) = parens (pretty a <:> pretty t)
-ana (C t a) = parens (pretty a <:> pretty t); ana (V t a) = parens (pretty a <:> pretty t)
-ana (Inv t a) = parens (pretty a <> "⁻¹" <:> pretty t); ana (Q t a) = parens (brackets (aT a) <:> pretty t)
-ana (Pat t a) = group (braces (align (pA (map aT (aas a))))) <:> pretty t
+ana (B t a) = parens (pretty a <:> p0 t); ana (L t a) = parens (pretty a <:> p0 t)
+ana (C t a) = parens (pretty a <:> p0 t); ana (V t a) = parens (pretty a <:> p0 t)
+ana (Inv t a) = parens (pretty a <> "⁻¹" <:> p0 t); ana (Q t a) = parens (brackets (aT a) <:> p0 t)
+ana (Pat t a) = group (braces (align (pA (map aT (aas a))))) <:> p0 t
 
 faseq :: (a -> b) -> ASeq a -> ASeq b
 faseq f (SL x xs) = SL (f x) (map (f<$>) xs)
@@ -102,6 +134,21 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a), uS :: S.Set (T a) }
          | UU { tL :: a, uts :: [T a] }
 
+instance PT (T a) where
+    pp t@TP{}          = pure t
+    pp t@TT{}          = pure t
+    pp t@TC{}          = pure t
+    pp t@Ρ{}           = pure t
+    pp (TV x n)        = TV x <$> fr vr n
+    pp (SV x n)        = SV x <$> fr sr n
+    pp (TI x t)        = TI x <$> pp t
+    pp (TA x t₀ t₁)    = TA x <$> pp t₀ <*> pp t₁
+    pp (QT x (TS l r)) = QT x <$> (TS <$> traverse pp l <*> traverse pp r)
+    pp (UU x ts)       = UU x <$> traverse pp ts
+    pp (Σ x a)         = Σ x <$> traverse (traverse pp) a
+
+instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
+
 unA :: T a -> Maybe (T a, [T a])
 unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing
 
@@ -132,12 +179,12 @@ instance Ord (T a) where
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
 anD :: D a (TS b) -> Doc ann
-anD (F _ n t as) = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (aT as))
+anD (F _ n t as) = pretty n <+> align (":" <+> p0 t <#> ":=" <+> brackets (aT as))
 anD d@TD{}       = pretty d
 
 instance Pretty (D a b) where
-    pretty (F _ n t as)  = pretty n <+> align (":" <+> pretty t <#> ":=" <+> brackets (pASeq as))
-    pretty (TD _ n vs t) = "type" <+> pretty n <> (if null vs then mempty else space <> pSeq vs) <+> "=" <+> pretty t <> ";"
+    pretty (F _ n t as)  = pretty n <+> align (":" <+> p0 t <#> ":=" <+> brackets (pASeq as))
+    pretty (TD _ n vs t) = "type" <+> pretty n <> (if null vs then mempty else space <> hsep (pretty<$>vs)) <+> "=" <+> p0 t <> ";"
 
 am :: M a (TS b) -> Doc ann
 am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
@@ -151,10 +198,11 @@ instance Pretty (M a b) where
 pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
-instance Pretty (TS a) where
-    pretty (TS [] tr) = "--" <+> pSeq tr; pretty (TS tl []) = pSeq tl <+> "--"
-    pretty (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
+instance P0 (TS a) where
+    p0 (TS [] tr) = "--" <+> pSeq tr; p0 (TS tl []) = pSeq tl <+> "--"
+    p0 (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
 
+instance Pretty (TS a) where pretty=p0.ppt
 instance Show (TS a) where show=show.pretty
 
 -- §16.6 Hutton
@@ -162,30 +210,31 @@ tunroll :: T a -> [T a]
 tunroll = flip tg [] where tg (TA _ t t') s = tg t (t':s)
                            tg t s           = t:s
 
-instance Pretty (T a) where
-    pretty (TV _ n) = pretty n; pretty (TP _ pty) = pretty pty; pretty (TC _ n) = pretty n
-    pretty (QT _ ts) = brackets (pretty ts); pretty (SV _ n) = pretty n
-    pretty (TT _ n) = pretty n; pretty (Σ _ ts) = pΣ (pNM (hsep.(\(u,tsϵ) -> map pretty tsϵ++[pretty u])) ts)
-    pretty t@TA{} | (h:a) <- tunroll t = pretty h <> tupled (pretty<$>a)
-    pretty (TI _ t) = pretty t <+> "⁻¹"
-    pretty (Ρ _ n σ s) | Nm.null σ = pρ n (pa s)
-    pretty (Ρ _ n σ s) | S.null s = pρ n (pΡ σ)
-    pretty (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:(pa s)))
-    pretty (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (pretty<$>t)
+instance P0 (T a) where
+    p0 (TV _ n) = pretty n; p0 (TP _ pty) = pretty pty; p0 (TC _ n) = pretty n
+    p0 (QT _ ts) = brackets (p0 ts); p0 (SV _ n) = pretty n
+    p0 (TT _ n) = pretty n; p0 (Σ _ ts) = pΣ (pNM (hsep.(\(u,tsϵ) -> map p0 tsϵ++[pretty u])) ts)
+    p0 t@TA{} | (h:a) <- tunroll t = p0 h <> tupled (p0<$>a)
+    p0 (TI _ t) = p0 t <+> "⁻¹"
+    p0 (Ρ _ n σ s) | Nm.null σ = pρ n (pa s)
+    p0 (Ρ _ n σ s) | S.null s = pρ n (pΡ σ)
+    p0 (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:(pa s)))
+    p0 (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (p0<$>t)
 
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
 pa :: S.Set (T a) -> [Doc ann]
-pa = punctuate ", ".map pretty.S.toList
+pa = punctuate ", ".map p0.S.toList
 
 pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
 
 pΡ :: NmMap (TSeq a) -> [Doc ann]
-pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map pretty t)})
+pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map p0 t)})
 
 pNM g = map g . nmlist
 
+instance Pretty (T a) where pretty=p0.ppt
 instance Show (T a) where show=show.pretty
 
 instance Pretty (A a) where
@@ -195,10 +244,10 @@ instance Pretty (A a) where
 
 pA = concatWith (\x y -> x <+> "&" <> line <> y)
 
-pSeq :: Pretty a => [a] -> Doc ann
-pSeq = hsep.fmap pretty
+pSeq :: P0 a => [a] -> Doc ann
+pSeq = hsep.map p0
 
 pASeq :: ASeq a -> Doc ann
-pASeq = pSeq.aas
+pASeq = hsep.map pretty.aas
 
 instance Show (A a) where show=show.pretty
