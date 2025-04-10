@@ -185,8 +185,8 @@ su _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                      | otherwise = pure (t0, iTV n t0 s)
 su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
-    (l',s₀) <- sus c s l1 l0
-    (r',s₁) <- sus c s₀ r0 r1
+    (l',s₀) <- susc c s l1 l0
+    (r',s₁) <- susc c s₀ r0 r1
     pure (QT x (TS l' r'), s₁)
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- sus c s a0 a1
@@ -202,7 +202,6 @@ sus=sv su;susc=ctx'ize sus
 
 type UC v a = Cs a -> Subst a -> v -> v -> TM a (v, Subst a)
 
--- 𝜐 upsilon
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
 sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
@@ -427,7 +426,8 @@ tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
     (t, s2) <- cat (tds b) s1 (aL a') tϵ
-    -- pure $ traceShow (traceCat a' as' (aL a') tϵ t) (SL t (a':as'), s2)
+    -- tϵ' <- s2@*tϵ; t' <- s2@*t
+    -- pure $ traceShow (traceCat a' as' (aL a') tϵ' t') (SL t (a':as'), s2)
     pure (SL t (a':as'), s2)
 
 traceCat :: A b -> [A b] -> TS a -> TS a -> TS a -> Doc ann
@@ -505,25 +505,28 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 dU :: Cs a -> Ar -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c e s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
-    let ls'=zipWith (++) ρ ls; rs'=zipWith (++) ρ rs
+    let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     al <- traverse ai ls'
     (σ,ul) <- an e (concat al)
     (l',s') <- urs s ul; (r',s'') <- urs s' rs'
-    (,s'') <$> exps (tLs$head ls) (TS (l'++[σ]) r')
-  where tss'=map pare tss
-        ls=map tlefts tss'; rs=map trights tss'
-        rm=maximum (length<$>rs)
+    -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
+    pure (TS (l'++[σ]) r', s'')
+  where ls=map tlefts tss; rs=map trights tss
+        rm=maximum (length<$>map trights tss)
+
+        pl (SV{}:ts) = length ts
+        tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
 
         urs sϵ [t]    = pure (t, sϵ)
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; φsc c s0 tr t}
-
-        pare :: TS a -> TS a
-        pare (TS (SV _ ᴀ:l) (SV _ ᴄ:r)) | ᴀ==ᴄ = TS l r; pare t=t
 
         ai :: [T a] -> TM a [(Nm a, [T a])]
         ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
               | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
               | otherwise = throwError (PM ts)
+
+        traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
+        pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
