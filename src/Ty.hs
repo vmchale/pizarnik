@@ -7,7 +7,7 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (unless, when, zipWithM)
+import           Control.Monad                    (unless, when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT, execStateT, get, gets, modify, put, runStateT, state)
@@ -24,7 +24,7 @@ import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, vsep, (<+>))
 import           Ty.Clone
 
 infixl 7 \-
@@ -34,6 +34,8 @@ infixr 6 @*
 infixr 7 @<>
 
 type Ar = IM.IntMap Int
+data Nt a = Nt { tβ :: Cs a, ars :: Ar }
+π (Ext _ c r) = Nt c r
 
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 
@@ -177,7 +179,7 @@ occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 roll th a = foldr (\t₀ -> TA (tL t₀) t₀) th a
 
 -- "subsumes"
-su :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 su _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                      | otherwise = pure (t1, iTV n t1 s)
@@ -191,8 +193,8 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- sus c s a0 a1
     pure (roll th a',s')
-su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; su c s t0' t1}
-su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; su c s t0 t1'}
+su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
+su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
 su _ s (Ρ _ n σ0 a) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1 a; pure (n',g s)}
 su _ s (Ρ _ n σ a) t@QT{} = do {(n',g) <- nρ n σ (S.insert t a); pure (n',g s)}
 su _ s t@TT{} (Ρ _ n σ a) | Nm.null σ&&S.null a = pure (t, iTV n t s)
@@ -200,7 +202,7 @@ su _ _ t0 t1 = error (show (t0,t1))
 
 sus=sv su;susc=ctx'ize sus
 
-type UC v a = Cs a -> Subst a -> v -> v -> TM a (v, Subst a)
+type UC v a = Nt a -> Subst a -> v -> v -> TM a (v, Subst a)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
@@ -214,12 +216,14 @@ sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
 sv u c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
+        GT | hasC t0d -> do {t0' <- ce (tβ c) t0; sv u c s t0' t1}
         GT -> throwError$LE t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
 sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
+        LT | hasC t0 -> do {t0' <- ce (tβ c) t0; sv u c s t0' t1}
         LT -> throwError$LE t1 t0
         _  -> let (uws, res) = splitFromLeft n1 t0
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
@@ -239,7 +243,7 @@ nρ n@(Nm t _ l) s a = do
     pure (t', iTV n t')
 
 -- fan out
-φ :: Cs a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+φ :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
 φ _ s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
@@ -272,8 +276,8 @@ nρ n@(Nm t _ l) s a = do
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- φs c s a0 a1
     pure (roll th a',s')
-φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; φ c s t0' t1}
-φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; φ c s t0 t1'}
+φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
+φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
@@ -290,24 +294,45 @@ mσ u c σ0 σ1 =
   where
     g t0 t1 = do {s <- get; s' <- lift (pvc u c s t0 t1); put s'}
 
+-- `nil `u `cons should be rewritten to {`nil `u `cons} b/c `cons has arity 2
+
+rwAr :: Ar -> TSeq a -> TM a (TSeq a)
+rwAr ar = under (fmap reverse . g . reverse)
+    where g (TT x n:ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else g ts}
+          g (_:ts)      = g ts
+          g []          = pure []
+
+          under f (t@SV{}:ts) = (t:) <$> f ts
+          under f ts          = f ts
+
+
 pvc u c s = pv u c s `onM` peek s
 
-pv :: (Cs a -> T a -> T a -> TM a (Subst a))
-   -> Cs a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
+hasT = any (\case TT{} -> True; _ -> False)
+
+ce c ts = traverse (βc c) ts
+
+pv :: (Nt a -> T a -> T a -> TM a (Subst a))
+   -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 pv u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in pvc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    -- TODO: eat tags/constructors, β-expand
+    | hasC t0 = do {t0' <- ce (tβ c) t1; pv u c s t0' t1e}
+    -- FIXME: eat based on constructor arity
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
 pv u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in pvc u c (iSV n uws s) t0 res
+    | hasC t1 = do {t1' <- ce (tβ c) t1; pv u c s t0e t1'}
+    | hasT t0 = do {t0' <- rwAr (ars c) t0e; pv u c s t0' t1}
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
 pv u c s t0 t1e@(SV _ n:t1)
     | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
                in pvc u c (iSV n uws s) res t1
+    | hasC t0 = do {t0' <- ce (tβ c) t1; pv u c s t0' t1e}
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
@@ -316,7 +341,7 @@ pv _ _ _ t0 [] = throwError$LE t0 []
 pv _ _ _ [] t1 = throwError$LE t1 []
 
 -- ≻
-gt :: Cs a -> T a -> T a -> TM a (Subst a)
+gt :: Nt a -> T a -> T a -> TM a (Subst a)
 gt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ1 `Nm.isSubmapOf` σ0)
         (gf t0 t1) *> mσ gt c σ0 σ1
@@ -333,8 +358,8 @@ gt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
 gt _ t0@TT{} t1@Σ{} = gf t0 t1
 gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
-gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; gt c t0' t1}
-gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; gt c t0 t1'}
+gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; gt c t0' t1}
+gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; gt c t0 t1'}
 gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty -- freshen+insert?
 -- this is happening without substitution/context?
 gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
@@ -344,7 +369,7 @@ gt c (Ρ _ n σ0 a) (Σ _ σ1) = do
     (g$) <$> mσ gt c σ0 σ1
 
 -- ≺
-lt :: Cs a -> T a -> T a -> TM a (Subst a)
+lt :: Nt a -> T a -> T a -> TM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
         (sf t0 t1) *> mσ lt c σ0 σ1
@@ -355,8 +380,8 @@ lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
 lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
-lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc c t0; lt c t0' t1}
-lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc c t1; lt c t0 t1'}
+lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
+lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0 a) t1@(Σ _ σ1)
     | σ0 `Nm.isSubmapOf` σ1 && S.null a = mσ lt c σ0 σ1
     -- FIXME (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
@@ -366,14 +391,15 @@ lt _ t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                          | otherwise = pure (sTV n t1)
 lt _ t0@(TV _ n) t1@Σ{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                         | otherwise = pure (sTV n t1)
+lt _ (TT _ n) (Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
-mTS :: Cs a -> TS a -> TS a -> TM a (Subst a)
+mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
 mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv gt c mempty l0 l1; pvc lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
-mtsc :: Cs a -> Subst a -> TS a -> TS a -> TM a (Subst a)
+mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
 mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
 
 liftClone :: TS a -> TM a (TS a)
@@ -381,8 +407,8 @@ liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s ->
 
 lT :: Ar -> Nm a -> TM a Int
 lT ex n@(Nm _ (U u) _) = do
-    ars <- gets (arit.lo)
-    case IM.lookup u ars of
+    ar <- gets (arit.lo)
+    case IM.lookup u ar of
         Just i  -> pure i
         Nothing -> case IM.lookup u ex of
             Just i  -> pure i
@@ -414,9 +440,9 @@ tD0 (TD _ n vs t) = iTD n vs t *> cA t
 {-# SCC tD1 #-}
 tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
-tD1 b@(Ext _ c _) (F _ n ts as) = do
+tD1 b (F _ n ts as) = do
     (as', s) <- tseq b mempty as
-    s' <- mtsc c s (aLs as') ts
+    s' <- mtsc (π b) s (aLs as') ts
     as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
@@ -425,7 +451,7 @@ tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
-    (t, s2) <- cat (tds b) s1 (aL a') tϵ
+    (t, s2) <- cat (π b) s1 (aL a') tϵ
     -- tϵ' <- s2@*tϵ; t' <- s2@*t
     -- pure $ traceShow (traceCat a' as' (aL a') tϵ' t') (SL t (a':as'), s2)
     pure (SL t (a':as'), s2)
@@ -443,7 +469,7 @@ splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
-cat :: Cs a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
+cat :: Nt a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
     pure (TS l0 r1, s')
@@ -489,7 +515,7 @@ ta b s (C l tt)       = do
 ta b s (Pat _ as)     = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    (t, s1) <- dU (tds b) (arit b) s0 sigs
+    (t, s1) <- dU (π b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
 an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
@@ -502,12 +528,12 @@ pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 {-# SCC dU #-}
-dU :: Cs a -> Ar -> Subst a -> [TS a] -> TM a (TS a, Subst a)
-dU c e s tss = do
+dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
+dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     al <- traverse ai ls'
-    (σ,ul) <- an e (concat al)
+    (σ,ul) <- an (ars c) (concat al)
     (l',s') <- urs s ul; (r',s'') <- urs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
     pure (TS (l'++[σ]) r', s'')
