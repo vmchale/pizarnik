@@ -253,6 +253,9 @@ nρ n@(Nm t _ l) s a = do
 φ _ s (Ρ _ n σ a) t@TV{} = do
     (n',g) <- nρ n σ (S.insert t a)
     pure (n', g s)
+φ _ s t@TV{} (Ρ _ n σ a) = do
+    (n',g) <- nρ n σ (S.insert t a)
+    pure (n',g s)
 φ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                      | otherwise = pure (t1, iTV n t1 s)
 φ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
@@ -262,9 +265,6 @@ nρ n@(Nm t _ l) s a = do
     (n',g) <- nρ n (σ<>as<>ς) a
     pure (n', g s')
 φ _ s t@TP{} (Ρ _ n σ a) = do
-    (n',g) <- nρ n σ (S.insert t a)
-    pure (n',g s)
-φ _ s t@TV{} (Ρ _ n σ a) = do
     (n',g) <- nρ n σ (S.insert t a)
     pure (n',g s)
 φ _ s (TT _ tt) (Ρ _ n σ a) =
