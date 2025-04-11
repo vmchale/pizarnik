@@ -127,7 +127,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
-         | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a) }
+         | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a) }
          | UU { tL :: a, uts :: [T a] }
 
 instance PT (T a) where
@@ -137,7 +137,6 @@ instance PT (T a) where
     pp t@Ρ{}           = pure t
     pp (TV x n)        = TV x <$> fr vr n
     pp (SV x n)        = SV x <$> fr sr n
-    pp (TI x t)        = TI x <$> pp t
     pp (TA x t₀ t₁)    = TA x <$> pp t₀ <*> pp t₁
     pp (QT x (TS l r)) = QT x <$> (TS <$> traverse pp l <*> traverse pp r)
     pp (UU x ts)       = UU x <$> traverse pp ts
@@ -187,7 +186,6 @@ instance P0 (T a) where
     p0 (QT _ ts) = brackets (p0 ts); p0 (SV _ n) = pretty n
     p0 (TT _ n) = pretty n; p0 (Σ _ ts) = pΣ (pNM (hsep.(\(u,tsϵ) -> map p0 tsϵ++[pretty u])) ts)
     p0 t@TA{} | (h:a) <- tunroll t = p0 h <> tupled (p0<$>a)
-    p0 (TI _ t) = p0 t <+> "⁻¹"
     p0 (Ρ _ n σ) = pρ n (pΡ σ)
     p0 (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (p0<$>t)
 

@@ -151,7 +151,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
 (@>) _ t@TC{}          = pure t
 (@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
 (@>) s (QT x sig)      = QT x<$>s@*sig
-(@>) s (TI x t)        = TI x <$> s@>t
 (@>) s t@(TV _ (Nm _ (U u) _)) =
     case IM.lookup u (tvs s) of
         Nothing -> pure t
@@ -169,7 +168,6 @@ occ :: T a -> IS.IntSet
 occ (TV _ n)        = NmSet.singleton n
 occ (TA _ t0 t1)    = occ t0<>occ t1
 occ TP{}            = IS.empty
-occ (TI _ t)        = occ t
 occ (UU _ ts)       = occ@<>ts
 occ (QT _ (TS l r)) = occ@<>l <> occ@<>r
 occ TT{}            = IS.empty
@@ -205,13 +203,10 @@ su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
 su _ _ t0@TT{} t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1@QT{} = cf t0 t1
-su _ _ t0@TT{} t1@TI{} = cf t0 t1
 su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
-su _ _ t0@TP{} t1@TI{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
-su _ _ t0@QT{} t1@TI{} = cf t0 t1
 
 sus=sv su;susc=ctx'ize sus
 
@@ -289,13 +284,10 @@ nρ n@(Nm t _ l) s = do
                                 | otherwise = φf t0 t1
 φ _ _ t0@TP{} t1@QT{} = φf t0 t1
 φ _ _ t0@TP{} t1@TT{} = φf t0 t1
-φ _ _ t0@TP{} t1@TI{} = φf t0 t1
 φ _ _ t0@TT{} t1@QT{} = φf t0 t1
 φ _ _ t0@TT{} t1@TP{} = φf t0 t1
-φ _ _ t0@TT{} t1@TI{} = φf t0 t1
 φ _ _ t0@QT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
-φ _ _ t0@QT{} t1@TI{} = φf t0 t1
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
@@ -385,13 +377,10 @@ gt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = gf t0 t1
 gt _ t0@TP{} t1@QT{} = gf t0 t1
 gt _ t0@TP{} t1@TT{} = gf t0 t1
-gt _ t0@TP{} t1@TI{} = gf t0 t1
 gt _ t0@QT{} t1@TP{} = gf t0 t1
 gt _ t0@QT{} t1@TT{} = gf t0 t1
-gt _ t0@QT{} t1@TI{} = gf t0 t1
 gt _ t0@TT{} t1@TP{} = gf t0 t1
 gt _ t0@TT{} t1@QT{} = gf t0 t1
-gt _ t0@TT{} t1@TI{} = gf t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
@@ -424,13 +413,10 @@ lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
 lt _ t0@TP{} t1@QT{} = sf t0 t1
 lt _ t0@TP{} t1@TT{} = sf t0 t1
-lt _ t0@TP{} t1@TI{} = sf t0 t1
 lt _ t0@TT{} t1@QT{} = sf t0 t1
 lt _ t0@TT{} t1@TP{} = sf t0 t1
-lt _ t0@TT{} t1@TI{} = sf t0 t1
 lt _ t0@QT{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@TT{} = sf t0 t1
-lt _ t0@QT{} t1@TI{} = sf t0 t1
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 

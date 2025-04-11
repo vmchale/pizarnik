@@ -77,7 +77,6 @@ rSig b (TS l r) = TS <$> rTs b l <*> rTs b r
 (@~) b (TA x t t') = TA x <$> b@~t <*> b@~t'
 (@~) b (QT x tS)   = QT x <$> rSig b tS
 (@~) b (Σ x ts)    = Σ x <$> traverse (rTs b) (rkeys (btt b) ts)
-(@~) b (TI x t)    = TI x <$> b@~t
 (@~) b (UU x ts)   = UU x <$> rTs b ts
 
 doLocal :: RM a b -> RM a b
@@ -157,7 +156,7 @@ t0s b = traverse (t0 b)
 
 t0 :: Ex -> T a -> RM a (T a)
 t0 b (TT x n) = TV x<$>frtt b n; t0 b (Σ x ts) = Σ x <$> fkeys b ts
-t0 b (TI x t) = TI x <$> t0 b t; t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
+t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
 t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> t0s b ts
 t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
 
