@@ -7,7 +7,6 @@ module Nm.Map ( NmMap (..)
               , empty
               , intersectionWith
               , isSubmapOf
-              , elems
               , fromList
               , nmlist
               , toList
@@ -56,9 +55,6 @@ isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
 
 intersectionWith :: (a -> b -> c) -> NmMap a -> NmMap b -> NmMap c
 intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0 x1) (IM.intersection c0 c1)
-
-elems :: NmMap a -> [a]
-elems (NmMap x _) = IM.elems x
 
 toList :: a -> NmMap b -> [(Nm a, b)]
 toList l (NmMap x ns) = map (first (\u -> Nm (ns IM.! u) (U u) l)) (IM.toList x)
