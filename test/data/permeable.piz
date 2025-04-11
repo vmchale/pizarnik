@@ -3,18 +3,18 @@
 
 %-
 
-type U = {`u};
+type Unit = {`unit};
 
-x : -- NE(U)
-  := [ `nil `u `cons ]
+x : -- NE(Unit)
+  := [ `nil `unit `cons ]
 
-# is { x & y } like par-quote hm
+# is { x & y } like par-quote?
 
-y : -- U
+y : -- Unit
   := [ x head ]
 
-z : -- U
-  := [ [nip] `u x foldr ]
+z : -- Unit
+  := [ [nip] `unit x foldr ]
 
-w : -- U
+w : -- Unit
   := [ `nil head ]
