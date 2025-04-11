@@ -34,14 +34,11 @@ type NE a = { List(a) a `cons };
 head : NE(a) -- a
      := [ { `cons⁻¹ nip } ]
 
-tail : NE(a) -- a
-     := [ { `cons⁻¹ _ } ]
-
 foldr : [ a b -- b ] b List(a) -- b
-      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip3 [rotl] dip [[rot $] dip swap] dip foldr } ]
+      := [ { `nil⁻¹ nip & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
 ```
 
-The same `foldr` works on nonempty lists and lists (unlike Haskell) while `head` only works on nonempty lists.
+The same `foldr` works on nonempty lists and lists; `head` only works on nonempty lists.
 
 # Or-Patterns
 
