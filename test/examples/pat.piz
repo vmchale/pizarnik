@@ -4,3 +4,6 @@
 
 gt : Ord -- Bool
    := [ { lte False & `gt⁻¹ True } ]
+
+gt0 : Ord -- Bool
+    := [ { { `lt⁻¹ & `eq⁻¹ } False & `gt⁻¹ True } ]
