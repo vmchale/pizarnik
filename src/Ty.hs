@@ -355,7 +355,13 @@ gt c (Ρ _ n σ0) (Σ _ σ1) = do
     (_,g) <- nρ n (σ0<>σ1)
     g<$>mσ gt c σ0 σ1
 gt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
-                               | otherwise = throwError$GF t0 t1
+                               | otherwise = gf t0 t1
+gt _ t0@TP{} t1@QT{} = gf t0 t1
+gt _ t0@TP{} t1@TT{} = gf t0 t1
+gt _ t0@QT{} t1@TP{} = gf t0 t1
+gt _ t0@TT{} t1@TP{} = gf t0 t1
+gt _ t0@QT{} t1@TT{} = gf t0 t1
+gt _ t0@TT{} t1@QT{} = gf t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
