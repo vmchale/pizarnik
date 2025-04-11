@@ -1,8 +1,17 @@
+@i prelude/fn
 @i lib/list
 
 %-
 
-type U = `u;
+type U = {`u};
 
-x : -- `u
-  := [ `nil `u `cons head ]
+x : -- NE(U)
+  := [ `nil `u `cons ]
+
+# is { x & y } like par-quote hm
+
+y : -- U
+  := [ x head ]
+
+z : -- U
+  := [ [nip] `u x foldr ]
