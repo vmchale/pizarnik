@@ -218,7 +218,7 @@ instance P0 (T a) where
     p0 (TI _ t) = p0 t <+> "⁻¹"
     p0 (Ρ _ n σ s) | Nm.null σ = pρ n (pa s)
     p0 (Ρ _ n σ s) | S.null s = pρ n (pΡ σ)
-    p0 (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:(pa s)))
+    p0 (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:pa s))
     p0 (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (p0<$>t)
 
 pρ n [] = pretty n

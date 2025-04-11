@@ -176,7 +176,7 @@ occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
 occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
 
-roll th a = foldr (\t₀ -> TA (tL t₀) t₀) th a
+roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 -- "subsumes"
 su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -285,7 +285,7 @@ nρ n@(Nm t _ l) s a = do
     ς=Nm.intersectionWith (,) σ0 σ1
 
     φss sϵ []              = pure (Nm.empty, sϵ)
-    φss sϵ ((n,(x,y)):xys) = do {(xy,s') <- φsc c sϵ x y; first (Nm.insert n xy) <$> (φss s' xys)}
+    φss sϵ ((n,(x,y)):xys) = do {(xy,s') <- φsc c sϵ x y; first (Nm.insert n xy) <$> φss s' xys}
 
 φs=sv φ;φsc=ctx'ize φs
 
@@ -311,7 +311,7 @@ pvc u c s = pv u c s `onM` peek s
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 hasT = any (\case TT{} -> True; _ -> False)
 
-ce c ts = traverse (βc c) ts
+ce c = traverse (βc c)
 
 pv :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
@@ -366,7 +366,7 @@ gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
 gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
 gt c (Ρ _ n σ0 a) (Σ _ σ1) = do
     (_,g) <- nρ n (σ0<>σ1) a
-    (g$) <$> mσ gt c σ0 σ1
+    g<$>mσ gt c σ0 σ1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
