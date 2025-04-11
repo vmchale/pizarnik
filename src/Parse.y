@@ -132,7 +132,7 @@ A :: { A AlexPosn }
   | tag inv { Inv (Nm.loc $1) (C (Nm.loc $1) $1) }
   | tag { C (Nm.loc $1) $1 }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
-  | braces(sepBy(some(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
+  | braces(sepBy(many(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
 
 D :: { D AlexPosn AlexPosn }
