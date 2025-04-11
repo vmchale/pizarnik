@@ -278,6 +278,7 @@ nρ n@(Nm t _ l) s a = do
     pure (roll th a',s')
 φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
 φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
+φ c s (Ρ _ n σ a) t1@Ρ{} | Nm.null σ && S.null a = pure (t1, iTV n t1 s)
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
