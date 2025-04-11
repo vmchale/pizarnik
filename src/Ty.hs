@@ -17,7 +17,6 @@ import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.List                        (unsnoc)
-import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
@@ -161,8 +160,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
-
-st f = fmap S.fromList . traverse f . S.toList
 
 occ :: T a -> IS.IntSet
 occ (TV _ n)        = NmSet.singleton n
