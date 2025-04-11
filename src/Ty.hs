@@ -540,7 +540,6 @@ dU c s tss = do
   where ls=map tlefts tss; rs=map trights tss
         rm=maximum (length<$>map trights tss)
 
-        pl (SV{}:ts) = length ts
         tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
 
         urs sϵ [t]    = pure (t, sϵ)
