@@ -2,3 +2,9 @@
 
 not : Bool -- Bool
     := [ { False⁻¹ True & True⁻¹ False } ]
+
+and : Bool Bool -- Bool
+    := [ { True⁻¹ & False⁻¹ _ False } ]
+
+or : Bool Bool -- Bool
+   := [ { False⁻¹ & True⁻¹ _ True } ]
