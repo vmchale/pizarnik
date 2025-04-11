@@ -90,9 +90,10 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-sf, gf :: T a -> T a -> TM a b
+sf, gf, φf :: T a -> T a -> TM a b
 sf t0 t1 = throwError$Subsumesn't t0 t1
 gf t0 t1 = throwError$GF t0 t1
+φf t0 t1 = throwError$ΦF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -239,8 +240,8 @@ nρ n@(Nm t _ l) s = do
 
 -- fan out
 φ :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
-φ _ s t@(TT _ n0) (TT _ n1) | n0==n1 = pure (t,s)
-φ _ s (TT x n0) (TT _ n1) = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
+φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
+                            | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
@@ -256,7 +257,7 @@ nρ n@(Nm t _ l) s = do
 φ _ s t@TP{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
-        Just (_:_) -> throwError$ΦF t0 t1
+        Just (_:_) -> φf t0 t1
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
@@ -269,6 +270,17 @@ nρ n@(Nm t _ l) s = do
     (ς, s') <- φσ c s x σ0 σ1
     (n',g) <- nρ n (σ0<>σ1<>ς)
     pure (n', g s')
+φ _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
+                                | otherwise = φf t0 t1
+φ _ _ t0@TP{} t1@QT{} = φf t0 t1
+φ _ _ t0@TP{} t1@TT{} = φf t0 t1
+φ _ _ t0@TP{} t1@TI{} = φf t0 t1
+φ _ _ t0@TT{} t1@QT{} = φf t0 t1
+φ _ _ t0@TT{} t1@TP{} = φf t0 t1
+φ _ _ t0@TT{} t1@TI{} = φf t0 t1
+φ _ _ t0@QT{} t1@TP{} = φf t0 t1
+φ _ _ t0@QT{} t1@TT{} = φf t0 t1
+φ _ _ t0@QT{} t1@TI{} = φf t0 t1
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
@@ -358,17 +370,21 @@ gt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = gf t0 t1
 gt _ t0@TP{} t1@QT{} = gf t0 t1
 gt _ t0@TP{} t1@TT{} = gf t0 t1
+gt _ t0@TP{} t1@TI{} = gf t0 t1
 gt _ t0@QT{} t1@TP{} = gf t0 t1
-gt _ t0@TT{} t1@TP{} = gf t0 t1
 gt _ t0@QT{} t1@TT{} = gf t0 t1
+gt _ t0@QT{} t1@TI{} = gf t0 t1
+gt _ t0@TT{} t1@TP{} = gf t0 t1
 gt _ t0@TT{} t1@QT{} = gf t0 t1
+gt _ t0@TT{} t1@TI{} = gf t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
     unless (σ0 `Nm.isSubmapOf` σ1)
         (sf t0 t1) *> mσ lt c σ0 σ1
-lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
+lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
+                                 | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
@@ -389,7 +405,17 @@ lt _ t0@(TV _ n) t1@Σ{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                         | otherwise = pure (sTV n t1)
 lt _ (TT _ n) (Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
 lt c (Ρ _ _ σ0) (Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
-lt _ (TP _ l0) (TP _ l1) | l0==l1 = pure mempty
+lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
+                               | otherwise = sf t0 t1
+lt _ t0@TP{} t1@QT{} = sf t0 t1
+lt _ t0@TP{} t1@TT{} = sf t0 t1
+lt _ t0@TP{} t1@TI{} = sf t0 t1
+lt _ t0@TT{} t1@QT{} = sf t0 t1
+lt _ t0@TT{} t1@TP{} = sf t0 t1
+lt _ t0@TT{} t1@TI{} = sf t0 t1
+lt _ t0@QT{} t1@TP{} = sf t0 t1
+lt _ t0@QT{} t1@TT{} = sf t0 t1
+lt _ t0@QT{} t1@TI{} = sf t0 t1
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
