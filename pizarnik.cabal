@@ -19,6 +19,7 @@ common warnings
         -Wredundant-constraints -Widentities -Wcpp-undef
         -Wmissing-export-lists -Wunused-packages
         -Wno-missing-signatures -Wno-x-partial
+        -Wno-operator-whitespace-ext-conflict
 
 library
     import:           warnings
