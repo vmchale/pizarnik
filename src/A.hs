@@ -54,7 +54,7 @@ class P0 a where p0 :: a -> Doc ann
 ppt :: PT a => a -> a
 ppt = flip evalState (S.empty, IM.empty, RR 'a' 'A').pp
 
-vr = W (\(RR x _) -> T.pack ['\'',x]) (\(RR v s) -> RR (succ v) s)
+vr = W (\(RR x _) -> T.singleton x) (\(RR v s) -> RR (succ v) s)
 sr = W (\(RR _ x) -> T.pack ['\'',x]) (\(RR v s) -> RR v (succ s))
 
 fr :: W -> Nm a -> State (S.Set T.Text, IM.IntMap T.Text, RR) (Nm a)
