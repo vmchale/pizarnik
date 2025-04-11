@@ -43,24 +43,24 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0
 
 data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
-          | Subsumesn't (T a) (T a) | GF (T a) (T a)
-          | PM (TSeq a) | AM (Nm a) | ΦF (T a) (T a)
-          | CF (T a) (T a)
+          | LF (T a) (T a) | GF (T a) (T a)
+          | ΦF (T a) (T a) | CF (T a) (T a)
+          | PM (TSeq a) | AM (Nm a)
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (LE ts0 ts1)        = tsc ts0$"length mismatch:" <+> sq (pretty ts0) <+> "and" <+> sq (pretty ts1)
-    pretty (AM n)              = pretty (Nm.loc n) <> ":" <+> "tag of unknown arity:" <+> sq (pretty n)
-    pretty (BE e)              = pretty e
-    pretty (PM ts)             = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
-    pretty (O t₀ t₁)           = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
-    pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
-    pretty (GF t0 t1)          = tc t0$pretty t0 <+> "⊁" <+> pretty t1
-    pretty (ΦF t0 t1)          = tc t0$sq (pretty t0) <+> "not compatible with" <+> sq (pretty t1)
-    pretty (CF t0 t1)          = tc t0$sq (pretty t0) <+> "is not an acceptable argument when expecting" <+> sq (pretty t1)
+    pretty (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
+    pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "unknown arity:" <+> sq n
+    pretty (BE e)       = pretty e
+    pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+    pretty (O t₀ t₁)    = tc t₀$"occurs check failed: " <+> sq t₀ <> "," <+> sq t₁
+    pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
+    pretty (GF t0 t1)   = tc t0$pretty t0 <+> "⊁" <+> pretty t1
+    pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
+    pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -93,7 +93,7 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 (\-) s u = mapTV (IM.delete u) s
 
 cf, sf, gf, φf :: T a -> T a -> TM a b
-sf t0 t1 = throwError$Subsumesn't t0 t1; gf t0 t1 = throwError$GF t0 t1
+sf t0 t1 = throwError$LF t0 t1; gf t0 t1 = throwError$GF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)

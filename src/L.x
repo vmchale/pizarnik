@@ -225,13 +225,13 @@ instance Pretty Tok where
     pretty EOF{}        = "(eof)"
     pretty (TokI _ i)   = pretty i
     pretty (TokS _ s)   = pretty s
-    pretty (TokN _ n)   = "identifier" <+> sq (pretty n)
-    pretty (TokMN _ m)  = "module" <+> sq (pretty m)
+    pretty (TokN _ n)   = "identifier" <+> sq n
+    pretty (TokMN _ m)  = "module" <+> sq m
     pretty (TokTN _ tn) = pretty tn
     pretty (TokSV _ sn) = pretty sn
-    pretty (TokB _ b)   = "builtin" <+> sq (pretty b)
+    pretty (TokB _ b)   = "builtin" <+> sq b
     pretty (TokT _ t)   = pretty t
-    pretty (TokKw _ k)  = "keyword" <+> sq (pretty k)
+    pretty (TokKw _ k)  = "keyword" <+> sq k
 
 runAlexSt :: BSL.ByteString -> Alex a -> Either String (AlexUserState, a)
 runAlexSt inp = withAlexSt inp 0 alexInitUserState

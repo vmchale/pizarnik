@@ -29,11 +29,11 @@ infixr 5 @~
 data RE a = IllScoped (Nm a) | D (Nm a) | MDF !MN | MDC !MN | MDT !MN
 
 instance Pretty a => Pretty (RE a) where
-    pretty (IllScoped n) = pretty (loc n) <> ":" <+> "Not in scope:" <+> sq (pretty n)
-    pretty (D n)         = pretty (loc n) <> ":" <+> sq (pretty n) <+> "has already been defined"
-    pretty (MDF m)       = "Module" <+> sq (pretty m) <+> "imports the same function from different sources."
-    pretty (MDC m)       = "Module" <+> sq (pretty m) <+> "imports the same type from different sources."
-    pretty (MDT m)       = "Module" <+> sq (pretty m) <+> "imports the same constructor from different sources."
+    pretty (IllScoped n) = pretty (loc n) <> ":" <+> "Not in scope:" <+> sq n
+    pretty (D n)         = pretty (loc n) <> ":" <+> sq n <+> "has already been defined"
+    pretty (MDF m)       = "Module" <+> sq m <+> "imports the same function from different sources."
+    pretty (MDC m)       = "Module" <+> sq m <+> "imports the same type from different sources."
+    pretty (MDT m)       = "Module" <+> sq m <+> "imports the same constructor from different sources."
 
 instance Pretty a => Show (RE a) where show=show.pretty
 instance (Pretty a, Typeable a) => Exception (RE a)
