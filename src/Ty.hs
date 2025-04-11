@@ -208,6 +208,7 @@ su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
+su _ _ t0@(TT _ n) t1@(Σ _ σ) | n `Nm.notMember` σ = cf t0 t1
 
 sσ c s l σ0 σ1 =
     ss s (Nm.toList l (Nm.intersectionWith (,) σ0 σ1))

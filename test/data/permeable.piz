@@ -15,3 +15,6 @@ y : -- U
 
 z : -- U
   := [ [nip] `u x foldr ]
+
+w : -- U
+  := [ `nil head ]

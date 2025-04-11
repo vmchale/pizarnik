@@ -9,7 +9,8 @@ import           Test.Tasty.HUnit (assertFailure, testCase, (@?=))
 main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
-      ( tErr ["."] "test/data/pmfail.piz" "6:17: {ρ₁ `just} ⊁ {a `just ⊕ `nil}"
+      ( tErr [] "test/data/pmfail.piz" "6:17: {ρ₁ `just} ⊁ {a `just ⊕ `nil}"
+      : tErr ["."] "test/data/permeable.piz" "20:8: ‘`nil’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
       : [ tI fp | fp <- [ "lib/list.piz", "prelude/ord.piz"
                         , "test/examples/bool.piz"
                         , "test/examples/mutual.piz"
@@ -18,7 +19,6 @@ main = defaultMain $
                         , "test/examples/pat.piz"
                         , "test/data/beta.piz"
                         , "test/examples/exp.piz"
-                        , "test/data/permeable.piz"
                         ] ]
       ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz" ] ])
     where tI = tFile ["."]; tNo = tFile []
