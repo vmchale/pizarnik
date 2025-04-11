@@ -93,10 +93,8 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 (\-) s u = mapTV (IM.delete u) s
 
 cf, sf, gf, φf :: T a -> T a -> TM a b
-sf t0 t1 = throwError$Subsumesn't t0 t1
-gf t0 t1 = throwError$GF t0 t1
-φf t0 t1 = throwError$ΦF t0 t1
-cf t0 t1 = throwError$CF t0 t1
+sf t0 t1 = throwError$Subsumesn't t0 t1; gf t0 t1 = throwError$GF t0 t1
+φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -201,12 +199,21 @@ su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
                                    | otherwise = cf t0 t1
 su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
+su c s (Σ x a0) (Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do
+    (ς,s') <- sσ c s x a0 a1
+    pure (Σ x ς, s')
 su _ _ t0@TT{} t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
+
+sσ c s l σ0 σ1 =
+    ss s (Nm.toList l (Nm.intersectionWith (,) σ0 σ1))
+  where
+    ss sϵ []              = pure (Nm.empty, sϵ)
+    ss sϵ ((n,(x,y)):xys) = do {(xy,s') <- susc c sϵ x y; first (Nm.insert n xy) <$> ss s' xys}
 
 sus=sv su;susc=ctx'ize sus
 
