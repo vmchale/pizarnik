@@ -23,7 +23,7 @@ rot : a b c -- b c a
 
 # from https://docs.factorcode.org/content/word-pick%2Ckernel.html
 pick : a b c -- a b c a
-     := [ [[dup] dip] dip [swap] dip swap ]
+     := [ [[dup] dip] dip rot ]
 
 over : a b -- a b a
      := [ [dup] dip swap ]
