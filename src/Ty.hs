@@ -45,7 +45,7 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0
 data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
           | Subsumesn't (T a) (T a) | GF (T a) (T a)
-          | PM (TSeq a) | AM (Nm a)
+          | PM (TSeq a) | AM (Nm a) | ΦF (T a) (T a)
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
@@ -59,6 +59,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (O t₀ t₁)           = tc t₀$"occurs check failed: " <+> sq (pretty t₀) <> "," <+> sq (pretty t₁)
     pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
     pretty (GF t0 t1)          = tc t0$pretty t0 <+> "⊁" <+> pretty t1
+    pretty (ΦF t0 t1)          = tc t0$sq (pretty t0) <+> "not compatible with" <+> sq (pretty t1)
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -256,9 +257,9 @@ nρ n@(Nm t _ l) s = do
     (n',g) <- nρ n (σ<>as<>ς)
     pure (n', g s')
 φ _ s t@TP{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
-φ _ s (TT _ tt) (Ρ _ n σ) =
+φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
-        Just (_:_) -> error "error message not implemented."
+        Just (_:_) -> throwError$ΦF t0 t1
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
@@ -267,7 +268,10 @@ nρ n@(Nm t _ l) s = do
     pure (roll th a',s')
 φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
 φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
-φ _ s (Ρ _ n σ) t1@Ρ{} | Nm.null σ = pure (t1, iTV n t1 s)
+φ c s (Ρ x n σ0) (Ρ _ _ σ1) = do
+    (ς, s') <- φσ c s x σ0 σ1
+    (n',g) <- nρ n (σ0<>σ1<>ς)
+    pure (n', g s')
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
