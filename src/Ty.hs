@@ -1,5 +1,4 @@
 {-# LANGUAGE LambdaCase    #-}
-{-# LANGUAGE TupleSections #-}
 
 module Ty ( TE, Ext (..), tM ) where
 
