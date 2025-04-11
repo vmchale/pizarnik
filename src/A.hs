@@ -21,10 +21,9 @@ import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Nm
 import           Nm.Map                           (NmMap, nmlist)
-import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, pipe,
-                                                   punctuate, space, tupled, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate,
+                                                   space, tupled, (<+>))
 
 infixl 9 <:>
 
@@ -119,7 +118,7 @@ data Prim = Int | String deriving (Eq, Ord)
 
 instance Pretty Prim where pretty Int="Int"; pretty String="String"
 
-data TS a = TS { tlefts, trights :: TSeq a } deriving (Eq, Ord)
+data TS a = TS { tlefts, trights :: TSeq a }
 type TSeq a = [T a]
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
@@ -128,10 +127,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | QT { tL :: a, tq :: TS a } | SV { tL :: a, tSs :: Nm a }
          | TT { tL :: a, tagty :: Nm a } | Σ { tL :: a, tΣ :: NmMap (TSeq a) }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
-         -- TODO: scope RV by "arms" so that { J(a) `a } and { J(Int) `a } produce a=Int
-         -- (still allow a, b etc. as "heads"...)
-         -- hm need some examples
-         | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a), uS :: S.Set (T a) }
+         | TI { tL :: a, tI :: T a } | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a) }
          | UU { tL :: a, uts :: [T a] }
 
 instance PT (T a) where
@@ -151,30 +147,6 @@ instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
 
 unA :: T a -> Maybe (T a, [T a])
 unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing
-
-instance Eq (T a) where
-    (==) (TV _ n0) (TV _ n1) = n0==n1; (==) (TP _ t0) (TP _ t1) = t0==t1
-    (==) (TT _ t0) (TT _ t1) = t0==t1; (==) (SV _ v0) (SV _ v1) = v0==v1
-    (==) (TC _ n0) (TC _ n1) = n0==n1; (==) (TI _ t0) (TI _ t1) = t0==t1
-    (==) (TA _ t0 t1) (TA _ t0' t1') = t0==t0'&&t1==t1'
-    (==) (QT _ ts0) (QT _ ts1) = ts0==ts1; (==) (Σ _ w0) (Σ _ w1) = w0==w1
-    (==) (Ρ _ n0 σ0 ρ0) (Ρ _ n1 σ1 ρ1) = n0==n1&&σ0==σ1&&ρ0==ρ1
-    (==) UU{} _ = undefined; (==) _ UU{} = undefined
-    (==) _ _ = False
-
-instance Ord (T a) where
-    compare (TV _ n0) (TV _ n1) = compare n0 n1; compare (TP _ t0) (TP _ t1) = compare t0 t1
-    compare (TT _ t0) (TT _ t1) = compare t0 t1; compare (SV _ n0) (SV _ n1) = compare n0 n1
-    compare (TC _ n0) (TC _ n1) = compare n0 n1; compare (TI _ t0) (TI _ t1) = compare t0 t1
-    compare (QT _ t0) (QT _ t1) = compare t0 t1; compare (Σ _ as) (Σ _ as') = compare as as'
-    compare (TA _ t0 t0') (TA _ t1 t1') = compare [t0,t1] [t0',t1']
-    compare (Ρ _ n0 σ0 ρ0) (Ρ _ n1 σ1 ρ1) = case compare n0 n1 of EQ -> case compare σ0 σ1 of {EQ -> compare ρ0 ρ1; o -> o}; o -> o
-    compare UU{} _ = undefined; compare _ UU{} = undefined
-    compare TV{} _ = GT; compare _ TV{} = LT; compare TP{} _ = GT; compare _ TP{} = LT
-    compare TT{} _ = GT; compare _ TT{} = LT; compare SV{} _ = GT; compare _ SV{} = LT
-    compare TC{} _ = GT; compare _ TC{} = LT; compare Ρ{} _ = GT; compare _ Ρ{} = LT
-    compare TA{} _ = GT; compare _ TA{} = LT; compare Σ{} _ = GT; compare _ Σ{} = LT
-    compare TI{} _ = GT; compare _ TI{} = LT
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
@@ -216,16 +188,11 @@ instance P0 (T a) where
     p0 (TT _ n) = pretty n; p0 (Σ _ ts) = pΣ (pNM (hsep.(\(u,tsϵ) -> map p0 tsϵ++[pretty u])) ts)
     p0 t@TA{} | (h:a) <- tunroll t = p0 h <> tupled (p0<$>a)
     p0 (TI _ t) = p0 t <+> "⁻¹"
-    p0 (Ρ _ n σ s) | Nm.null σ = pρ n (pa s)
-    p0 (Ρ _ n σ s) | S.null s = pρ n (pΡ σ)
-    p0 (Ρ _ n σ s) = pρ n (pΡ σ++(pipe:pa s))
+    p0 (Ρ _ n σ) = pρ n (pΡ σ)
     p0 (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (p0<$>t)
 
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
-
-pa :: S.Set (T a) -> [Doc ann]
-pa = punctuate ", ".map p0.S.toList
 
 pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
 

@@ -152,11 +152,11 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
     case IM.lookup u (tvs s) of
         Nothing -> pure t
         Just t' -> s\-u@>t'
-(@>) s (Ρ l n@(Nm _ (U u) _) a r) =
+(@>) s (Ρ l n@(Nm _ (U u) _) a) =
     case IM.lookup u (tvs s) of
         -- FIXME: check for clashes when we substitute universal... move over to tag-section?
         -- use maxView on set to pick TVs
-        Nothing -> Ρ l n <$> traverse (s@@) a <*> st (s@>) r
+        Nothing -> Ρ l n <$> traverse (s@@) a
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
@@ -174,7 +174,7 @@ occ TT{}            = IS.empty
 occ TC{}            = IS.empty
 occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
-occ (Ρ _ n a s)     = NmSet.insert n$foldMap (occ@<>) a <> occ@<>S.toList s
+occ (Ρ _ n a)       = NmSet.insert n$foldMap (occ@<>) a
 
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
@@ -195,9 +195,8 @@ su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, 
     pure (roll th a',s')
 su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
-su _ s (Ρ _ n σ0 a) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1 a; pure (n',g s)}
-su _ s (Ρ _ n σ a) t@QT{} = do {(n',g) <- nρ n σ (S.insert t a); pure (n',g s)}
-su _ s t@TT{} (Ρ _ n σ a) | Nm.null σ&&S.null a = pure (t, iTV n t s)
+su _ s (Ρ _ n σ0) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1; pure (n',g s)}
+su _ s t@TT{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
 su _ _ t0 t1 = error (show (t0,t1))
 
 sus=sv su;susc=ctx'ize sus
@@ -235,11 +234,9 @@ sv _ _ _ [] t1 = throwError$LE t1 []
 
 ctx'ize us c s = us c s `onM` peek s
 
--- ψ to pick apart RVs
-
-nρ n@(Nm t _ l) s a = do
+nρ n@(Nm t _ l) s = do
     n' <- fr l t
-    let t'=Ρ l n' s a
+    let t'=Ρ l n' s
     pure (t', iTV n t')
 
 -- fan out
@@ -254,25 +251,23 @@ nρ n@(Nm t _ l) s a = do
                      | otherwise = pure (t1, iTV n t1 s)
 φ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                      | otherwise = pure (t0, iTV n t0 s)
-φ c s (Σ _ as) (Ρ x n σ a) = do
+φ c s (Σ _ as) (Ρ x n σ) = do
     (ς, s') <- φσ c s x σ as
-    (n',g) <- nρ n (σ<>as<>ς) a
+    (n',g) <- nρ n (σ<>as<>ς)
     pure (n', g s')
-φ _ s t@TP{} (Ρ _ n σ a) = do
-    (n',g) <- nρ n σ (S.insert t a)
-    pure (n',g s)
-φ _ s (TT _ tt) (Ρ _ n σ a) =
+φ _ s t@TP{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
+φ _ s (TT _ tt) (Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just (_:_) -> error "error message not implemented."
         _ -> do
-            (n',g) <- nρ n (Nm.insert tt [] σ) a
+            (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- φs c s a0 a1
     pure (roll th a',s')
 φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
 φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
-φ c s (Ρ _ n σ a) t1@Ρ{} | Nm.null σ && S.null a = pure (t1, iTV n t1 s)
+φ _ s (Ρ _ n σ) t1@Ρ{} | Nm.null σ = pure (t1, iTV n t1 s)
 
 φσ c s l σ0 σ1 =
     φss s (Nm.toList l ς)
@@ -345,8 +340,6 @@ gt _ t0@(Σ _ σ) t1@(TT _ n) =
         (gf t0 t1) $> mempty
 gt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 gt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-gt _ (Ρ _ n σ a) t@TV{} | t `S.member` a = pure mempty
-                        | otherwise = ($mempty).snd<$>nρ n σ (S.insert t a)
 gt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                     | otherwise = pure (sTV n t1)
 gt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
@@ -355,13 +348,13 @@ gt _ t0@TT{} t1@Σ{} = gf t0 t1
 gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
 gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; gt c t0' t1}
 gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; gt c t0 t1'}
-gt _ (Ρ _ _ _ a) t@TP{} | t `S.member` a = pure mempty -- freshen+insert?
 -- this is happening without substitution/context?
 gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
-gt _ t@TP{} (Ρ _ _ _ a) | t `S.member` a = pure mempty
-gt c (Ρ _ n σ0 a) (Σ _ σ1) = do
-    (_,g) <- nρ n (σ0<>σ1) a
+gt c (Ρ _ n σ0) (Σ _ σ1) = do
+    (_,g) <- nρ n (σ0<>σ1)
     g<$>mσ gt c σ0 σ1
+gt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
+                               | otherwise = throwError$GF t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
@@ -372,22 +365,24 @@ lt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
-lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
+-- lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
-lt c t0@(Ρ _ _ σ0 a) t1@(Σ _ σ1)
-    | σ0 `Nm.isSubmapOf` σ1 && S.null a = mσ lt c σ0 σ1
+lt c t0@(Ρ _ _ σ0) t1@(Σ _ σ1)
+    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
     -- FIXME (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
+    -- ψ to pick apart RVs
     -- wait bigger problem what if we have a,b how do we pick constructor uh-oh
     | otherwise = sf t0 t1
-lt _ t0@TV{} (Ρ _ _ _ a) | t0 `S.member` a = pure mempty
 lt _ t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                          | otherwise = pure (sTV n t1)
 lt _ t0@(TV _ n) t1@Σ{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                         | otherwise = pure (sTV n t1)
 lt _ (TT _ n) (Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
+lt c (Ρ _ _ σ0) (Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+lt _ (TP _ l0) (TP _ l1) | l0==l1 = pure mempty
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
@@ -478,7 +473,7 @@ fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 
 ftv, fsv, erv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
-erv l n = Ρ l <$> fr l n <*> pure Nm.empty <*> pure S.empty
+erv l n = Ρ l <$> fr l n <*> pure Nm.empty
 
 -- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
