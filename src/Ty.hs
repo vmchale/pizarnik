@@ -45,6 +45,7 @@ data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
           | Subsumesn't (T a) (T a) | GF (T a) (T a)
           | PM (TSeq a) | AM (Nm a) | ΦF (T a) (T a)
+          | CF (T a) (T a)
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
@@ -59,6 +60,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (Subsumesn't t0 t1) = tc t0$pretty t0 <+> "⊀" <+> pretty t1
     pretty (GF t0 t1)          = tc t0$pretty t0 <+> "⊁" <+> pretty t1
     pretty (ΦF t0 t1)          = tc t0$sq (pretty t0) <+> "not compatible with" <+> sq (pretty t1)
+    pretty (CF t0 t1)          = tc t0$sq (pretty t0) <+> "is not an acceptable argument when expecting" <+> sq (pretty t1)
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -90,10 +92,11 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-sf, gf, φf :: T a -> T a -> TM a b
+cf, sf, gf, φf :: T a -> T a -> TM a b
 sf t0 t1 = throwError$Subsumesn't t0 t1
 gf t0 t1 = throwError$GF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1
+cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
 tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
@@ -196,7 +199,19 @@ su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
 su _ s (Ρ _ n σ0) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1; pure (n',g s)}
 su _ s t@TT{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
-su _ _ t0 t1 = error (show (t0,t1))
+su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
+                                   | otherwise = cf t0 t1
+su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
+                                 | otherwise = cf t0 t1
+su _ _ t0@TT{} t1@TP{} = cf t0 t1
+su _ _ t0@TT{} t1@QT{} = cf t0 t1
+su _ _ t0@TT{} t1@TI{} = cf t0 t1
+su _ _ t0@TP{} t1@TT{} = cf t0 t1
+su _ _ t0@TP{} t1@QT{} = cf t0 t1
+su _ _ t0@TP{} t1@TI{} = cf t0 t1
+su _ _ t0@QT{} t1@TT{} = cf t0 t1
+su _ _ t0@QT{} t1@TP{} = cf t0 t1
+su _ _ t0@QT{} t1@TI{} = cf t0 t1
 
 sus=sv su;susc=ctx'ize sus
 
