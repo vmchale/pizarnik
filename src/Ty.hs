@@ -250,12 +250,6 @@ nρ n@(Nm t _ l) s a = do
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
-φ _ s (Ρ _ n σ a) t@TV{} = do
-    (n',g) <- nρ n σ (S.insert t a)
-    pure (n', g s)
-φ _ s t@TV{} (Ρ _ n σ a) = do
-    (n',g) <- nρ n σ (S.insert t a)
-    pure (n',g s)
 φ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
                      | otherwise = pure (t1, iTV n t1 s)
 φ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
@@ -386,6 +380,7 @@ lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0 a) t1@(Σ _ σ1)
     | σ0 `Nm.isSubmapOf` σ1 && S.null a = mσ lt c σ0 σ1
     -- FIXME (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
+    -- wait bigger problem what if we have a,b how do we pick constructor uh-oh
     | otherwise = sf t0 t1
 lt _ t0@TV{} (Ρ _ _ _ a) | t0 `S.member` a = pure mempty
 lt _ t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
