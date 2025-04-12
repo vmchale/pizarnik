@@ -311,23 +311,19 @@ mσ u c σ0 σ1 =
   where
     g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
 
--- TODO: eat into stack var...
-rwArSV :: Ar -> Nm a -> TSeq a -> TM a (TSeq a)
-rwArSV = undefined
-
+-- TODO: eat into stack var if present
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
     where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
-          g (_:ts)           = g ts
+          g (t:ts)           = (t:)<$>g ts
           g []               = pure []
 
-          under f (t@SV{}:ts) = (t:) <$> f ts
+          under f (t@SV{}:ts) = (t:)<$>f ts
           under f ts          = f ts
 
-mc u c s = ms u c s `onM` peek s
+mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
-hasT = any (\case TT{} -> True; _ -> False)
 
 ce c = traverse (βc c)
 
@@ -336,7 +332,6 @@ ms :: (Nt a -> T a -> T a -> TM a (Subst a))
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-               -- FIXME: make sure this doesn't loop indefinitely?
     | hasC t0 = do {t0' <- ce (tβ c) t1; ms u c s t0' t1e}
     -- FIXME: eat based on constructor arity
     | otherwise = throwError$LE t0e t1e
@@ -345,7 +340,7 @@ ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV n uws s) t0 res
     | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
-    | hasT t0 = do {t0' <- rwAr (ars c) t0e; ms u c s t0' t1}
+    -- FIXME: make sure this doesn't loop indefinitely?
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
 ms u c s t0 t1e@(SV _ n:t1)
