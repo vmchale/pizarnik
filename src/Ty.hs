@@ -1,4 +1,4 @@
-{-# LANGUAGE LambdaCase    #-}
+{-# LANGUAGE LambdaCase #-}
 
 module Ty ( TE, Ext (..), tM ) where
 
@@ -309,53 +309,55 @@ nρ n@(Nm t _ l) s = do
 mσ u c σ0 σ1 =
     execStateT (traverse (uncurry g) (Nm.intersectionWith (,) σ0 σ1)) mempty
   where
-    g t0 t1 = do {s <- get; s' <- lift (pvc u c s t0 t1); put s'}
+    g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
 
--- `nil `u `cons should be rewritten to {`nil `u `cons} b/c `cons has arity 2
+-- TODO: eat into stack var...
+rwArSV :: Ar -> Nm a -> TSeq a -> TM a (TSeq a)
+rwArSV = undefined
 
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
-    where g (TT x n:ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else g ts}
-          g (_:ts)      = g ts
-          g []          = pure []
+    where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
+          g (_:ts)           = g ts
+          g []               = pure []
 
           under f (t@SV{}:ts) = (t:) <$> f ts
           under f ts          = f ts
 
-
-pvc u c s = pv u c s `onM` peek s
+mc u c s = ms u c s `onM` peek s
 
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 hasT = any (\case TT{} -> True; _ -> False)
 
 ce c = traverse (βc c)
 
-pv :: (Nt a -> T a -> T a -> TM a (Subst a))
+ms :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
-pv u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
+ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-               in pvc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    | hasC t0 = do {t0' <- ce (tβ c) t1; pv u c s t0' t1e}
+               in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
+               -- FIXME: make sure this doesn't loop indefinitely?
+    | hasC t0 = do {t0' <- ce (tβ c) t1; ms u c s t0' t1e}
     -- FIXME: eat based on constructor arity
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
-pv u c s t0e@(SV _ n:t0) t1
+ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-               in pvc u c (iSV n uws s) t0 res
-    | hasC t1 = do {t1' <- ce (tβ c) t1; pv u c s t0e t1'}
-    | hasT t0 = do {t0' <- rwAr (ars c) t0e; pv u c s t0' t1}
+               in mc u c (iSV n uws s) t0 res
+    | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
+    | hasT t0 = do {t0' <- rwAr (ars c) t0e; ms u c s t0' t1}
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
-pv u c s t0 t1e@(SV _ n:t1)
+ms u c s t0 t1e@(SV _ n:t1)
     | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
-               in pvc u c (iSV n uws s) res t1
-    | hasC t0 = do {t0' <- ce (tβ c) t1; pv u c s t0' t1e}
+               in mc u c (iSV n uws s) res t1
+    | hasC t0 = do {t0' <- ce (tβ c) t1; ms u c s t0' t1e}
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
-pv u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; pvc u c (s<>s') t0s t1s}
-pv _ _ _ [] [] = pure mempty
-pv _ _ _ t0 [] = throwError$LE t0 []
-pv _ _ _ [] t1 = throwError$LE t1 []
+ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
+ms _ _ _ [] [] = pure mempty
+ms _ _ _ t0 [] = throwError$LE t0 []
+ms _ _ _ [] t1 = throwError$LE t1 []
 
 -- ≻
 gt :: Nt a -> T a -> T a -> TM a (Subst a)
@@ -372,7 +374,7 @@ gt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
 gt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
 gt _ t0@TT{} t1@Σ{} = gf t0 t1
-gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv gt c mempty a0 a1
+gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms gt c mempty a0 a1
 gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; gt c t0' t1}
 gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; gt c t0 t1'}
 -- this is happening without substitution/context?
@@ -401,7 +403,7 @@ lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
 -- lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
-lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = pv lt c mempty a0 a1
+lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0) t1@(Σ _ σ1)
@@ -428,7 +430,7 @@ lt _ t0@QT{} t1@TT{} = sf t0 t1
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
-mTS c (TS l0 r0) (TS l1 r1) = do {s <- pv gt c mempty l0 l1; pvc lt c s r0 r1 $> s}
+mTS c (TS l0 r0) (TS l1 r1) = do {s <- ms gt c mempty l0 l1; mc lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
