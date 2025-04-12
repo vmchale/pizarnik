@@ -1,17 +1,25 @@
 cabal-version:      2.2
 name:               pizarnik
 version:            0.1.0.0
--- synopsis:
--- description:
+synopsis:           Pizarnik stack-based concatenative language
+description:
+    Pizarnik is a stack-based, concatenative language with extensible cases handled properly by drawing inspiration from linear logic.
 license:            AGPL-3.0-or-later
 license-file:       LICENSE
 author:             Vanessa McHale
 maintainer:         vamchale@gmail.com
--- copyright:
 category:           Language
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
+extra-source-files:
+    prelude/*.piz
+    lib/*.piz
+    test/data/*.piz
+    test/examples/*.piz
+
+source-repository head
+    type:     git
+    location: https://github.com/vmchale/pizarnik
 
 common warnings
     ghc-options: -Wall
