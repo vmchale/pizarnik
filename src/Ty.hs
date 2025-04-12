@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Ty ( TE, Ext (..), tM ) where
 
 import           A
@@ -407,9 +405,6 @@ lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0) t1@(Σ _ σ1)
     | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
-    -- FIXME (ρ₁ ⊃ {False|a}) ⊀ {True ⊕ False}
-    -- ψ to pick apart RVs
-    -- wait bigger problem what if we have a,b how do we pick constructor uh-oh
     | otherwise = sf t0 t1
 lt _ t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
                          | otherwise = pure (sTV n t1)
