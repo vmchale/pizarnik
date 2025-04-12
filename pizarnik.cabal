@@ -45,6 +45,7 @@ library
     other-extensions: DeriveFunctor
                       RankNTypes
     build-tool-depends: alex:alex, happy:happy >=2.1
+    ghc-options:      -fmax-pmcheck-models=50
     build-depends:    base >=4.19.0.0
                     , array
                     , bytestring
