@@ -385,7 +385,10 @@ gt _ t0@QT{} t1@TP{} = gf t0 t1
 gt _ t0@QT{} t1@TT{} = gf t0 t1
 gt _ t0@TT{} t1@TP{} = gf t0 t1
 gt _ t0@TT{} t1@QT{} = gf t0 t1
-gt _ (Ρ _ n σ) t@TP{} | Nm.null σ = pure (sTV n t)
+gt _ t0@(Ρ _ n σ) t1@TP{} | Nm.null σ = pure (sTV n t1)
+                          | otherwise = gf t0 t1
+gt _ t0@(Ρ _ n σ) t1@QT{} | Nm.null σ = pure (sTV n t1)
+                          | otherwise = gf t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
