@@ -18,7 +18,7 @@ import           System.IO                 (stdout)
 
 adbg :: [FilePath] -> FilePath -> IO ()
 adbg incls fp = do
-    tms <- tMs incls fp
+    tms <- tZ incls fp
     case tms of
         Left err -> throwIO err
         Right ms -> traverse_ (rDoc.am) ms

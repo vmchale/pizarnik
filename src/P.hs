@@ -1,4 +1,4 @@
-module P ( fmt, rMs, tMs ) where
+module P ( fmt, rMs, tZ ) where
 
 import           A
 import           Control.Exception    (throwIO)
@@ -6,6 +6,7 @@ import           Control.Monad        (foldM)
 import           Data.Bifunctor       (second)
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.IntMap          as IM
+import           Data.Tree            (Tree (Node))
 import           L
 import           M
 import           Nm
@@ -34,6 +35,15 @@ tR rms = loop IM.empty where
         in do
             (res, c, u') <- tM u ctx m
             IM.insert i res <$> loop (IM.insert i c b) u' mns
+
+tr :: IM.IntMap (M a b)
+   -> Tree (M a b)
+tr c = go (c IM.! (-1))
+  where
+    go m@(M is _) = Node m ((go.(c IM.!).unU.mU)<$>is)
+
+tZ :: [FilePath] -> FilePath -> IO (Either (TE AlexPosn) (Tree (M AlexPosn (TS AlexPosn))))
+tZ incls fp = fmap tr <$> tMs incls fp
 
 tMs :: [FilePath]
     -> FilePath -- ^ Root module
