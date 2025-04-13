@@ -40,7 +40,7 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0
 
 data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
-          | LF (T a) (T a) | GF (T a) (T a)
+          | LF (T a) (T a)
           | ΦF (T a) (T a) | CF (T a) (T a)
           | PM (TSeq a) | AM (Nm a)
 
@@ -55,7 +55,6 @@ instance Pretty a => Pretty (TE a) where
     pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
     pretty (O t₀ t₁)    = tc t₀$"occurs check failed: " <+> sq t₀ <> "," <+> sq t₁
     pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
-    pretty (GF t0 t1)   = tc t0$pretty t0 <+> "⊁" <+> pretty t1
     pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
     pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
 
@@ -89,8 +88,8 @@ sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-cf, sf, gf, φf :: T a -> T a -> TM a b
-sf t0 t1 = throwError$LF t0 t1; gf t0 t1 = throwError$GF t0 t1
+cf, sf, φf :: T a -> T a -> TM a b
+sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
@@ -152,8 +151,6 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just t' -> s\-u@>t'
 (@>) s (Ρ l n@(Nm _ (U u) _) a) =
     case IM.lookup u (tvs s) of
-        -- FIXME: check for clashes when we substitute universal... move over to tag-section?
-        -- use maxView on set to pick TVs
         Nothing -> Ρ l n <$> traverse (s@@) a
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
@@ -304,11 +301,6 @@ nρ n@(Nm t _ l) s = do
 
 φs=sv φ;φsc=ctx'ize φs
 
-mσ u c σ0 σ1 =
-    execStateT (traverse (uncurry g) (Nm.intersectionWith (,) σ0 σ1)) mempty
-  where
-    g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
-
 -- TODO: eat into stack var if present
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
@@ -352,41 +344,10 @@ ms _ _ _ [] [] = pure mempty
 ms _ _ _ t0 [] = throwError$LE t0 []
 ms _ _ _ [] t1 = throwError$LE t1 []
 
--- ≻
-gt :: Nt a -> T a -> T a -> TM a (Subst a)
-gt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ1 `Nm.isSubmapOf` σ0)
-        (gf t0 t1) *> mσ gt c σ0 σ1
-gt _ t0@(Σ _ σ) t1@(TT _ n) =
-    unless (n `Nm.member` σ)
-        (gf t0 t1) $> mempty
-gt _ (TT _ tt0) (TT _ tt1) | tt0==tt1 = pure mempty
-gt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-gt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
-                    | otherwise = pure (sTV n t1)
-gt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
-                    | otherwise = pure (sTV n t0)
-gt _ t0@TT{} t1@Σ{} = gf t0 t1
-gt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms gt c mempty a0 a1
-gt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; gt c t0' t1}
-gt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; gt c t0 t1'}
--- this is happening without substitution/context?
-gt c (QT _ ts0) (QT _ ts1) = mTS c ts1 ts0
-gt c (Ρ _ n σ0) (Σ _ σ1) = do
-    (_,g) <- nρ n (σ0<>σ1)
-    g<$>mσ gt c σ0 σ1
-gt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
-                               | otherwise = gf t0 t1
-gt _ t0@TP{} t1@QT{} = gf t0 t1
-gt _ t0@TP{} t1@TT{} = gf t0 t1
-gt _ t0@QT{} t1@TP{} = gf t0 t1
-gt _ t0@QT{} t1@TT{} = gf t0 t1
-gt _ t0@TT{} t1@TP{} = gf t0 t1
-gt _ t0@TT{} t1@QT{} = gf t0 t1
-gt _ t0@(Ρ _ n σ) t1@TP{} | Nm.null σ = pure (sTV n t1)
-                          | otherwise = gf t0 t1
-gt _ t0@(Ρ _ n σ) t1@QT{} | Nm.null σ = pure (sTV n t1)
-                          | otherwise = gf t0 t1
+mσ u c σ0 σ1 =
+    execStateT (traverse (uncurry g) (Nm.intersectionWith (,) σ0 σ1)) mempty
+  where
+    g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
@@ -398,7 +359,8 @@ lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
                     | otherwise = pure (sTV n t0)
--- lt _ (Ρ _ n σ a) t@TP{} | Nm.null σ && a==S.singleton t = pure (sTV n t)
+lt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
+                    | otherwise = pure (sTV n t1)
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
@@ -406,12 +368,14 @@ lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ _ σ0) t1@(Σ _ σ1)
     | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
     | otherwise = sf t0 t1
-lt _ t0@(TV _ n) t1@QT{} | n `NmSet.member` occ t1 = throwError$O t0 t1
-                         | otherwise = pure (sTV n t1)
-lt _ t0@(TV _ n) t1@Σ{} | n `NmSet.member` occ t1 = throwError$O t0 t1
-                        | otherwise = pure (sTV n t1)
-lt _ (TT _ n) (Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
-lt c (Ρ _ _ σ0) (Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+    -- TODO: Σ, TT
+lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
+                            | otherwise = sf t0 t1
+lt c (Σ _ σ0) (Ρ _ n σ1) = do
+    (_,g) <- nρ n (σ0<>σ1)
+    g<$>mσ lt c σ0 σ1
+lt c t0@(Ρ _ _ σ0) t1@(Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                                 | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
 lt _ t0@TP{} t1@QT{} = sf t0 t1
@@ -424,7 +388,7 @@ lt _ t0@QT{} t1@TT{} = sf t0 t1
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
-mTS c (TS l0 r0) (TS l1 r1) = do {s <- ms gt c mempty l0 l1; mc lt c s r0 r1 $> s}
+mTS c (TS l0 r0) (TS l1 r1) = do {s <- ms (\cϵ t0 t1 -> lt cϵ t1 t0) c mempty l0 l1; mc lt c s r0 r1 $> s}
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
