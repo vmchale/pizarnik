@@ -32,9 +32,10 @@ Pizarnik's approach to pattern-matching is based on commitment to the idea of pa
 
 % mention Blume, Acar, Chae
 
-Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|. It can also be said to have type $-- \{ \mathtt{`true}~\oplus~\mathtt{`false} \}$. To see why we would wish to admit $\mathtt{`true}~\oplus~\mathtt{`false}$, consider
+% TODO: rewrite this... arity matters!
 
-% even then, we should only generalize on the left.
+Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|.
+
 % negative polarity <-> "left permeable"
 
 \begin{verbatim}
@@ -44,16 +45,14 @@ not : Bool -- Bool
     := [ { `false⁻¹ `true & `true⁻¹ `false } ]
 \end{verbatim}
 
-\verb|`false⁻¹| has type \verb|`false --| and hence \verb|`false⁻¹ `true| has type \verb|`false -- `true|; \verb|`true⁻¹ `false| has type \verb|`true -- `false|.
+\verb|`false⁻¹| has type \verb|`false --| and hence \verb|`false⁻¹ `true| has type \verb|`false -- `true|; \verb|`true⁻¹ `false| has type \verb|`true -- `false|. Note that inverses exchange left and right.
 % inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
 % true inverse
 
 Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
-% insisting on specificity on the right=pattern-match exhaustiveness checking
+% insisting on specificity=pattern-match exhaustiveness checking
 
 To invert a sum type, we supply a product of its inverses (pattern match clauses). This is precisely the de Morgan laws.
-
-% inverses exchange left and right
 
 \subsection{Reusing Pattern-Match Arms}
 
