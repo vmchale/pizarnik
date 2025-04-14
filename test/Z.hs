@@ -27,14 +27,14 @@ main = defaultMain $
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
 tErr incls fp expected = testCase fp $ do
-    res <- tZ incls fp
+    res <- tMs incls fp
     case res of
         Right{} -> assertFailure "expected error."
         Left e  -> show e @?= expected
 
 tFile :: [FilePath] -> FilePath -> TestTree
 tFile incls fp = testCase fp $ do
-    res <- tZ incls fp
+    res <- tMs incls fp
     case res of
         Right{} -> pure ()
         Left e  -> assertFailure (show e)
