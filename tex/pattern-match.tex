@@ -25,7 +25,6 @@
 
 Pizarnik's approach to pattern-matching is based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$) \cite{munchmaccagnoni}.
 
-% Munch-Maccagnoni pattern-match &
 % par = project tuple? (negative aspect ig)
 
 \section{Extensible Pattern Matches}
@@ -42,7 +41,9 @@ Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) i
 type Bool = { `true ⊕ `false };
 
 not : Bool -- Bool
-    := [ { `false⁻¹ `true & `true⁻¹ `false } ]
+    := [ { `false⁻¹ `true
+         & `true⁻¹ `false }
+       ]
 \end{verbatim}
 
 \verb|`false⁻¹| has type \verb|`false --| and hence \verb|`false⁻¹ `true| has type \verb|`false -- `true|; \verb|`true⁻¹ `false| has type \verb|`true -- `false|. Note that inverses exchange left and right.
