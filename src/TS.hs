@@ -1,6 +1,5 @@
 module TS ( tsort ) where
 
-
 import           Data.Graph (graphFromEdges, reverseTopSort)
 import           Nm
 
