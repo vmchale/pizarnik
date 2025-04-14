@@ -72,7 +72,7 @@ executable pc
     import:           warnings
     default-language: Haskell2010
     hs-source-dirs:   run
-    main-is:          Opt.hs
+    main-is:          X.hs
     build-depends:    base
                     , pizarnik
                     , bytestring
