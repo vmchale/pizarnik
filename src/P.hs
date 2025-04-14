@@ -58,7 +58,7 @@ rMs :: [FilePath] -- ^ Include dirs
     -> FilePath -- ^ Root module
     -> IO (Either (RE AlexPosn) (Int, [MN], IM.IntMap (M AlexPosn AlexPosn)))
 rMs incls fp = do
-    ((u,_,_,_), MS ms ims) <- pRoot incls fp
+    (u, MS ms ims) <- pRoot incls fp
     let s=tsort ims
     pure ((\(i,x) -> (i,s,x))<$>go ms u IM.empty s)
   where

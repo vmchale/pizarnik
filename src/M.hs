@@ -22,12 +22,12 @@ rMM = flip runStateT
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> FilePath -- ^ Root module
-      -> IO (AlexUserState, MS)
+      -> IO (Int, MS)
 pRoot incls fp = do
     (st', m@(M is _)) <- pIO fp alexInitUserState
     let initMs=MS (IM.singleton (-1) m) [(rootn, is)]
-    (([], ms), st'') <- rMM st' (pP initMs incls is)
-    pure (st'', ms)
+    (([], ms), (u,_,_,_)) <- rMM st' (pP initMs incls is)
+    pure (u, ms)
   where
     rootn = MN ("(root)" :| []) (U (-1))
 
