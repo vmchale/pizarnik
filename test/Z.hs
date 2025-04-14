@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main (main) where
@@ -26,15 +27,13 @@ main = defaultMain $
     where tI = tFile ["."]; tNo = tFile []
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
-tErr incls fp expected = testCase fp $ do
-    res <- tMs incls fp
-    case res of
+tErr incls fp expected = testCase fp $
+    tMs incls fp >>= \case
         Right{} -> assertFailure "expected error."
         Left e  -> show e @?= expected
 
 tFile :: [FilePath] -> FilePath -> TestTree
 tFile incls fp = testCase fp $ do
-    res <- tMs incls fp
-    case res of
+    tMs incls fp >>= \case
         Right{} -> pure ()
         Left e  -> assertFailure (show e)
