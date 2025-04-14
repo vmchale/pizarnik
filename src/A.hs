@@ -114,7 +114,7 @@ instance Traversable A where
     traverse f (Pat x (SL y ys)) = Pat <$> f x <*> (SL <$> f y <*> traverse (taseq f) ys)
     traverse f (Inv x a) = Inv <$> f x <*> traverse f a
 
-data Prim = Int | String deriving (Eq, Ord)
+data Prim = Int | String deriving Eq
 
 instance Pretty Prim where pretty Int="Int"; pretty String="String"
 
