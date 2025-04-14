@@ -33,17 +33,16 @@ common warnings
 library
     import:             warnings
     exposed-modules:
-        A
         Dbg
-        M
         P
-        Ty
 
     other-modules:
+        A
         B
         C
         Imp
         L
+        M
         Nm
         Nm.Map
         Nm.Set
@@ -52,6 +51,7 @@ library
         R
         S
         TS
+        Ty
         Ty.Clone
 
     default-extensions: OverloadedStrings
