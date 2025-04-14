@@ -21,16 +21,6 @@ Blume, Acar, and Chae present a functional language in which sum type variants (
 
 % Point being: there's lots more room for FP to win!
 
-% also emphasizes duality
-
-% { 0⁻¹ `true & _ `false }
-% type rewriting/expansion rules... Int + a = a for a universal, inv
-% insight: wildcard is drop
-% inverse of a type: swap left/right on stack (view?)
-
-% inspired by linear logic
-% "right permeable" girard uses
-
 % https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping
 
 \section{The Expression Problem}
@@ -50,6 +40,8 @@ Nick Partridge gives an example of using prisms for error hierarchies in Haskell
 
 This is dual to the lens kludge
 
+% https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
+
 \begin{verbatim}
 class HasInt a where
     int :: Lens a Int
@@ -57,10 +49,8 @@ class HasInt a where
 
 which is known to be superseded by row types.
 
-% https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
-
 Both entail the globality of typeclasses and depend on esoteric compiler extensions \cite{ghc}.
-% 
+%
 
 The Haskell solutions are more convoluted, but it is precisely this maladroitness that attests to the appetite for a solution to this problem.
 
