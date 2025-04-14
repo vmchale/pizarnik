@@ -47,13 +47,8 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 
 \section{Judgments II}
 
-% { 0⁻¹ `true & _ `false }
-% type rewriting/expansion rules... Int + a = a for a universal, inv
 % insight: wildcard is drop
 % inverse of a type: swap left/right on stack
-
-% negation of types (constructive)
-% inspired by linear logic?
 
 \begin{mathpar}
 
@@ -67,23 +62,6 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
   {\Judge x : A -- B \tag{b} \oplus C \tag{c}}
   \quad(\textsc{Disjunction})
   % cut? modus ponens
-
-\inferrule
-{\Judge x_1 : A_1 \tag{a}_1 -- B \\ \Judge x_2 : A_2 \tag{a}_2 -- B \\ \cdots \\ \Judge x_n : A_n \tag{a}_n -- B}
-{\Judge \braces{x_1 \with x_2 \with \cdots \with x_n} : \braces{\withmany{A\tag{a}}{n}} -- B}
-\quad(\textsc{Pattern-Match})
-% I think this does need to include (right-) unification of Bs...
-
-\inferrule
-{\Judge  \{\beta_i\} \subset \{\alpha_i\} \\x : A -- B~\withmany{\beta}{m} \\ \Judge y : B~\withmany{\alpha}{n} -- C}
-{\Judge xy : A -- C }
-\quad(\textsc{Narrow})
-% TODO: break this into φ relation (which allows the left to generalize with respect to the right)
-
-% \inferrule
-% {\Judge x : \bigoplus_i \alpha -- \\ y : \bigoplus_j\beta}
-% {\Judge xy : -- \bigoplus_i \left(\bigoplus_j \alpha_j\right) \beta_i}
-% \quad(\textsc{Fan-Out}) (fan out with respect to...)
 
 \end{mathpar}
 
@@ -103,10 +81,6 @@ $\alpha \biguplus_\sphericalangle \{\alpha \oplus \beta\}$
 
 \subsection{Monomorphization}
 
-Rather than computing a most general unifier, as
-% unlike Diggins, we also want monomorphization, hence mgu, match approach
-
-% unlike most general unifier, we wish to have the most specific disjuctive type
-% "right permeable" girard uses
+% "right permeable" girard terminology
 
 \end{document}
