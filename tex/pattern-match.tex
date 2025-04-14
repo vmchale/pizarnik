@@ -36,7 +36,6 @@ Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) i
 
 % even then, we should only generalize on the left.
 % negative polarity <-> "left permeable"
-% insisting on specificity on the right=pattern-match exhaustiveness checking
 
 \begin{verbatim}
 type Bool = { `true ⊕ `false };
@@ -50,13 +49,11 @@ not : Bool -- Bool
 % true inverse
 
 Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
+% insisting on specificity on the right=pattern-match exhaustiveness checking
 
 To invert a sum type, we supply a product of its inverses (pattern match clauses). This is precisely the de Morgan laws.
 
-% We have true (constructive) inverses; \verb|`true⁻¹| is inverse to type \verb|`true| and has type \verb|`true --| (inverses exchange left and right).
-
-% maybe Dhall does this with merge? lexical scoping..
-% TypeScript: 1 has type 1 | String so pattern-match exhaustiveness checking is bunk.
+% inverses exchange left and right
 
 \subsection{Reusing Pattern-Match Arms}
 
@@ -82,9 +79,6 @@ Pattern-match arms are terms like builtin functions \verb|+| etc. and can be reu
 \subsection{Wildcards}
 
 \verb|drop : a --| is one of the building blocks of stack programming. We denote it as \verb|_| as it functions like a wildcard in pattern-matching.
-
-% TODO: pattern match on integers, wildcard existential hm
-% narrowing: we can narrow supplied arguments, but not ⊕-generalize
 
 \subsection{Typesafe Head}
 
@@ -128,24 +122,22 @@ So we get or-patterns and they are reusable as functions.
 
 % also emphasizes duality
 
-% { 0⁻¹ `true & _ `false }
-% type rewriting/expansion rules... Int + a = a for a universal, inv
-% insight: wildcard is drop
-% inverse of a type: swap left/right on stack (peek lens...)
-
-% negation of types (constructive)
-% inspired by linear logic?
-
 \section{Error Hierarchies}
 
+A common situation that arises is that one has error hierarchies within a
+% esp. clumsy w/ state transformers eh
+
 % also we can say "throw this X or Y" but let top-level be X | Y | W
-% e.g. "module resolution" error could be IO or parse
+% e.g. "module resolution" error could be IO or parse, type error could be scope or unification failure etc.
 
 \section{Syntactic Sugar}
 
 % do-notation, [x+y] in k etc.
-% syntactic sugar, register/IR expression expression
 % Haskell compromise: give up pattern-match exhaustiveness checking OR error case "internal error"
+
+\section{Vector Expressions}
+
+% register/IR expression expression
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
