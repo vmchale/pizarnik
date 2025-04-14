@@ -7,7 +7,7 @@ import           Control.Exception                (Exception)
 import           Control.Monad                    (unless, when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (StateT, execStateT, get, gets, modify, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
@@ -415,8 +415,8 @@ lA es (Nm _ (U i) _) = do
             Just ts -> liftClone ts
             Nothing -> error "Internal error. Name lookup failed during type resolution."
 
-tM :: Int -> Ext a -> M a a -> Either (TE a) (M a (TS a), Ext a, Int)
-tM i ex = runTM i.tMM ex
+tM :: Ext a -> M a a -> StateT Int (Either (TE a)) (M a (TS a), Ext a)
+tM c m = StateT $ \i -> (\(x,y,z) -> ((x,y),z)) <$> runTM i (tMM c m)
 
 tMM :: Ext a -> M a a -> TM a (M a (TS a))
 tMM b (M is ds) = M is <$> tD b ds

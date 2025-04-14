@@ -18,7 +18,7 @@ import           System.IO                 (stdout)
 
 adbg :: [FilePath] -> FilePath -> IO ()
 adbg incls fp = do
-    tms <- tZ incls fp
+    tms <- tMs incls fp
     case tms of
         Left err -> throwIO err
         Right ms -> traverse_ (rDoc.am) ms
@@ -29,8 +29,6 @@ dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = 
 dT :: [FilePath] -> FilePath -> IO ()
 dT incls fp = do
     res <- rMs incls fp
-    either throwIO (putDoc.pBound.thd3) res
+    either throwIO (putDoc.pBound.snd) res
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
-
-thd3 (_,_,z) = z
