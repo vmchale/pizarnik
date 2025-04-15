@@ -9,7 +9,6 @@ module R ( Ex (..)
 
 import           A
 import           Control.Arrow                    ((&&&))
-import           Control.Exception                (Exception (..))
 import           Control.Monad                    ((<=<))
 import           Control.Monad.Except             (throwError)
 import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, put, runStateT)
