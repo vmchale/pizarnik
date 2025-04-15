@@ -33,15 +33,15 @@ common warnings
 library
     import:             warnings
     exposed-modules:
+        A
         Dbg
+        L
         P
 
     other-modules:
-        A
         B
         C
         Imp
-        L
         M
         Nm
         Nm.Map
@@ -83,12 +83,16 @@ executable pc
     import:         warnings
     hs-source-dirs: run
     main-is:        X.hs
+    other-modules:  REPL
     build-depends:
         , base
         , bytestring
+        , haskeline
         , optparse-applicative
         , pizarnik
         , prettyprinter
+        , text
+        , transformers
 
 test-suite pizarnik-test
     import:           warnings
