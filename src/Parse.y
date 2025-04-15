@@ -2,6 +2,7 @@
 
     module Parse ( parseA
                  , pM
+                 , pAtoms
                  , ParseE
                  )  where
 
@@ -23,6 +24,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 }
 
 %name parseM M
+%name parseASeq ASeq
 %tokentype { Tok }
 %error { parseErr }
 %error.expected
@@ -135,6 +137,9 @@ A :: { A AlexPosn }
   | braces(sepBy(many(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
 
+ASeq :: { ASeq AlexPosn }
+     : many(A) {% fmap SL (lift get_pos) <*> pure $1 }
+
 D :: { D AlexPosn AlexPosn }
   : name colon TS defEq brackets(many(A)) { F $2 $1 $3 (SL $4 (reverse (snd $5))) }
   | type tyname many(name) eq T semicolon { TD $1 $2 (reverse $3) $5 }
@@ -173,6 +178,9 @@ instance Exception ParseE
 type Parse = ExceptT ParseE Alex
 
 pM = parseA 0
+
+pAtoms :: AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, ASeq AlexPosn)
+pAtoms = runParseSt parseASeq postImp
 
 parseA :: Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
 parseA = runParseSt parseM

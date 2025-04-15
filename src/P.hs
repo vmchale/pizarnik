@@ -1,7 +1,7 @@
-module P ( fmt, rMs, tMs ) where
+module P ( dbg, fmt, rMs, tMs ) where
 
 import           A
-import           Control.Exception                (throwIO)
+import           Control.Exception                (Exception, throw, throwIO)
 import           Control.Monad                    (foldM)
 import           Control.Monad.Trans.State.Strict (evalStateT)
 import           Data.Bifunctor                   (second)
@@ -12,10 +12,26 @@ import           L
 import           M
 import           Nm
 import           Parse
-import           Prettyprinter                    (SimpleDocStream, defaultLayoutOptions, layoutSmart, pretty)
+import           Pr
+import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, layoutSmart, pretty)
 import           R
+import           S
 import           TS
 import           Ty
+
+stack :: [L] -> Doc ann
+stack = p.reverse where
+    p []     = "----"
+    p (l:ls) = pretty l <#> p ls
+
+dbg :: BSL.ByteString -> Doc ann
+dbg src =
+    let ((l,_,_,_),at) = x$pAtoms alexInitUserState src
+        (a,_)=x (tAS l mempty at)
+    in stack$r (Node IM.empty []) a []
+  where
+    x :: Exception e => Either e a -> a
+    x = either throw id
 
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pFmt

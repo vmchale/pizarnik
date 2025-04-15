@@ -1,4 +1,4 @@
-module Ty ( TE, Ext (..), tM ) where
+module Ty ( TE, Ext (..), tM, tAS ) where
 
 import           A
 import           B
@@ -423,6 +423,9 @@ tMM b (M is ds) = M is <$> tD b ds
 
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
+
+tAS :: Int -> Ext a -> ASeq a -> Either (TE a) ([A (TS a)], Int)
+tAS u b a = fmap (\(x,_,m) -> (x,m)) (runTM u $ do {(SL _ a',s) <- tseq b mempty a; traverse (traverse (s@*)) a'})
 
 {-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()

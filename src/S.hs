@@ -1,24 +1,37 @@
-module S ( r ) where
+module S ( lm, r ) where
 
 import           A
 import qualified Data.IntMap as IM
+import           Data.Tree   (Tree (Node))
 import           Nm
 
 type S = [L]
 
 -- what about atoms in modules
 type F a = IM.IntMap (ASeq a)
+type Ctx a = Tree (IM.IntMap (ASeq a))
 
-r :: F (TS a) -> [A (TS a)] -> S -> S
+r :: Ctx (TS a) -> [A (TS a)] -> S -> S
 r e as = thread (map (ι e) as)
+
+lm :: M b a -> F a
+lm (M _ ds) = thread (map b ds) IM.empty
 
 b :: D b a -> F a -> F a
 b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
 
-ι :: F (TS a) -> A (TS a) -> S -> S
-ι _ (B _ Dup) (a:as)        = a:a:as
-ι _ (B _ Un) (_:as)         = as
-ι _ (L _ l) as              = l:as
-ι f (V _ (Nm _ (U i) _)) as = r f (aas (f IM.! i)) as
+ι :: Ctx (TS a) -> A (TS a) -> S -> S
+ι _ (B _ Dup) (a:as) = a:a:as
+ι _ (B _ Un) (_:as)  = as
+ι _ (L _ l) as       = l:as
+ι c (V _ n) as       = let (c',a) = lV c n in r c' (aas a) as
+
+lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
+lV c@(Node t s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
+                               | otherwise = tr s
+  where
+    tr [] = error "internal error: variable not found."
+    tr (c'@(Node m _):cs) | Just a <- m IM.!? u = (c',a)
+                          | otherwise = tr cs
 
 thread = foldr (.) id
