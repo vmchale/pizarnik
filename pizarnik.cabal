@@ -36,14 +36,15 @@ library
     exposed-modules:
         A
         Dbg
+        L
         P
         Pr
 
     other-modules:
         B
         C
+        E
         Imp
-        L
         M
         Nm
         Nm.Map
@@ -109,6 +110,7 @@ test-suite pizarnik-test
         , pizarnik
         , tasty
         , tasty-hunit
+        , transformers
 
 benchmark pizarnik-bench
     import:         warnings
@@ -119,3 +121,4 @@ benchmark pizarnik-bench
         , base
         , criterion
         , pizarnik
+        , transformers

@@ -7,6 +7,7 @@ import qualified Data.IntMap                      as IM
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
 import           Data.Tree                        (Tree (Node))
+import           L
 import           P
 import           Pr
 import           Prettyprinter                    (Doc, defaultLayoutOptions, hardline, layoutSmart, pretty)
@@ -19,12 +20,14 @@ import           System.IO                        (stdout)
 repl :: IO ()
 repl = runRepl loop
 
-type Repl = InputT (StateT (S, Ctx (TS AlexPosn)) IO)
+data X = X !AlexUserState S (Ctx (TS AlexPosn))
+
+type Repl = InputT (StateT X IO)
 
 runRepl :: Repl a -> IO a
 runRepl x = do
     h <- (</> ".pizarnik") <$> getHomeDirectory
-    flip evalStateT ([], Node IM.empty []) $
+    flip evalStateT (X alexInitUserState [] (Node IM.empty [])) $
         runInputT (defaultSettings { historyFile = Just h }) x
 
 loop :: Repl ()

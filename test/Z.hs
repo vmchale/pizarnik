@@ -3,9 +3,10 @@
 
 module Main (main) where
 
+import           Control.Monad.Trans.Except (runExceptT)
 import           P
-import           Test.Tasty       (TestTree, defaultMain, testGroup)
-import           Test.Tasty.HUnit (assertFailure, testCase, (@?=))
+import           Test.Tasty                 (TestTree, defaultMain, testGroup)
+import           Test.Tasty.HUnit           (assertFailure, testCase, (@?=))
 
 main :: IO ()
 main = defaultMain $
@@ -28,12 +29,12 @@ main = defaultMain $
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
 tErr incls fp expected = testCase fp $
-    tMs incls fp >>= \case
+    runExceptT (tMs incls fp) >>= \case
         Right{} -> assertFailure "expected error."
         Left e  -> show e @?= expected
 
 tFile :: [FilePath] -> FilePath -> TestTree
 tFile incls fp = testCase fp $ do
-    tMs incls fp >>= \case
+    runExceptT (tMs incls fp) >>= \case
         Right{} -> pure ()
         Left e  -> assertFailure (show e)

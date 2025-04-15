@@ -7,9 +7,8 @@ import           Nm
 
 type S = [L]
 
--- what about atoms in modules
 type F a = IM.IntMap (ASeq a)
-type Ctx a = Tree (IM.IntMap (ASeq a))
+type Ctx a = Tree (F a)
 
 r :: Ctx (TS a) -> [A (TS a)] -> S -> S
 r e as = thread (map (ι e) as)

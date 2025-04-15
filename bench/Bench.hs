@@ -1,6 +1,7 @@
 module Main (main) where
 
-import           Criterion.Main (bench, bgroup, defaultMain, whnfIO)
+import           Control.Monad.Trans.Except (runExceptT)
+import           Criterion.Main             (bench, bgroup, defaultMain, whnfIO)
 import           P
 
 main = defaultMain
@@ -10,4 +11,4 @@ main = defaultMain
                        , "examples/vierergruppe.piz"
                        ]
         ]
-    ] where b fp = bench fp $ whnfIO $ tMs ["."] fp
+    ] where b fp = bench fp $ whnfIO $ runExceptT $ tMs ["."] fp

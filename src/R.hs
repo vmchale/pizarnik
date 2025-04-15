@@ -3,7 +3,7 @@
 module R ( Ex (..)
          , Bd, Bt
          , Rs (..)
-         , RE (MDF, MDC, MDT)
+         , RE
          , rM
          ) where
 
@@ -16,7 +16,6 @@ import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, pu
 import           Data.Bifunctor                   (first, second)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
-import           Data.Typeable                    (Typeable)
 import           Lens.Micro                       (Lens', set)
 import           Lens.Micro.Extras                (view)
 import           Nm
@@ -26,17 +25,11 @@ import           Prettyprinter                    (Pretty (..), (<+>))
 
 infixr 5 @~
 
-data RE a = IllScoped (Nm a) | D (Nm a) | MDF !MN | MDC !MN | MDT !MN
+data RE a = IllScoped (Nm a) | D (Nm a)
 
 instance Pretty a => Pretty (RE a) where
     pretty (IllScoped n) = pretty (loc n) <> ":" <+> "Not in scope:" <+> sq n
     pretty (D n)         = pretty (loc n) <> ":" <+> sq n <+> "has already been defined"
-    pretty (MDF m)       = "Module" <+> sq m <+> "imports the same function from different sources."
-    pretty (MDC m)       = "Module" <+> sq m <+> "imports the same type from different sources."
-    pretty (MDT m)       = "Module" <+> sq m <+> "imports the same constructor from different sources."
-
-instance Pretty a => Show (RE a) where show=show.pretty
-instance (Pretty a, Typeable a) => Exception (RE a)
 
 type Bd=IM.IntMap Int; type Bt=IM.IntMap Int
 

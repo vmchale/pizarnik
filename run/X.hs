@@ -1,16 +1,17 @@
 module Main (main) where
 
-import           Control.Applicative       (many)
-import qualified Data.ByteString.Lazy      as BSL
-import           Data.Functor              (void)
+import           Control.Applicative        (many)
+import           Control.Monad.Trans.Except (runExceptT)
+import qualified Data.ByteString.Lazy       as BSL
+import           Data.Functor               (void)
 import           Dbg
-import           Options.Applicative       (HasCompleter, Mod, Parser, ParserInfo, argument, bashCompleter, command, completer, execParser, fullDesc, header, help, helper,
-                                            hsubparser, info, metavar, progDesc, str)
-import           Prettyprinter             (Pretty (pretty), defaultLayoutOptions, hardline, layoutPretty)
-import           Prettyprinter.Render.Text (renderIO)
+import           Options.Applicative        (HasCompleter, Mod, Parser, ParserInfo, argument, bashCompleter, command, completer, execParser, fullDesc, header, help, helper,
+                                             hsubparser, info, metavar, progDesc, str)
+import           Prettyprinter              (Pretty (pretty), defaultLayoutOptions, hardline, layoutPretty)
+import           Prettyprinter.Render.Text  (renderIO)
 import           REPL
-import           System.Exit               (exitFailure)
-import           System.IO                 (stderr, stdout)
+import           System.Exit                (exitFailure)
+import           System.IO                  (stderr, stdout)
 
 data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath | Repl [FilePath]
 
@@ -42,7 +43,7 @@ main = run =<< execParser wrapper
 
 run :: Cmd -> IO ()
 run (Fmt fp)  = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
-run (TC fp)   = do {res <- void <$> tMs ["."] fp; fIO res}
+run (TC fp)   = do {res <- runExceptT $ void $ tMs ["."] fp; fIO res}
 run (An fp)   = adbg ["."] fp
 run (Repl []) = repl
 

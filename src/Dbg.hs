@@ -4,21 +4,22 @@ module Dbg ( dT, dFmt
            ) where
 
 import           A
-import           Control.Exception         (throwIO)
-import           Control.Monad             ((<=<))
-import qualified Data.ByteString.Lazy      as BSL
-import           Data.Foldable             (traverse_)
+import           Control.Exception          (throwIO)
+import           Control.Monad              ((<=<))
+import           Control.Monad.Trans.Except (runExceptT)
+import qualified Data.ByteString.Lazy       as BSL
+import           Data.Foldable              (traverse_)
 import           L
 import           P
 import           Parse
 import           Pr
-import           Prettyprinter             (defaultLayoutOptions, layoutSmart, pretty)
-import           Prettyprinter.Render.Text (putDoc, renderIO)
-import           System.IO                 (stdout)
+import           Prettyprinter              (defaultLayoutOptions, layoutSmart, pretty)
+import           Prettyprinter.Render.Text  (putDoc, renderIO)
+import           System.IO                  (stdout)
 
 adbg :: [FilePath] -> FilePath -> IO ()
 adbg incls fp = do
-    tms <- tMs incls fp
+    tms <- runExceptT $ tMs incls fp
     case tms of
         Left err -> throwIO err
         Right ms -> traverse_ (rDoc.am) ms
@@ -28,7 +29,7 @@ dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = 
 
 dT :: [FilePath] -> FilePath -> IO ()
 dT incls fp = do
-    res <- rMs incls fp
+    res <- runExceptT $ rMs incls fp
     either throwIO (putDoc.pBound.snd) res
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
