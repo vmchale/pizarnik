@@ -38,7 +38,10 @@ library
         Dbg
         L
         P
+        Parse
         Pr
+        S
+        Ty
 
     other-modules:
         B
@@ -49,11 +52,8 @@ library
         Nm
         Nm.Map
         Nm.Set
-        Parse
         R
-        S
         TS
-        Ty
         Ty.Clone
 
     other-extensions:

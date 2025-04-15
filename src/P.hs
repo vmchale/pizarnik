@@ -1,4 +1,4 @@
-module P ( Ctx, S, dbg, fmt, rMs, tMs ) where
+module P ( dbg, fmt, rMs, tMs ) where
 
 import           A
 import           Control.Exception                (Exception, throw)
