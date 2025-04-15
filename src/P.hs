@@ -1,4 +1,4 @@
-module P ( dbg, fmt, rMs, tMs ) where
+module P ( Ctx, S, AlexPosn, dbg, fmt, rMs, tMs ) where
 
 import           A
 import           Control.Exception                (Exception, throw, throwIO)
@@ -12,23 +12,17 @@ import           L
 import           M
 import           Nm
 import           Parse
-import           Pr
-import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, layoutSmart, pretty)
+import           Prettyprinter                    (SimpleDocStream, defaultLayoutOptions, layoutSmart, pretty)
 import           R
 import           S
 import           TS
 import           Ty
 
-stack :: [L] -> Doc ann
-stack = p.reverse where
-    p []     = "----"
-    p (l:ls) = pretty l <#> p ls
-
-dbg :: BSL.ByteString -> Doc ann
+dbg :: BSL.ByteString -> [L]
 dbg src =
     let ((l,_,_,_),at) = x$pAtoms alexInitUserState src
         (a,_)=x (tAS l mempty at)
-    in stack$r (Node IM.empty []) a []
+    in r (Node IM.empty []) a []
   where
     x :: Exception e => Either e a -> a
     x = either throw id

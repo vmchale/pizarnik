@@ -1,5 +1,6 @@
 module Main (main) where
 
+import           Control.Applicative       (many)
 import qualified Data.ByteString.Lazy      as BSL
 import           Data.Functor              (void)
 import           Dbg
@@ -7,10 +8,11 @@ import           Options.Applicative       (HasCompleter, Mod, Parser, ParserInf
                                             hsubparser, info, metavar, progDesc, str)
 import           Prettyprinter             (Pretty (pretty), defaultLayoutOptions, hardline, layoutPretty)
 import           Prettyprinter.Render.Text (renderIO)
+import           REPL
 import           System.Exit               (exitFailure)
 import           System.IO                 (stderr, stdout)
 
-data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath
+data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath | Repl [FilePath]
 
 pComplete :: HasCompleter f => Mod f a
 pComplete = completer . bashCompleter $ "file -X '!*.piz -o plusdirs"
@@ -19,9 +21,10 @@ cmd :: Parser Cmd
 cmd = hsubparser
     (command "tc" (info tcP (progDesc "Type-check"))
     <> command "an" (info anP (progDesc "Display type annotations"))
+    <> command "repl" (info replP (progDesc "Enter a REPL"))
     <> command "fmt" (info fmtP (progDesc "Format")))
   where
-    tcP = TC<$>src; fmtP=Fmt<$>src; anP=An<$>src
+    tcP = TC<$>src; fmtP=Fmt<$>src; anP=An<$>src; replP=Repl<$>many src
 
 src :: Parser FilePath
 src = argument str
@@ -38,9 +41,10 @@ wrapper = info (helper <*> cmd)
 main = run =<< execParser wrapper
 
 run :: Cmd -> IO ()
-run (Fmt fp) = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
-run (TC fp)  = do {res <- void <$> tMs ["."] fp; fIO res}
-run (An fp)  = adbg ["."] fp
+run (Fmt fp)  = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
+run (TC fp)   = do {res <- void <$> tMs ["."] fp; fIO res}
+run (An fp)   = adbg ["."] fp
+run (Repl []) = repl
 
 fIO :: Pretty e => Either e a -> IO a
 fIO (Right x)  = pure x

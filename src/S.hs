@@ -1,4 +1,4 @@
-module S ( lm, r ) where
+module S ( Ctx, S, lm, r ) where
 
 import           A
 import qualified Data.IntMap as IM
