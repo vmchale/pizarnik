@@ -5,7 +5,7 @@ import           Control.Exception                (Exception, throw)
 import           Control.Monad                    (foldM)
 import           Control.Monad.Trans.Except       (ExceptT, except, throwE, withExceptT)
 import           Control.Monad.Trans.State.Strict (evalStateT)
-import           Data.Bifunctor                   (second)
+import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
 import           Data.Tree                        (Tree (..))
@@ -50,7 +50,7 @@ tr c = go (c IM.! (-1))
 tMs :: [FilePath] -> FilePath -> EIO AlexPosn (Tree (M AlexPosn (TS AlexPosn)))
 tMs incls fp = do
     (u, rm) <- rMs incls fp
-    withExceptT TyE $ except $ fmap fst <$> evalStateT (tg (mempty :: Ext AlexPosn) (tr rm)) u
+    except $ bimap TyE (fmap fst) $ evalStateT (tg (mempty :: Ext AlexPosn) (tr rm)) u
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns
@@ -68,7 +68,7 @@ rMs incls fp = do
     go _ u _ []                      = pure (u, IM.empty)
     go ms u mex (n@(MN _ (U i)):mns) = do
         exc <- foldM (pex n) eex deps
-        (u',exϵ,md) <- withExceptT RE $ except $ rM u exc mp
+        (u',exϵ,md) <- except $ first RE $ rM u exc mp
         second (IM.insert i md) <$> go ms u' (IM.insert i exϵ mex) mns
       where
         mp@(M is _)=m'lookup i ms; deps=(`mnlookup` mex)<$>is
