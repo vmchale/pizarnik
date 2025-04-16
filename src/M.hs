@@ -38,17 +38,13 @@ pRoot incls fp = rMM $ do
 
     step :: MS -> [MN] -> MM ([MN], MS)
     step st [] = pure ([], st)
-    step st@(MS mSt _) (mn@(MN _ (U i)):mns)
+    step st@(MS mSt mDeps) (mn@(MN _ (U i)):mns)
         | i `IM.member` mSt = step st mns
         | otherwise = do
-            (nMs, st') <- pstep st mn
-            step st' (nMs++mns)
-
-    pstep :: MS -> MN -> MM ([MN], MS)
-    pstep (MS mSt mDeps) mn@(MN _ (U i)) = do
-        m@(M is _) <- pMIO incls mn
-        let nDeps=(mn,is):mDeps
-        pure (is, MS (IM.insert i m mSt) nDeps)
+            m@(M is _) <- pMIO incls mn
+            let nDeps=(mn,is):mDeps
+                st'= MS (IM.insert i m mSt) nDeps
+            step st' (is++mns)
 
 mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> MM a
 mst f = StateT $ fmap swap.f

@@ -42,10 +42,10 @@ wrapper = info (helper <*> cmd)
 main = run =<< execParser wrapper
 
 run :: Cmd -> IO ()
-run (Fmt fp)  = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
-run (TC fp)   = do {res <- runExceptT $ void $ tMs ["."] fp; fIO res}
-run (An fp)   = adbg ["."] fp
-run (Repl []) = repl
+run (Fmt fp)   = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
+run (TC fp)    = do {res <- runExceptT $ void $ tMs ["."] fp; fIO res}
+run (An fp)    = adbg ["."] fp
+run (Repl fps) = repl fps
 
 fIO :: Pretty e => Either e a -> IO a
 fIO (Right x)  = pure x

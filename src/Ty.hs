@@ -469,8 +469,7 @@ cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
     pure (TS l0 r1, s')
 
-  -- stack variables: at most one on left/right, occurs at the leftmost
-  -- (check that user-supplied signatures obey this principle)
+  -- check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
@@ -478,8 +477,6 @@ fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 ftv, fsv, erv :: a -> T.Text -> TM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 erv l n = Ρ l <$> fr l n <*> pure Nm.empty
-
--- invariants for sum types: do not bring in stack variables (thus can be reversed)
 
 exps :: a -> TS a -> TM a (TS a)
 exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t

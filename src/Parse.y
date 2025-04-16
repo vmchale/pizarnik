@@ -4,7 +4,7 @@
                  , pM
                  , pAtoms
                  , ParseE
-                 )  where
+                 ) where
 
 import A
 import Control.Arrow ((&&&))

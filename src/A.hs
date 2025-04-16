@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 module A ( A (..)
          , B (..)
          , L (..)
@@ -7,7 +9,7 @@ module A ( A (..)
          , D (..)
          , M (..)
          , SL (..), ASeq
-         , taseq
+         , faseq, taseq
          , unA
          , am
          , tTS
@@ -118,7 +120,7 @@ data Prim = Int | String deriving Eq
 
 instance Pretty Prim where pretty Int="Int"; pretty String="String"
 
-data TS a = TS { tlefts, trights :: TSeq a }
+data TS a = TS { tlefts, trights :: TSeq a } deriving Functor
 type TSeq a = [T a]
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
@@ -129,6 +131,7 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a) }
          | UU { tL :: a, uts :: [T a] }
+         deriving Functor
 
 instance PT (T a) where
     pp t@TP{}          = pure t

@@ -21,8 +21,8 @@ adbg :: [FilePath] -> FilePath -> IO ()
 adbg incls fp = do
     tms <- runExceptT $ tMs incls fp
     case tms of
-        Left err -> throwIO err
-        Right ms -> traverse_ (rDoc.am) ms
+        Left err      -> throwIO err
+        Right (_, ms) -> traverse_ (rDoc.am) ms
 
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = parseA 0 alexInitUserState
