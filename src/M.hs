@@ -1,12 +1,15 @@
-module M ( MS (..), pRoot ) where
+module M ( ReplLexerSt, MS (..), pRoot ) where
 
 import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Except       (ExceptT, except)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), runStateT)
+import           Data.Bifunctor                   (first)
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
 import           Data.List.NonEmpty               (NonEmpty (..))
+import qualified Data.Map                         as M
+import qualified Data.Text                        as T
 import           Data.Tuple                       (swap)
 import           Imp
 import           L
@@ -17,43 +20,43 @@ type MM = StateT AlexUserState (ExceptT ParseE IO)
 
 data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
 
-rMM :: AlexUserState -> MM a -> ExceptT ParseE IO (a, AlexUserState)
-rMM = flip runStateT
+type ReplLexerSt = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn))
+
+rMM :: MM a -> ExceptT ParseE IO (ReplLexerSt, a)
+rMM = (fmap (first π.swap)).flip runStateT alexInitUserState where π (x,y,z,_)=(x,y,z)
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> FilePath -- ^ Root module
-      -> ExceptT ParseE IO (Int, MS)
-pRoot incls fp = do
-    (st', m@(M is _)) <- pIO fp alexInitUserState
+      -> ExceptT ParseE IO (ReplLexerSt, MS)
+pRoot incls fp = rMM $ do
+    m@(M is _) <- pIO fp
     let initMs=MS (IM.singleton (-1) m) [(rootn, is)]
-    (([], ms), (u,_,_,_)) <- rMM st' (pP initMs incls is)
-    pure (u, ms)
+    ([], ms) <- step initMs is
+    pure ms
   where
     rootn = MN ("(root)" :| []) (U (-1))
 
-pP :: MS -> [FilePath] -> [MN] -> MM ([MN], MS)
-pP st _ [] = pure ([], st)
-pP st@(MS mSt _) incls (mn@(MN _ (U i)):mns)
-    | i `IM.member` mSt = pP st incls mns
-    | otherwise = do
-        (nMs, st') <- pMM st incls mn
-        pP st' incls (nMs++mns)
+    step :: MS -> [MN] -> MM ([MN], MS)
+    step st [] = pure ([], st)
+    step st@(MS mSt _) (mn@(MN _ (U i)):mns)
+        | i `IM.member` mSt = step st mns
+        | otherwise = do
+            (nMs, st') <- pstep st mn
+            step st' (nMs++mns)
 
-pMM :: MS -> [FilePath] -> MN -> MM ([MN], MS)
-pMM (MS mSt mDeps) incls mn@(MN _ (U i)) = do
-    m@(M is _) <- pMIO incls mn
-    let nDeps=(mn,is):mDeps
-    pure (is, MS (IM.insert i m mSt) nDeps)
+    pstep :: MS -> MN -> MM ([MN], MS)
+    pstep (MS mSt mDeps) mn@(MN _ (U i)) = do
+        m@(M is _) <- pMIO incls mn
+        let nDeps=(mn,is):mDeps
+        pure (is, MS (IM.insert i m mSt) nDeps)
 
 mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> MM a
 mst f = StateT $ fmap swap.f
 
 pMIO :: [FilePath] -> MN -> MM (M AlexPosn AlexPosn)
-pMIO incls mn = do
-    fp <- resolveI incls mn
-    mst (pIO fp)
+pMIO incls mn = do {fp <- resolveI incls mn; pIO fp}
 
-pIO :: FilePath -> AlexUserState -> ExceptT ParseE IO (AlexUserState, M AlexPosn AlexPosn)
-pIO fp st = do
+pIO :: FilePath -> MM (M AlexPosn AlexPosn)
+pIO fp = mst $ \st -> do
     contents <- liftIO $ BSL.readFile fp
     except $ pM st contents
