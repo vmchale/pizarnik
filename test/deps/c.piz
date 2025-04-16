@@ -7,3 +7,6 @@ square : Int -- Int
 
 h : Int Int -- Int
   := [ square [ square ] dip + ]
+
+h0 : Int Int -- Int
+   := [ dist2 ]
