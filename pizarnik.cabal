@@ -34,8 +34,8 @@ common warnings
 library
     import:             warnings
     exposed-modules:
-        A
         Dbg
+        A
         L
         P
         Parse
