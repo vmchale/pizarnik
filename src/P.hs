@@ -55,7 +55,6 @@ rMs incls fp = do
     ((u,t,i), MS ms ims) <- withExceptT PE $ pRoot incls fp
     let s=tsort ims
     (u',ex',m) <- go ms u undefined IM.empty s
-    -- FIXME: filter 'A etc. (ugh)
     pure (apply ex' (u',t,i), m)
   where
     go _ u exϵ _ []                      = pure (u, exϵ, IM.empty)
