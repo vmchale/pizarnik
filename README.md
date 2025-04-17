@@ -43,7 +43,7 @@ The same `foldr` works on nonempty lists and lists; `head` only works on nonempt
 
 # Or-Patterns
 
-`&` (with) brings some insight to or-patterns, viz.
+`&` (with) forms or-patterns, viz.
 
 ```
 @i prelude/fn
