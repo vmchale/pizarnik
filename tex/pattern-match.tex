@@ -19,8 +19,6 @@
 
 \setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
 
-% $(G \oplus H)^\bot=G^\bot \& H^\bot$.
-
 \section{Introduction}
 
 Pizarnik's approach to pattern-matching is based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$) \cite{munchmaccagnoni}.
@@ -29,31 +27,32 @@ Pizarnik's approach to pattern-matching is based on commitment to the idea of pa
 
 \section{Extensible Pattern Matches}
 
-% mention Blume, Acar, Chae
-
-% TODO: rewrite this... arity matters!
-
-Tags such as \verb|`true| are constructors, inspired by symbols (\verb|`blue|) in k (preceded by symbols \verb|'red| in Lisp). \verb|`true| has type \verb|-- `true|.
-
-% negative polarity <-> "left permeable"
+Suppose we define an algebraic data type
 
 \begin{verbatim}
 type Bool = { `true ⊕ `false };
-
-not : Bool -- Bool
-    := [ { `false⁻¹ `true
-         & `true⁻¹ `false }
-       ]
 \end{verbatim}
 
-\verb|`false⁻¹| has type \verb|`false --| and hence \verb|`false⁻¹ `true| has type \verb|`false -- `true|; \verb|`true⁻¹ `false| has type \verb|`true -- `false|. Note that inverses exchange left and right.
+The literal \verb|`true| pushes a tag\footnote{Inspired by symbols (e.g. \verb|`blue|) in k, which are preceded by symbols (\verb|'red|) in Lisp.}  \verb|`true| onto the stack. We assign it the type \verb|-- `true|. Its inverse \verb|`true⁻¹| pops a value of type \verb|`true| off the stack and hence the atom \verb|`true⁻¹| has type \verb|`true --| (inverse exchanges left and right).
+% negation as fruitful interaction (orthogonality) rather than situation with principle of explosion we have in classical logic
+
+In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a value of type \verb|Bool = { `true ⊕ `false }|, one writes \verb|{ `true⁻¹ & `false⁻¹ }| in Pizarnik. Or-patterns in other programming languages work like linear logic's \verb|&|, which identifies a product of deconstructors into a deconstructor for a sum---the De Morgan laws.
+
+% Rather than assigning the atom \verb|`true| the type \verb|-- Bool|, we assign it the type \verb|-- `true| while admitting arguments of type \verb|`true| to functions of type \verb|Bool -- a| on the grounds that $\mathtt{`true} \prec \{\mathtt{`true} \oplus \mathtt{`false}\}$.
+
+% unlike row polymorphism we can't say `true unifies with `true ⊕ `false in general.
+
+% mention Blume, Acar, Chae
+
+% negative polarity <-> "left permeable"
+% right permeable (⊕) left permeable by &
+
 % inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
 % true inverse
 
-Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
+% Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
 % insisting on specificity=pattern-match exhaustiveness checking
-
-To invert a sum type, we supply a product of its inverses (pattern match clauses). This is precisely the de Morgan laws.
+% not like row polymorphism in that left-right must be distinguished, insightful (for instance existential types)
 
 \subsection{Reusing Pattern-Match Arms}
 
@@ -76,10 +75,6 @@ choice : a a Bool -- a
 
 Pattern-match arms are terms like builtin functions \verb|+| etc. and can be reused (referenced); one enjoys cut elimination for sequences of such.
 
-\subsection{Wildcards}
-
-\verb|drop : a --| is one of the building blocks of stack programming. We denote it as \verb|_| as it functions like a wildcard in pattern-matching.
-
 \subsection{Typesafe Head}
 
 \begin{verbatim}
@@ -91,7 +86,7 @@ head : NE a -- a
      := [ { `cons⁻¹ nip } ]
 \end{verbatim}
 
-Any nonempty list can be supplied as an argument to a function on lists. This is far more tolerable than the situation in Haskell, in which \verb|foldr| \&c. must be defined for \verb|NonEmpty| and \verb|List| separately.
+Any nonempty list can be supplied as an argument to a function on lists. This is far more satisfactory than the situation in Haskell, in which \verb|foldr| \&c. must be defined for \verb|NonEmpty| and \verb|List| separately.
 
 \subsection{Or-Patterns}
 
@@ -104,13 +99,6 @@ type Ord = { `lt ⊕ `eq ⊕ `gt };
 Then we can define
 
 \begin{verbatim}
-gt : Ord -- Bool
-      := [ { { `lt⁻¹ & `eq⁻¹ } `false & `gt⁻¹ `true } ]
-\end{verbatim}
-
-or
-
-\begin{verbatim}
 lte : { `lt ⊕ `eq } --
     := [ { `lt⁻¹ & `eq⁻¹ } ]
 
@@ -118,13 +106,10 @@ gt : Ord -- Bool
       := [ { lte `false & `gt⁻¹ `true } ]
 \end{verbatim}
 
-So we get or-patterns and they are reusable as functions.
+So or-patterns are reusable as functions.
 
 % also emphasizes duality
 
-\section{Error Hierarchies}
-
-A common situation that arises is that one has error hierarchies within a
 % esp. clumsy w/ state transformers eh
 
 % also we can say "throw this X or Y" but let top-level be X | Y | W

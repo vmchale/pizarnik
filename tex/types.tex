@@ -18,7 +18,7 @@ Denote by $\prec$ the subsumption relation. A sum subsumes its constituents, i.e
 $$A \prec A \oplus B$$
 $$B \prec A \oplus B$$
 
-% Subsumption is contravariant in the argument to a function type: $A -- B \prec A' -- B'$ iff $A \prec A'$ and $B' \prec B$. A function is more general if it accepts a wider type
+Subsumption is contravariant in the argument to a function type: $A -- B \prec A' -- B'$ iff $A' \prec A$ and $B' \prec B$; a function is more general if it accepts a wider type.
 
 \section{Judgments}
 
@@ -50,20 +50,28 @@ A stack variable $A$ is a sequence of type variables $\alpha_1,\alpha_2,\ldots,\
 {\Judge \texttt{apply} : A~[A -- B] -- B}
 \quad(\textsc{Apply})
 
-\inferrule
-{\Judge x_0 : A B_0 -- C_0 \\ x_1 : A B_1 -- C_1}
-{}
-\quad(\textsc{Pattern-Match})
-
 \end{mathpar}
 
 Note that stack variables are always leftmost, hence the inconvenient (from the perspective of the programmer) ordering of {\tt apply}.
+
+Tags in Pizarnik have an associated arity.
+
+\begin{mathpar}
+\inferrule
+{\Judge x_0 : A \tag \tseq\beta n \alpha_0 -- C_0 \\ x_1 : A B_1 -- C_1}
+{}
+\quad(\textsc{Pattern-Match})
+\end{mathpar}
+
 % The \textsc{Cut} rule only requires subsumption rather than equality.
 % POINTED
 
 % We justify $\textsc{(Pattern-Match)}$ by noting that if $x_1 : \alpha_1 -- A$ and $x_2 : \alpha_2 -- A$, then $x_1 : -- \alpha_1^{-1} A$ and $x_2 : -- \alpha_2^{-1} A$, $\{x_1 \with x_2\} :$
 
 \section{Unification}
+
+The above is declarative, rather than algorithmic typing.
+% cite thih?
 
 The \textsc{Cut} rule above only requires subsumption rather than equality. Hence we introduce $\alpha \biguplus_\sphericalangle \beta \Rightarrow s$, ``$\alpha$ is subsumed by $\beta$ under substitution $s$.''
 
