@@ -19,18 +19,23 @@ lm (M _ ds) = thread (map b ds) IM.empty
 b :: D b a -> F a -> F a
 b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
 
+i_ c a | [L t (I i)] <- ι c a [] = (i,t)
+
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
-ι _ (B _ Dup) (a:as) = a:a:as
-ι _ (B _ Un) (_:as)  = as
-ι _ a@L{} as         = a:as
-ι _ a@Q{} as         = a:as
-ι c (V _ n) as       = let (c',a) = lV c n in r c' (aas a) as
+ι _ (B _ Dup) (a:as)       = a:a:as
+ι _ (B _ Un) (_:as)        = as
+ι c (B _ Plus) (a0:a1:as)  = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i0+i1):as
+ι c (B _ Minus) (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i0-i1):as
+ι c (B _ Mul) (a0:a1:as)   = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i0*i1):as
+ι _ a@L{} as               = a:as
+ι _ a@Q{} as               = a:as
+ι c (V _ n) as             = let (c',a) = lV c n in r c' (aas a) as
 
 lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
 lV c@(Node t s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
                                | otherwise = tr s
   where
-    tr [] = error "internal error: variable not found."
+    tr [] = error"internal error: variable not found."
     tr (c'@(Node m _):cs) | Just a <- m IM.!? u = (c',a)
                           | otherwise = tr cs
 
