@@ -204,11 +204,15 @@ su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | n `Nm.notMember` σ = cf t0 t1
 
-sσ c s l σ0 σ1 =
-    ss s (Nm.toList l (Nm.intersectionWith (,) σ0 σ1))
+uσ u c s l σ0 σ1 =
+    us s (Nm.toList l ς)
   where
-    ss sϵ []              = pure (Nm.empty, sϵ)
-    ss sϵ ((n,(x,y)):xys) = do {(xy,s') <- susc c sϵ x y; first (Nm.insert n xy) <$> ss s' xys}
+    ς=Nm.intersectionWith (,) σ0 σ1
+
+    us sϵ []              = pure (Nm.empty, sϵ)
+    us sϵ ((n,(x,y)):xys) = do {(xy,s') <- u c sϵ x y; first (Nm.insert n xy) <$> us s' xys}
+
+sσ = uσ susc
 
 sus=sv su;susc=ctx'ize sus
 
@@ -291,13 +295,7 @@ nρ n@(Nm t _ l) s = do
 φ _ _ t0@QT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
 
-φσ c s l σ0 σ1 =
-    φss s (Nm.toList l ς)
-  where
-    ς=Nm.intersectionWith (,) σ0 σ1
-
-    φss sϵ []              = pure (Nm.empty, sϵ)
-    φss sϵ ((n,(x,y)):xys) = do {(xy,s') <- φsc c sϵ x y; first (Nm.insert n xy) <$> φss s' xys}
+φσ = uσ φsc
 
 φs=sv φ;φsc=ctx'ize φs
 
