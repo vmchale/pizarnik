@@ -29,13 +29,7 @@ import           Ty
 repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
-data ReplPos = SP | AP !AlexPosn
-
-instance Pretty ReplPos where
-    pretty SP     = "(stack)"
-    pretty (AP p) = pretty p
-
-data X = X !AlexUserState S (Ctx (TS AlexPosn))
+data X = X !AlexUserState (S AlexPosn) (Ctx (TS AlexPosn))
 
 type Repl = InputT (StateT X IO)
 
@@ -61,13 +55,13 @@ loop = do
 printA :: String -> Repl ()
 printA src = do
     (X l s c@(Node t _)) <- lift get
-    -- TODO: typecheck against lits
+    -- TODO: typecheck w/ context
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right (l'@(i,_,_,_),at) -> do
-            let tyctx = Ext (fmap AP . aLs<$>t) IM.empty IM.empty
-            let (a,_)=x (tAS i tyctx (faseq AP at))
-                s' = r (fmap (faseq (fmap AP) <$>) c) a s
+            let tyctx = Ext (aLs<$>t) IM.empty IM.empty
+            let (a,_)=x (tAS i tyctx at)
+                s' = r c a s
             lift $ put (X l' s' c)
             stackpp s'
   where
@@ -76,7 +70,7 @@ printA src = do
 
 stackpp=po.stack
 
-stack :: S -> Doc ann
+stack :: S a -> Doc ann
 stack = p.reverse where
     p []     = "----"
     p (l:ls) = pretty l <#> p ls
