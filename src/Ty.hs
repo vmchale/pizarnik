@@ -212,9 +212,7 @@ uσ u c s l σ0 σ1 =
     us sϵ []              = pure (Nm.empty, sϵ)
     us sϵ ((n,(x,y)):xys) = do {(xy,s') <- u c sϵ x y; first (Nm.insert n xy) <$> us s' xys}
 
-sσ = uσ susc
-
-sus=sv su;susc=ctx'ize sus
+sus=sv su;susc=ctx'ize sus; sσ = uσ susc
 
 type UC v a = Nt a -> Subst a -> v -> v -> TM a (v, Subst a)
 
@@ -295,9 +293,7 @@ nρ n@(Nm t _ l) s = do
 φ _ _ t0@QT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
 
-φσ = uσ φsc
-
-φs=sv φ;φsc=ctx'ize φs
+φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
 -- TODO: eat into stack var if present
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
@@ -489,20 +485,27 @@ tae b s a = do
     t' <- exps (aL a) t
     pure (a' {aL = t'}, s')
 
+ib l = B (TS [TP l Int, TP l Int] [TP l Int])
+
 ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-ta _ s (L l lit@I{})  = pure (L (TS [] [TP l Int]) lit, s)
-ta b s (V _ n)        = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
-ta _ s (B l Un)       = do {n <- ftv l "a"; pure (B (TS [n] []) Un, s)}
-ta _ s (B l Dup)      = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
-ta _ s (B l Swap)     = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
-ta b s (Q l as)       = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
-ta b s (Inv _ a)      = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
-ta b s (C l tt)       = do
+ta _ s (L l lit@I{})   = pure (L (TS [] [TP l Int]) lit, s)
+ta _ s (L l lit@Str{}) = pure (L (TS [] [TP l String]) lit, s)
+ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
+ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B (TS [n] []) Un, s)}
+ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
+ta _ s (B l Swap)      = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
+ta _ s (B l Plus)      = pure (ib l Plus, s)
+ta _ s (B l Minus)     = pure (ib l Minus, s)
+ta _ s (B l Mul)       = pure (ib l Mul, s)
+ta _ s (B l Div)       = pure (ib l Div, s)
+ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
+ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
+ta b s (C l tt)        = do
     p <- lT (arit b) tt
     -- TODO: pad beginning inverse constructors with ρ₀ etc. not a₀?
     ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
-ta b s (Pat _ as)     = do
+ta b s (Pat _ as)      = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 sigs
