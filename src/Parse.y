@@ -1,6 +1,6 @@
 {
 
-    module Parse ( parseA
+    module Parse ( pA
                  , pM
                  , pAtoms
                  , ParseE
@@ -177,13 +177,10 @@ instance Exception ParseE
 
 type Parse = ExceptT ParseE Alex
 
-pM = parseA 0
-
-pAtoms :: AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, ASeq AlexPosn)
+pM = runParseSt parseM 0
 pAtoms = runParseSt parseASeq postImp
 
-parseA :: Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, M AlexPosn AlexPosn)
-parseA = runParseSt parseM
+pA = pM alexInitUserState
 
 runParseSt :: Parse a -> Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, a)
 runParseSt parser scd u bs = liftErr $ withAlexSt bs scd u (runExceptT parser)

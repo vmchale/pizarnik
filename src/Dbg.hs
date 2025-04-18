@@ -9,7 +9,6 @@ import           Control.Monad              ((<=<))
 import           Control.Monad.Trans.Except (runExceptT)
 import qualified Data.ByteString.Lazy       as BSL
 import           Data.Foldable              (traverse_)
-import           L
 import           P
 import           Parse
 import           Pr
@@ -25,7 +24,7 @@ adbg incls fp = do
         Right (_, ms) -> traverse_ (rDoc.am) ms
 
 dFmt :: BSL.ByteString -> IO ()
-dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pFmt) where pFmt = parseA 0 alexInitUserState
+dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pA)
 
 dT :: [FilePath] -> FilePath -> IO ()
 dT incls fp = do

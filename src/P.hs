@@ -23,9 +23,7 @@ import           Ty
 type EIO a = ExceptT (E a) IO
 
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
-fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pFmt
-  where
-    pFmt = parseA 0 alexInitUserState
+fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
 pex :: MN -> Ex -> Ex -> EIO a Ex
 pex n (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> m'merge bv0 bv1 MDF <*> m'merge bc0 bc1 MDC <*> m'merge a0 a1 MDT
