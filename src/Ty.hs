@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Ty ( TE, Ar, Ext (..), tM, tAS ) where
 
 import           A
@@ -84,7 +86,14 @@ instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
 mapTV f (Subst v s) = Subst (f v) s; mapSV f (Subst v s) = Subst v (f s)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
-sTV n t = Subst (IM.singleton (unU$un n) t) IM.empty
+
+c1 :: Nm a -> T a -> T a -> TM a (Subst a)
+c1 (Nm _ (U u) _) t te | u `IS.member` occ t = throwError $ O te t
+                       | otherwise = pure (Subst (IM.singleton u t) IM.empty)
+
+ci :: Nm a -> T a -> T a -> Subst a -> TM a (Subst a)
+ci n t te s | n `NmSet.member` occ t = throwError $ O te t
+            | otherwise = pure (mapTV (IM.insert (unU$un n) t) s)
 
 (\-) s u = mapTV (IM.delete u) s
 
@@ -173,13 +182,13 @@ occ (Ρ _ n a)       = NmSet.insert n$foldMap (occ@<>) a
 
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
+-- TODO: occurs check at substitution function
+
 -- "subsumes"
 su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-su _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
-                     | otherwise = pure (t1, iTV n t1 s)
-su _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
-                     | otherwise = pure (t0, iTV n t0 s)
+su _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
+su _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
     (l',s₀) <- susc c s l1 l0
@@ -253,6 +262,7 @@ ctx'ize us c s = us c s `onM` peek s
 nρ n@(Nm t _ l) s = do
     n' <- fr l t
     let t'=Ρ l n' s
+    -- FIXME: occurs check?
     pure (t', iTV n t')
 
 -- fan out
@@ -263,10 +273,8 @@ nρ n@(Nm t _ l) s = do
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
-φ _ s t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
-                     | otherwise = pure (t1, iTV n t1 s)
-φ _ s t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
-                     | otherwise = pure (t0, iTV n t0 s)
+φ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
+φ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 φ c s (Σ _ as) (Ρ x n σ) = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- nρ n (σ<>as<>ς)
@@ -354,10 +362,8 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-lt _ t0 t1@(TV _ n) | n `NmSet.member` occ t0 = throwError$O t0 t1
-                    | otherwise = pure (sTV n t0)
-lt _ t0@(TV _ n) t1 | n `NmSet.member` occ t1 = throwError$O t0 t1
-                    | otherwise = pure (sTV n t1)
+lt _ t0 t1@(TV _ n) = c1 n t0 t1
+lt _ t0@(TV _ n) t1 = c1 n t1 t0
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
