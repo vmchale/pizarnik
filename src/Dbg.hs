@@ -21,7 +21,7 @@ adbg incls fp = do
     tms <- runExceptT $ tMs incls fp
     case tms of
         Left err      -> throwIO err
-        Right (_, ms) -> traverse_ (rDoc.am) ms
+        Right (_, ms) -> traverse_ (rDoc.am.fst) ms
 
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pA)

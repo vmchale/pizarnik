@@ -36,10 +36,10 @@ tr c = go (c IM.! (-1))
   where
     go m@(M is _) = Node m ((go.(c IM.!).unU.mU)<$>is)
 
-tMs :: [FilePath] -> FilePath -> EIO AlexPosn (ReplLexerSt, Tree (M AlexPosn (TS AlexPosn)))
+tMs :: [FilePath] -> FilePath -> EIO AlexPosn (ReplLexerSt, Tree (M AlexPosn (TS AlexPosn), Ar))
 tMs incls fp = do
     (st@(u,_,_), rm) <- rMs incls fp
-    except $ (st,) <$> bimap TyE (fmap fst) (evalStateT (tg (mempty :: Ext AlexPosn) (tr rm)) u)
+    except $ (st,) <$> bimap TyE (fmap (second arit)) (evalStateT (tg (mempty :: Ext AlexPosn) (tr rm)) u)
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns

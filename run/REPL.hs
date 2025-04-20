@@ -8,6 +8,7 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
+import           Data.Bifunctor                   (first)
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
 import qualified Data.Text.Lazy                   as TL
@@ -31,7 +32,7 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) (Ctx (TS AlexPosn))
+data X = X !AlexUserState (S AlexPosn) (Tree (F (TS AlexPosn), Ar))
 
 type Repl = InputT (StateT X IO)
 
@@ -45,7 +46,7 @@ runRepl [fp] x = do
     liftIO (runExceptT $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
         Right (st,ctx) -> do
-            let t=fmap lm ctx
+            let t=fmap (first lm) ctx
             flip evalStateT (X (alexSt st) [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
@@ -67,23 +68,23 @@ loop = do
 
 printT :: String -> Repl ()
 printT src = do
-    (X l s (Node t _)) <- lift get
+    (X l s (Node (t,ar) _)) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
-            let tyctx = Ext (aLs<$>t) IM.empty IM.empty
+            let tyctx = Ext (aLs<$>t) IM.empty ar
             case tAS i tyctx s at of
                 Right (SL a _,_) -> pE a
                 Left err         -> pE err
 
 printA :: String -> Repl ()
 printA src = do
-    (X l s c@(Node t _)) <- lift get
+    (X l s c@(Node (t,ar) _)) <- lift get
     -- TODO: typecheck w/ context
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
-            let tyctx = Ext (aLs<$>t) IM.empty IM.empty
+            let tyctx = Ext (aLs<$>t) IM.empty ar
             case tAS i tyctx s at of
                 Right (a,i') -> do
                     let s' = r c (aas a) s

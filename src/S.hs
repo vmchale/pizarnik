@@ -1,4 +1,4 @@
-module S ( Ctx, S, lm, r ) where
+module S ( Ctx, F, S, lm, r ) where
 
 import           A
 import qualified Data.IntMap as IM
@@ -8,7 +8,7 @@ import           Nm
 type S a = [A (TS a)]
 
 type F a = IM.IntMap (ASeq a)
-type Ctx a = Tree (F a)
+type Ctx a = Tree (F a, IM.IntMap Int)
 
 r :: Ctx (TS a) -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
@@ -39,11 +39,11 @@ i2 c op (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i1`op`i0):as
 ι c (V _ n) as             = let (c',a) = lV c n in r c' (aas a) as
 
 lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
-lV c@(Node t s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
-                               | otherwise = tr s
+lV c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
+                                   | otherwise = tr s
   where
     tr [] = error"internal error: variable not found."
-    tr (c'@(Node m _):cs) | Just a <- m IM.!? u = (c',a)
-                          | otherwise = tr cs
+    tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = (c',a)
+                              | otherwise = tr cs
 
 thread = foldr (.) id

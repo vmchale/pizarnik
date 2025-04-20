@@ -1,4 +1,4 @@
-module Ty ( TE, Ext (..), tM, tAS ) where
+module Ty ( TE, Ar, Ext (..), tM, tAS ) where
 
 import           A
 import           B
