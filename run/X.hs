@@ -36,8 +36,8 @@ src = argument str
 wrapper :: ParserInfo Cmd
 wrapper = info (helper <*> cmd)
     (fullDesc
-    <> progDesc "Pizarnik formatter and type checker"
-    <> header "pc - Pizarnik Language")
+    <> progDesc "Pizarnik Language"
+    <> header "pc - Pizarnik")
 
 main = run =<< execParser wrapper
 

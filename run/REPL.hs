@@ -4,7 +4,6 @@
 module REPL ( repl ) where
 
 import           A
-import           Control.Exception                (Exception, throw)
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
@@ -58,15 +57,14 @@ printA src = do
     -- TODO: typecheck w/ context
     case pAtoms l (bytesl src) of
         Left err -> pE err
-        Right (l'@(i,_,_,_),at) -> do
+        Right ((i,ii,ti,m),at) -> do
             let tyctx = Ext (aLs<$>t) IM.empty IM.empty
-            let (a,_)=x (tAS i tyctx at)
-                s' = r c a s
-            lift $ put (X l' s' c)
-            stackpp s'
-  where
-    x :: Exception e => Either e a -> a
-    x = either throw id
+            case tAS i tyctx s at of
+                Right (a,i') -> do
+                    let s' = r c a s
+                    lift $ put (X (i',ii,ti,m) s' c)
+                    stackpp s'
+                Left err -> pE err
 
 stackpp=po.stack
 
@@ -75,6 +73,7 @@ stack = p.reverse where
     p []     = "----"
     p (l:ls) = pretty l <#> p ls
 
+pE :: Pretty a => a -> Repl ()
 pE = po.pretty
 po = liftIO . renderIO stdout . layoutSmart defaultLayoutOptions . (<>hardline)
 
