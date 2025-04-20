@@ -6,13 +6,15 @@ import           Control.Exception (Exception, throwIO)
 import           Control.Monad     (filterM)
 import qualified Data.Text         as T
 import           Nm
-import           Prettyprinter     (Pretty (pretty), (<+>))
+import           Prettyprinter     (Pretty (pretty), punctuate, (<+>))
 import           System.Directory  (doesFileExist)
 import           System.FilePath   ((</>))
 
 data IE = IE MN | Amb [FilePath]
 
-instance Pretty IE where pretty (IE mn) = "Module" <+> pretty mn <+> "not found."; pretty (Amb fs) = "Could not disambiguate among candidates " <+> pretty fs
+instance Pretty IE where
+    pretty (IE mn)  = "Module" <+> pretty mn <+> "not found."
+    pretty (Amb fs) = "Could not disambiguate among candidates: " <+> mconcat (punctuate ", " (pretty<$>fs))
 
 instance Show IE where show=show.pretty
 instance Exception IE where
