@@ -37,6 +37,8 @@ type Repl = InputT (StateT X IO)
 
 alexSt (u,t,i) = (u,t,i,IM.empty)
 
+names = pure ["dip", "dup", "swap"]
+
 runRepl :: [FilePath] -> Repl a -> IO a
 runRepl [fp] x = do
     h <- (</> ".pizarnik") <$> getHomeDirectory
@@ -47,14 +49,36 @@ runRepl [fp] x = do
             flip evalStateT (X (alexSt st) [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
-    c (rp, "") = do {ns <- pure ["dip", "dup", "swap"]; pure (unwords ("" : tail (words rp)), map simpleCompletion (namePrefix ns rp))}
+    c (":", "")    = pure (":", strC ["help", "ty"])
+    c ("t:", "")   = pure ("t:", strC ["y"])
+    c ("yt:", "")  = pure ("yt:", strC [""])
+    c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
+    c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
+
+strC = map simpleCompletion
+
+-- ??
+--  :ty 1 2 [+ *] $
+-- 'A ['A -- 'B] -- 'B ['C Int Int Int -- 'C Int] Int Int
 
 loop :: Repl ()
 loop = do
     inp <- getInputLine " "
     case words <$> inp of
-        Just e  -> printA (unwords e) *> loop
-        Nothing -> pure ()
+        Just (":ty":e) -> printT (unwords e) *> loop
+        Just e         -> printA (unwords e) *> loop
+        Nothing        -> pure ()
+
+printT :: String -> Repl ()
+printT src = do
+    (X l s (Node t _)) <- lift get
+    case pAtoms l (bytesl src) of
+        Left err -> pE err
+        Right ((i,_,_,_),at) -> do
+            let tyctx = Ext (aLs<$>t) IM.empty IM.empty
+            case tAS i tyctx s at of
+                Right (SL a _,_) -> pE a
+                Left err         -> pE err
 
 printA :: String -> Repl ()
 printA src = do
@@ -66,7 +90,7 @@ printA src = do
             let tyctx = Ext (aLs<$>t) IM.empty IM.empty
             case tAS i tyctx s at of
                 Right (a,i') -> do
-                    let s' = r c a s
+                    let s' = r c (aas a) s
                     lift $ put (X (i',ii,ti,m) s' c)
                     stackpp s'
                 Left err -> pE err
@@ -85,4 +109,4 @@ po = liftIO . renderIO stdout . layoutSmart defaultLayoutOptions . (<>hardline)
 bytesl = encodeUtf8 . TL.pack
 
 namePrefix :: [String] -> String -> [String]
-namePrefix names prevRev = filter (last (words (reverse prevRev)) `isPrefixOf`) names
+namePrefix ns prevRev = filter (last (words (reverse prevRev)) `isPrefixOf`) ns
