@@ -9,6 +9,7 @@ import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
 import qualified Data.IntMap                      as IM
+import           Data.List                        (isPrefixOf)
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
 import           Data.Tree                        (Tree (Node))
@@ -19,7 +20,8 @@ import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart)
 import           Prettyprinter.Render.Text        (renderIO)
 import           S
-import           System.Console.Haskeline         (InputT, Settings (historyFile), defaultSettings, getInputLine, runInputT)
+import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
+                                                   simpleCompletion)
 import           System.Directory                 (getHomeDirectory)
 import           System.FilePath                  ((</>))
 import           System.IO                        (stdout)
@@ -28,6 +30,7 @@ import           Ty
 repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
+-- TODO: include names in state for completions
 data X = X !AlexUserState (S AlexPosn) (Ctx (TS AlexPosn))
 
 type Repl = InputT (StateT X IO)
@@ -42,7 +45,9 @@ runRepl [fp] x = do
         Right (st,ctx) -> do
             let t=fmap lm ctx
             flip evalStateT (X (alexSt st) [] t) $
-                runInputT (defaultSettings { historyFile = Just h }) x
+                runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
+  where
+    c (rp, "") = do {ns <- pure ["dip", "dup", "swap"]; pure (unwords ("" : tail (words rp)), map simpleCompletion (namePrefix ns rp))}
 
 loop :: Repl ()
 loop = do
@@ -78,3 +83,6 @@ pE = po.pretty
 po = liftIO . renderIO stdout . layoutSmart defaultLayoutOptions . (<>hardline)
 
 bytesl = encodeUtf8 . TL.pack
+
+namePrefix :: [String] -> String -> [String]
+namePrefix names prevRev = filter (last (words (reverse prevRev)) `isPrefixOf`) names
