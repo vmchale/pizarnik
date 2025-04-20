@@ -138,7 +138,7 @@ A :: { A AlexPosn }
   | ilit { L (loc $1) (A.I (int $1)) }
 
 ASeq :: { ASeq AlexPosn }
-     : many(A) {% fmap SL (lift get_pos) <*> pure $1 }
+     : many(A) {% fmap SL (lift get_pos) <*> pure (reverse $1) }
 
 D :: { D AlexPosn AlexPosn }
   : name colon TS defEq brackets(many(A)) { F $2 $1 $3 (SL $4 (reverse (snd $5))) }
