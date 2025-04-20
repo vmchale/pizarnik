@@ -369,8 +369,8 @@ lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
-lt c t0@(Ρ _ _ σ0) t1@(Σ _ σ1)
-    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
+    | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
     | otherwise = sf t0 t1
     -- TODO: Σ, TT
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
