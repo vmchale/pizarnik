@@ -345,7 +345,7 @@ ms u c s t0 t1e@(SV _ n:t1)
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
-ms _ _ _ [] [] = pure mempty
+ms _ _ s [] [] = pure s
 ms _ _ _ t0 [] = throwError$LE t0 []
 ms _ _ _ [] t1 = throwError$LE t1 []
 
