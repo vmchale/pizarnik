@@ -57,10 +57,6 @@ runRepl [fp] x = do
 
 strC = map simpleCompletion
 
--- ??
---  :ty 1 2 [+ *] $
--- 'A ['A -- 'B] -- 'B ['C Int Int Int -- 'C Int] Int Int
-
 loop :: Repl ()
 loop = do
     inp <- getInputLine " "
