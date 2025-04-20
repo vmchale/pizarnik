@@ -77,11 +77,10 @@ next l@(W g s) = do
 data SL a b = SL { aLs :: a, aas :: [b] }
 type ASeq a = SL a (A a)
 
-data A a = B { aL :: a, builtin :: !B }
-         | Q { aL :: a, aqs :: ASeq a } | L { aL :: a, lita :: L }
+data A a = B { aL :: a, builtin :: !B } | Q { aL :: a, aqs :: ASeq a }
+         | L { aL :: a, lita :: L } | C { aL :: a, tagn :: Nm a }
+         | V { aL :: a, fn :: Nm a } | Inv { aL :: a, inva :: A a }
          | Pat { aL :: a, arms :: SL a (ASeq a) }
-         | C { aL :: a, tagn :: Nm a } | V { aL :: a, fn :: Nm a }
-         | Inv { aL :: a, inva :: A a }
 
 aT :: SL b (A (TS a)) -> Doc ann
 aT = align.fillSep.map ana.aas
