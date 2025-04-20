@@ -214,7 +214,8 @@ su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
-su _ _ t0@(TT _ n) t1@(Σ _ σ) | n `Nm.notMember` σ = cf t0 t1
+su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
+                              | otherwise = cf t0 t1
 
 uσ u c s l σ0 σ1 =
     us s (Nm.toList l ς)
