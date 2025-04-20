@@ -23,8 +23,7 @@ resolveI :: [FilePath] -> MN -> IO FilePath
 resolveI is mn = rIIO is mn >>= \case {[] -> throwIO (IE mn); [fp] -> pure fp; fs -> throwIO $ Amb fs}
 
 rIIO :: [FilePath] -> MN -> IO [FilePath]
-rIIO incl n = filterM doesFileExist
-    . fmap (</> toFileN n) $ incl
+rIIO incl n = filterM doesFileExist (map (</> toFile n) incl)
 
-toFileN :: MN -> FilePath
-toFileN = (<> ".piz") . foldr (</>) mempty . fmap T.unpack . mN
+toFile :: MN -> FilePath
+toFile = (<> ".piz") . foldr (</>) mempty . fmap T.unpack . mN
