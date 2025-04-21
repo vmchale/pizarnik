@@ -4,7 +4,7 @@ module A ( A (..)
          , B (..)
          , L (..)
          , Prim (..)
-         , T (..), TS (..)
+         , T (..), TS (..), ʙ
          , TSeq
          , D (..)
          , M (..)
@@ -23,6 +23,7 @@ import qualified Data.Set                         as S
 import qualified Data.Text                        as T
 import           Nm
 import           Nm.Map                           (NmMap, nmlist)
+import qualified Nm.Map                           as Nm
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate,
                                                    space, tupled, (<+>))
@@ -145,6 +146,9 @@ instance PT (T a) where
     pp (Σ x a)         = Σ x <$> traverse (traverse pp) a
 
 instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
+
+ʙ :: a -> T a
+ʙ x = Σ x (Nm.fromList [(true x, []), (false x, [])])
 
 unA :: T a -> Maybe (T a, [T a])
 unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing

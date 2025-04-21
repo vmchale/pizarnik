@@ -1,11 +1,14 @@
-module S ( Ctx, F, S, lm, r ) where
+module S ( Ctx, F, S, lm, r, stack ) where
 
 import           A
-import qualified Data.IntMap as IM
-import           Data.List   (find)
-import           Data.Tree   (Tree (Node))
+import           Data.Functor  (($>))
+import qualified Data.IntMap   as IM
+import           Data.List     (find)
+import           Data.Tree     (Tree (Node))
 import           Nm
-import qualified Nm.Map      as Nm
+import qualified Nm.Map        as Nm
+import           Pr
+import           Prettyprinter (Doc, pretty)
 
 type S a = [A (TS a)]
 
@@ -23,17 +26,24 @@ b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
 
 i_ c a | [L t (I i)] <- ι c a [] = (i,t)
 
+ta l=let nm=true l;t=TS [] [TT l nm] in C t (nm$>t)
+fa l=let nm=false l;t=TS [] [TT l nm] in C t (nm$>t)
+
 i2 c op (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i1`op`i0):as
+ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs) (i1`rel`i0):as
+    where bt l True= ta l
+          bt l False = fa l
+
 
 (≺) :: T a -> T a -> Bool
 (TT _ tt₀) ≺ (TT _ tt₁) | tt₀==tt₁ = True
 (TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
 _ ≺ _                   = False
 
--- $ [] are they inverses in some sense (fruitful interaction)
+-- $ [] are they inverses in some sense (fruitful interaction?)
 
 ψ :: Ctx (TS a) -> [ASeq (TS a)] -> S a -> S a
-ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (g t) (map aas aa) = r c (tail as₀) as -- FIXME: tail assumes one
+ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (g t) (map aas aa) = r c (tail as₀) as -- FIXME: tail assumes one (count types on right)
   where
     g t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
@@ -46,6 +56,9 @@ _ ≺ _                   = False
 ι c (B _ Minus) as         = i2 c (-) as
 ι c (B _ Mul) as           = i2 c (*) as
 ι c (B _ Div) as           = i2 c quot as
+ι c (B _ Eq) as            = ib c (==) as
+ι c (B _ Gt) as            = ib c (>) as
+ι c (B _ Lt) as            = ib c (<) as
 ι c (B _ Doll) (Q _ a:as)  = r c (aas a) as
 ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
 ι _ a@L{} as               = a:as
@@ -64,3 +77,8 @@ lV c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
                               | otherwise = tr cs
 
 thread = foldr (.) id
+
+stack :: S a -> Doc ann
+stack = p.reverse where
+    p []     = "----"
+    p (l:ls) = pretty l <#> p ls

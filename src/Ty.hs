@@ -496,6 +496,7 @@ tae b s a = do
     pure (a' {aL = t'}, s')
 
 ib l = B (TS [TP l Int, TP l Int] [TP l Int])
+rel l = B (TS [TP l Int, TP l Int] [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
 ta _ s (L l lit@I{})   = pure (L (TS [] [TP l Int]) lit, s)
@@ -508,6 +509,9 @@ ta _ s (B l Plus)      = pure (ib l Plus, s)
 ta _ s (B l Minus)     = pure (ib l Minus, s)
 ta _ s (B l Mul)       = pure (ib l Mul, s)
 ta _ s (B l Div)       = pure (ib l Div, s)
+ta _ s (B l Eq)        = pure (rel l Eq, s)
+ta _ s (B l Gt)        = pure (rel l Gt, s)
+ta _ s (B l Lt)        = pure (rel l Lt, s)
 ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
 ta b s (C l tt)        = do

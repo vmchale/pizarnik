@@ -1,5 +1,4 @@
-{-# LANGUAGE LambdaCase    #-}
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 
 module REPL ( repl ) where
 
@@ -17,7 +16,6 @@ import           Data.Tree                        (Tree (Node))
 import           L
 import           P
 import           Parse                            (pAtoms)
-import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart)
 import           Prettyprinter.Render.Text        (renderIO)
 import           S
@@ -93,11 +91,6 @@ printA src = do
                 Left err -> pE err
 
 stackpp=po.stack
-
-stack :: S a -> Doc ann
-stack = p.reverse where
-    p []     = "----"
-    p (l:ls) = pretty l <#> p ls
 
 pE :: Pretty a => a -> Repl ()
 pE = po.pretty

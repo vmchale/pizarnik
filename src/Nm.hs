@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE DeriveTraversable #-}
 
-module Nm ( U (..), Nm (..), MN (..) ) where
+module Nm ( U (..), Nm (..), MN (..), true, false ) where
 
 import           Data.Foldable      (toList)
 import           Data.List          (intersperse)
@@ -15,8 +15,8 @@ newtype U = U { unU :: Int } deriving (Eq, Ord)
 data MN = MN { mN :: NonEmpty T.Text, mU :: !U }
 data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving (Functor, Foldable, Traversable)
 
-intercalate :: Doc a -> [Doc a] -> Doc a
-intercalate x = mconcat . intersperse x
+true = Nm "True" (U (-2))
+false = Nm "False" (U (-1))
 
 instance Eq MN where (==) (MN _ u) (MN _ u') = u == u'
 instance Ord MN where compare (MN _ u) (MN _ u') = compare u u'
@@ -34,3 +34,6 @@ instance Pretty MN where
     pretty (MN t _) = intercalate "/" (toList (pretty <$> t))
 
 instance Show MN where show=show.pretty
+
+intercalate :: Doc a -> [Doc a] -> Doc a
+intercalate x = mconcat . intersperse x

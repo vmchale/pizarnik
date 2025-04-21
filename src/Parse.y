@@ -115,7 +115,7 @@ T :: { T AlexPosn }
   | sv { SV (Nm.loc $1) $1 }
   | tyname { TC (Nm.loc $1) $1 }
   | intTy { TP $1 A.Int }
-  | boolTy { Σ $1 (Nm.fromList [(tt $1,[]), (ft $1,[])]) }
+  | boolTy { ʙ $1 }
   | stringTy { TP $1 A.String }
   | tag { TT (Nm.loc $1) $1 }
   | lbracket TS rbracket { QT $1 $2 }
