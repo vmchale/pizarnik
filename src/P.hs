@@ -34,7 +34,7 @@ tr :: IM.IntMap (M a b)
    -> Tree (M a b)
 tr c = go (c IM.! (-1))
   where
-    go m@(M is _) = Node m ((go.(c IM.!).unU.mU)<$>is)
+    go m@(M is _) = Node m (go.(c IM.!).unU.mU<$>is)
 
 tMs :: [FilePath] -> FilePath -> EIO AlexPosn (ReplLexerSt, Tree (M AlexPosn (TS AlexPosn), Ar))
 tMs incls fp = do

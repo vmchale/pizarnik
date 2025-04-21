@@ -23,7 +23,7 @@ data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
 type ReplLexerSt = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn))
 
 rMM :: MM a -> ExceptT ParseE IO (ReplLexerSt, a)
-rMM = (fmap (first π.swap)).flip runStateT alexInitUserState where π (x,y,z,_)=(x,y,z)
+rMM = fmap (first π.swap).flip runStateT alexInitUserState where π (x,y,z,_)=(x,y,z)
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> FilePath -- ^ Root module
