@@ -272,6 +272,7 @@ nρ n@(Nm t _ l) s = do
 φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
+φ _ s (TT x n) (Σ _ as) = pure (Σ x (Nm.insert n [] as), s)
 φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
@@ -282,6 +283,7 @@ nρ n@(Nm t _ l) s = do
     (n',g) <- nρ n (σ<>as<>ς)
     pure (n', g s')
 φ _ s t@TP{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
+φ _ s (Ρ _ n σ) t@TP{} | Nm.null σ = pure (t, iTV n t s)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just (_:_) -> φf t0 t1
