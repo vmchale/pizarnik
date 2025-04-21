@@ -16,7 +16,7 @@ import           Data.Tree                        (Tree (Node))
 import           L
 import           P
 import           Parse                            (pAtoms)
-import           Prettyprinter                    (Doc, Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart)
+import           Prettyprinter                    (Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart)
 import           Prettyprinter.Render.Text        (renderIO)
 import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
