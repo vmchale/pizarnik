@@ -41,10 +41,10 @@ instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
 
 data TE a = BE (BE a) | O (T a) (T a)
+          | PM (TSeq a)
           | LE (TSeq a) (TSeq a)
-          | LF (T a) (T a)
-          | ΦF (T a) (T a) | CF (T a) (T a)
-          | PM (TSeq a) | AM (Nm a)
+          | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
+          | AM (Nm a) | IS (Nm a)
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
@@ -59,6 +59,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
     pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
     pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
+    pretty (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -411,13 +412,13 @@ lT ex n@(Nm _ (U u) _) = do
             Nothing -> throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
-lA es (Nm _ (U i) _) = do
+lA es n@(Nm _ (U i) _) = do
     b <- gets (fns.lo)
     case IM.lookup i b of
         Just ts -> liftClone ts
         Nothing -> case IM.lookup i es of
             Just ts -> liftClone ts
-            Nothing -> error "Internal error. Name lookup failed during type resolution."
+            Nothing -> throwError$IS n
 
 tM :: Ext a -> M a a -> StateT Int (Either (TE a)) (M a (TS a), Ext a)
 tM c m = StateT $ \i -> (\(x,y,z) -> ((x,y),z)) <$> runTM i (tMM c m)
