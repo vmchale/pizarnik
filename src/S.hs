@@ -2,8 +2,10 @@ module S ( Ctx, F, S, lm, r ) where
 
 import           A
 import qualified Data.IntMap as IM
+import           Data.List   (find)
 import           Data.Tree   (Tree (Node))
 import           Nm
+import qualified Nm.Map      as Nm
 
 type S a = [A (TS a)]
 
@@ -23,6 +25,19 @@ i_ c a | [L t (I i)] <- ι c a [] = (i,t)
 
 i2 c op (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i1`op`i0):as
 
+(≺) :: T a -> T a -> Bool
+(TT _ tt₀) ≺ (TT _ tt₁) | tt₀==tt₁ = True
+(TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
+_ ≺ _                   = False
+
+-- $ [] are they inverses in some sense (fruitful interaction)
+
+ψ :: Ctx (TS a) -> [ASeq (TS a)] -> S a -> S a
+ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (g t) (map aas aa) = r c (tail as₀) as -- FIXME: tail assumes one
+  where
+    g t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
+              | otherwise = False
+
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
 ι _ (B _ Swap) (a0:a1:as)  = a1:a0:as
 ι _ (B _ Dup) (a:as)       = a:a:as
@@ -36,7 +51,9 @@ i2 c op (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i1`op`i0):as
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
 ι _ a@C{} as               = a:as
+ι c (Pat _ (SL _ aa)) as   = ψ c aa as
 ι c (V _ n) as             = let (c',a) = lV c n in r c' (aas a) as
+ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 
 lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
 lV c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)

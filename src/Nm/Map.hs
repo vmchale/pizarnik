@@ -1,5 +1,6 @@
 module Nm.Map ( NmMap (..)
               , insert
+              , member
               , notMember
               , Nm.Map.lookup
               , Nm.Map.null
@@ -36,6 +37,9 @@ insert (Nm n (U i) _) y (NmMap x ctx)= NmMap (IM.insert i y x) (IM.insert i n ct
 
 singleton :: Nm a -> b -> NmMap b
 singleton (Nm n (U i) _) x = NmMap (IM.singleton i x) (IM.singleton i n)
+
+member :: Nm a -> NmMap b -> Bool
+member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
 
 notMember :: Nm a -> NmMap b -> Bool
 notMember (Nm _ (U i) _) (NmMap x _) = i `IM.notMember` x
