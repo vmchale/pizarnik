@@ -49,10 +49,6 @@ drop2 : a b --
 drop3 : a b c --
       := [ drop drop drop ]
 
-# inspired by Joy
-# choice : a a Bool -- a
-       # := [ { False⁻¹ drop & True⁻¹ nip } ]
-
 # https://github.com/mirth-lang/mirth/blob/main/lib/std/prelude.mth
 # http://tunes.org/~iepos/joy.html#dipn
 sip : 'A x ['A x -- 'B] -- 'B x
