@@ -87,6 +87,7 @@ instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
 
 mapTV f (Subst v s) = Subst (f v) s; mapSV f (Subst v s) = Subst v (f s)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
+sTV (Nm _ (U u) _) t = Subst (IM.singleton u t) IM.empty
 
 c1 :: Nm a -> T a -> T a -> TM a (Subst a)
 c1 (Nm _ (U u) _) t te | u `IS.member` occ t = throwError $ O te t
@@ -185,9 +186,12 @@ roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 -- TODO: occurs check at substitution function
 
+nv n σ t | Nm.null σ = iTV n t
+
 -- "subsumes"
 su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+su _ s t@(Ρ _ n0 _) (Ρ _ n1 _) | n0==n1 = pure (t,s)
 su _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 su _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
@@ -282,11 +286,19 @@ nρ n@(Nm t _ l) s = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- nρ n (σ<>as<>ς)
     pure (n', g s')
-φ _ s t@TP{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
-φ _ s (Ρ _ n σ) t@TP{} | Nm.null σ = pure (t, iTV n t s)
+φ _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
+φ _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just (_:_) -> φf t0 t1
+        Just [] -> pure (t1,s)
+        _ -> do
+            (n',g) <- nρ n (Nm.insert tt [] σ)
+            pure (n',g s)
+φ _ s t0@(Ρ _ n σ) t1@(TT _ tt) =
+    case Nm.lookup tt σ of
+        Just (_:_) -> φf t0 t1
+        Just [] -> pure (t0,s)
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
