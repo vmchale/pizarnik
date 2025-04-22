@@ -9,15 +9,17 @@
 
 \begin{document}
 
+\VerbatimFootnotes
+
+\setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
+
 \title{Pattern Matching in Pizarnik}
 \author {V. E. McHale}
 \maketitle
 
-\VerbatimFootnotes
-
 \tableofcontents
 
-\setmonofont{DejaVu Sans Mono}[Scale=MatchAveragecase]
+\def\mathtag#1{\thinspace\text{\textasciigrave} \mathtt{#1}}
 
 \section{Introduction}
 
@@ -30,22 +32,30 @@ Pizarnik's approach to pattern-matching is based on commitment to the idea of pa
 Suppose we define an algebraic data type
 
 \begin{verbatim}
-type Bool = { `true ⊕ `false };
+type Bool = `true ⊕ `false;
 \end{verbatim}
 
 The literal \verb|`true| pushes a tag\footnote{Inspired by symbols (e.g. \verb|`blue|) in k, which are preceded by symbols (\verb|'red|) in Lisp.}  \verb|`true| onto the stack. We assign it the type \verb|-- `true|. Its inverse \verb|`true⁻¹| pops a value of type \verb|`true| off the stack and hence the atom \verb|`true⁻¹| has type \verb|`true --| (inverse exchanges left and right).
+
 % negation as fruitful interaction (orthogonality) rather than situation with principle of explosion we have in classical logic
+% sorta makes sense that we get pattern-match exhaustiveness checking
+% also left-right, exactly at beta-reduction... which is no doubt a fruitful interaction!
 
-In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a value of type \verb|Bool = { `true ⊕ `false }|, one writes \verb|{ `true⁻¹ & `false⁻¹ }| in Pizarnik. Or-patterns in other programming languages work like linear logic's \verb|&|, which identifies a product of deconstructors into a deconstructor for a sum---the De Morgan laws.
+In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a value of type \verb|Bool = { `true ⊕ `false }|, one writes \verb|{ `true⁻¹ & `false⁻¹ }| in Pizarnik. Or-patterns in other programming languages work like linear logic's \verb|&|, which identifies a product of deconstructors with a deconstructor for a sum---the De Morgan laws. % emphasizes duality
 
-% Rather than assigning the atom \verb|`true| the type \verb|-- Bool|, we assign it the type \verb|-- `true| while admitting arguments of type \verb|`true| to functions of type \verb|Bool -- a| on the grounds that $\mathtt{`true} \prec \{\mathtt{`true} \oplus \mathtt{`false}\}$.
+Taking \verb|not : Bool -- Bool|, we say
 
-% unlike row polymorphism we can't say `true unifies with `true ⊕ `false in general.
+$$\mathtag{true}~\mathtt{not} : -- \mathtt{Bool}$$
+
+\verb|`true| has type \verb|-- `true| which can be generalized to $--\mathtag{true}\oplus\mathtag{false}$. Sum types generalize but \textit{only on the right}.
+
+% not spiritual types...
 
 % mention Blume, Acar, Chae
 
 % negative polarity <-> "left permeable"
 % right permeable (⊕) left permeable by &
+% note that the lack of right permeability is exactly what gives us
 
 % inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
 % true inverse
@@ -59,21 +69,21 @@ In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a va
 We can define a function
 
 \begin{verbatim}
-if : a a `true -- a
+if : a b `true -- a
    := [ { `true⁻¹ drop } ]
 \end{verbatim}
 
 This is not so useful on its own---it requires the programmer to supply exactly one value and then discards it---but see how it unifies:
 
 \begin{verbatim}
-else : a a `false -- a
+else : a b `false -- b
      := [ { `false⁻¹ nip } ]
 
 choice : a a Bool -- a
        := [ { if & else } ]
 \end{verbatim}
 
-Pattern-match arms are terms like builtin functions \verb|+| etc. and can be reused (referenced); one enjoys cut elimination for sequences of such.
+Pattern-match arms are terms like builtin functions (\verb|+|, \verb|swap|, etc.) and can be reused (named); one enjoys cut elimination for sequences of such.
 
 \subsection{Typesafe Head}
 
@@ -86,9 +96,9 @@ head : NE a -- a
      := [ { `cons⁻¹ nip } ]
 \end{verbatim}
 
-Any nonempty list can be supplied as an argument to a function on lists. This is far more satisfactory than the situation in Haskell, in which \verb|foldr| \&c. must be defined for \verb|NonEmpty| and \verb|List| separately.
+Any nonempty list can be supplied as an argument to a function on lists. This is far more satisfactory than the situation in Haskell, in which \verb|foldr| \&c. must be defined for \verb|NonEmpty| and \verb|List| separately.\footnote{Typeclasses allow \verb|foldr| to be called on non-empty lists and lists equally but instances must be defined separately, and the typeclass machinery brings globality of instances and other complications.}
 
-\subsection{Or-Patterns}
+\subsection{Pattern Terms}
 
 Suppose we have
 
@@ -106,23 +116,15 @@ gt : Ord -- Bool
       := [ { lte `false & `gt⁻¹ `true } ]
 \end{verbatim}
 
-So or-patterns are reusable as functions.
-
-% also emphasizes duality
+So or-patterns are reusable, enjoy cut-elimination, etc.
 
 % esp. clumsy w/ state transformers eh
 
 % also we can say "throw this X or Y" but let top-level be X | Y | W
 % e.g. "module resolution" error could be IO or parse, type error could be scope or unification failure etc.
 
-\section{Syntactic Sugar}
-
 % do-notation, [x+y] in k etc.
 % Haskell compromise: give up pattern-match exhaustiveness checking OR error case "internal error"
-
-\section{Vector Expressions}
-
-% register/IR expression expression
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
