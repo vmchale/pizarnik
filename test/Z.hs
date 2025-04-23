@@ -14,7 +14,9 @@ main = defaultMain $
         -- TODO: error line no.?
       ( tErr [] "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
       : tErr ["."] "test/data/permeable.piz" "20:8: ‘`nil’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
+      : tErr [""] "test/data/badBool.piz" "something"
       : [ tI fp | fp <- [ "lib/list.piz"
+                        , "lib/either.piz"
                         , "prelude/ord.piz"
                         , "prelude/bool.piz"
                         , "test/examples/mutual.piz"

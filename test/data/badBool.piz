@@ -1,0 +1,7 @@
+%-
+
+and : Bool Bool -- Bool
+    := [ { True⁻¹ True⁻¹ True
+         & True⁻¹ False⁻¹ False
+         & False⁻¹ True⁻¹ False
+         } ]

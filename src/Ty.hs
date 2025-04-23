@@ -290,15 +290,15 @@ nρ n@(Nm t _ l) s = do
 φ _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
-        Just (_:_) -> φf t0 t1
         Just [] -> pure (t1,s)
+        Just _  -> φf t0 t1
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ _ s t0@(Ρ _ n σ) t1@(TT _ tt) =
     case Nm.lookup tt σ of
-        Just (_:_) -> φf t0 t1
         Just [] -> pure (t0,s)
+        Just _  -> φf t0 t1
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
