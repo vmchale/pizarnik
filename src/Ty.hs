@@ -204,8 +204,24 @@ su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, 
     pure (roll th a',s')
 su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
-su _ s (Ρ _ n σ0) (Σ _ σ1) | Nm.null σ0 = do {(n',g) <- nρ n σ1; pure (n',g s)}
-su _ s t@TT{} (Ρ _ n σ) | Nm.null σ = pure (t, iTV n t s)
+su c s t@(Ρ _ n σ0) (Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
+    -- FIXME propagate back?
+    (ς,s') <- sσ c s x σ0 σ1
+    (n',g) <- ρc n (σ0<>σ1<>ς) t
+    pure (n',g s')
+su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
+    case Nm.lookup tt σ of
+        -- FIXME propagate back?
+        Nothing -> do {(n',g) <- nρ n (Nm.insert tt [] σ); pure (n',g s)}
+        Just [] -> pure (t1, s)
+        Just _  -> sf t0 t1
+su _ s (Ρ _ n σ) t@TT{} = pure (t, nv n σ t s)
+su _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
+su _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
+su c s (Ρ x n0 σ0) t@(Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = do
+    (ς,s') <- sσ c s x σ0 σ1
+    (n',g) <- ρc n0 (σ0<>σ1<>ς) t
+    pure (n',g s')
 su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
                                    | otherwise = cf t0 t1
 su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
@@ -265,10 +281,14 @@ sv _ _ _ [] t1 = throwError$LE t1 []
 
 ctx'ize us c s = us c s `onM` peek s
 
-nρ n@(Nm t _ l) s = do
+ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> TM a (T a, Subst a -> Subst a)
+ρc n σ te | n `NmSet.member` (foldMap occ@<>σ) = throwError $ O (TV (Nm.loc n) n) te
+          | otherwise = nρ n σ
+
+-- fan out
+nρ n@(Nm t _ l) σ = do
     n' <- fr l t
-    let t'=Ρ l n' s
-    -- FIXME: occurs check?
+    let t'=Ρ l n' σ
     pure (t', iTV n t')
 
 -- fan out
@@ -282,9 +302,9 @@ nρ n@(Nm t _ l) s = do
                             | otherwise = pure (t, iTV n1 t s)
 φ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 φ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-φ c s (Σ _ as) (Ρ x n σ) = do
+φ c s t@(Σ _ as) (Ρ x n σ) = do
     (ς, s') <- φσ c s x σ as
-    (n',g) <- nρ n (σ<>as<>ς)
+    (n',g) <- ρc n (σ<>as<>ς) t
     pure (n', g s')
 φ _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
 φ _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
@@ -293,6 +313,7 @@ nρ n@(Nm t _ l) s = do
         Just [] -> pure (t1,s)
         Just _  -> φf t0 t1
         _ -> do
+            -- FIXME: propagates back too much?
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ _ s t0@(Ρ _ n σ) t1@(TT _ tt) =
@@ -300,6 +321,7 @@ nρ n@(Nm t _ l) s = do
         Just [] -> pure (t0,s)
         Just _  -> φf t0 t1
         _ -> do
+            -- FIXME: propagates back too much?
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
@@ -307,9 +329,10 @@ nρ n@(Nm t _ l) s = do
     pure (roll th a',s')
 φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
 φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
-φ c s (Ρ x n σ0) (Ρ _ _ σ1) = do
+φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
     (ς, s') <- φσ c s x σ0 σ1
-    (n',g) <- nρ n (σ0<>σ1<>ς)
+    -- FIXME: propagates back too much?
+    (n',g) <- ρc n (σ0<>σ1<>ς) t
     pure (n', g s')
 φ _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                 | otherwise = φf t0 t1
