@@ -4,6 +4,7 @@
 
 \usepackage{hyperref}
 \usepackage{fontspec}
+\usepackage{mathpartir}
 \usepackage{amsmath}
 \usepackage{fancyvrb}
 
@@ -47,15 +48,39 @@ Taking \verb|not : Bool -- Bool|, we say
 
 $$\mathtag{true}~\mathtt{not} : -- \mathtt{Bool}$$
 
-\verb|`true| has type \verb|-- `true| which can be generalized to $--\mathtag{true}\oplus\mathtag{false}$. Sum types generalize but \textit{only on the right}.
+\verb|`true| has type \verb|-- `true| which can be generalized to $--\mathtag{true}\oplus\mathtag{false}$ (an acceptable argument to \verb|not : Bool -- Bool|). Sum types generalize but \textit{only on the right}. This realizes the situation in linear logic \cite{ll}[p.~102].
 
+\begin{mathpar}
+\inferrule
+{\Gamma;\Gamma'\vdash \Delta';\Delta,A}
+{\Gamma;\Gamma'\vdash \Delta';\Delta,A \oplus B}
+\quad(\mathcal{R}1\oplus)
+
+\inferrule
+{\Gamma;\Gamma'\vdash \Delta';\Delta,B}
+{\Gamma;\Gamma'\vdash \Delta';\Delta,A \oplus B}
+\quad(\mathcal{R}2\oplus)
+
+\inferrule
+{A,\Gamma;\Gamma'\vdash\Delta';\Delta \\ B,\Gamma;\Gamma'\vdash\Delta';\Delta}
+{A\oplus B,\Gamma;\Gamma';\vdash \Delta'\Delta}
+\quad(\mathcal{L}\oplus)
+
+\inferrule
+{\Gamma;\Gamma'\vdash \Delta';\Delta,A \\ \Gamma;\Gamma'\vdash\Delta';\Delta, B}
+{\Gamma;\Gamma'\vdash\Delta';\Delta,A \& B}
+\quad(\mathcal{R}\&)
+\end{mathpar}
+
+% The \textsc{Cut} rule only requires subsumption rather than equality.
 % not spiritual types...
 
 % mention Blume, Acar, Chae
 
 % negative polarity <-> "left permeable"
 % right permeable (⊕) left permeable by &
-% note that the lack of right permeability is exactly what gives us
+% note that the lack of right permeability is exactly what gives us pattern-match exhaustiveness checking
+% left permeability means that we can apply
 
 % inverse type exchanges sides (sequent calculus/linear logic) `true⁻¹ : `true --
 % true inverse
