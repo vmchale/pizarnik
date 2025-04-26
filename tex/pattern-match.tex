@@ -81,44 +81,6 @@ Recalling the identity rule
 
 and the definition of $(-)^\bot$ by the De Morgan laws $(A\oplus B)^\bot = A^\bot \& B^\bot$ \cite{girard1987}[p.~20], we can prove that $\&$ (with) generalizes on the left. And indeed a function accepting a value of type $A\oplus B$ as argument can just as well accept a value of type $A$, though this is not manifest in, say, Haskell. But it turns out to be useful; we define \verb|foldr| to work on non-empty lists in \S\ref{sec:head}.
  
-% \cite{ll}[p.~102].
-
-% \begin{mathpar}
-% \inferrule
-% {\Gamma;\Gamma'\vdash \Delta';\Delta,A}
-% {\Gamma;\Gamma'\vdash \Delta';\Delta,A \oplus B}
-% \quad(\mathcal{R}1\oplus)
-
-% \inferrule
-% {\Gamma;\Gamma'\vdash \Delta';\Delta,B}
-% {\Gamma;\Gamma'\vdash \Delta';\Delta,A \oplus B}
-% \quad(\mathcal{R}2\oplus)
-
-% \inferrule
-% {A,\Gamma;\Gamma'\vdash\Delta';\Delta \\ B,\Gamma;\Gamma'\vdash\Delta';\Delta}
-% {A\oplus B,\Gamma;\Gamma';\vdash \Delta'\Delta}
-% \quad(\mathcal{L}\oplus)
-
-% \\
-
-% \inferrule
-% {A,\Gamma;\Gamma'\vdash\Delta';\Delta}
-% {A\&B,\Gamma;\Gamma'\vdash\Delta';\Delta}
-% \quad(\mathcal{L}1\&)
-
-% \inferrule
-% {B,\Gamma;\Gamma'\vdash\Delta';\Delta}
-% {A\&B,\Gamma;\Gamma'\vdash\Delta';\Delta}
-% \quad(\mathcal{L}2\&)
-
-% \inferrule
-% {\Gamma;\Gamma'\vdash \Delta';\Delta,A \\ \Gamma;\Gamma'\vdash\Delta';\Delta, B}
-% {\Gamma;\Gamma'\vdash\Delta';\Delta,A \& B}
-% \quad(\mathcal{R}\&)
-
-% \end{mathpar}
-
-% The \textsc{Cut} rule only requires subsumption rather than equality.
 % not spiritual types...
 
 % mention Blume, Acar, Chae
