@@ -26,6 +26,8 @@
 
 Pizarnik's approach to pattern-matching is based on commitment to the idea of pattern-matching as inverse\cite{ehrenberg2009} and suggestive notation from linear logic ($\&$, ``with'', is dual to disjunction, $\oplus$) \cite{munchmaccagnoni}.
 
+The actual machinery for extensible cases has already been accomplished by Blume, Acar, and Chae \cite{blume2006} with the end of solving the expression problem.
+
 % par = project tuple? (negative aspect ig)
 
 \section{Extensible Pattern Matches}
@@ -39,10 +41,9 @@ type Bool = `true ⊕ `false;
 The literal \verb|`true| pushes a tag\footnote{Inspired by symbols (e.g. \verb|`blue|) in k, which are preceded by symbols (\verb|'red|) in Lisp.}  \verb|`true| onto the stack. We assign it the type \verb|-- `true|. Its inverse \verb|`true⁻¹| pops a value of type \verb|`true| off the stack and hence the atom \verb|`true⁻¹| has type \verb|`true --| (inverse exchanges left and right).
 
 % negation as fruitful interaction (orthogonality) rather than situation with principle of explosion we have in classical logic
-% sorta makes sense that we get pattern-match exhaustiveness checking
 % also left-right, exactly at beta-reduction... which is no doubt a fruitful interaction!
 
-In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a value of type \verb|Bool = { `true ⊕ `false }|, one writes \verb|{ `true⁻¹ & `false⁻¹ }| in Pizarnik. Or-patterns in other programming languages work like linear logic's \verb|&|, which identifies a product of deconstructors with a deconstructor for a sum---the De Morgan laws.
+In linear logic, one has $(G\oplus H)^\bot = G^\bot \& H ^\bot$. To pop off a value of type \verb|Bool = { `true ⊕ `false }|, one writes \verb|{ `true⁻¹ & `false⁻¹ }| in Pizarnik. Or-patterns in other programming languages work like linear logic's \verb|&|, which identifies a product of deconstructors with a deconstructor for a sum---the De Morgan laws.\footnote{The duality is worth noting: if we have two choices for returning a value of type $A\oplus B$ then a function accepting $A\oplus B$ must \textit{provide} two pattern match arms.}
 % emphasizes duality
 
 Taking \verb|not : Bool -- Bool|, we say
@@ -66,7 +67,7 @@ $$\mathtag{true}~\mathtt{not} : -- \mathtt{Bool}$$
 {\vdash\Gamma,A\oplus B}
 \end{mathpar}
 
-Forbidding $\&$-generalization on the right manifests as forbidding inexhaustive pattern-matches.\footnote{$\&$ is a product, to form a tuple of type \verb|(Int, Int)| by supplying only one of its constituents would be absurd---yet this is exactly what allowing inexhaustive pattern matches encourages!}
+Forbidding $\&$-generalization on the right manifests as forbidding inexhaustive pattern-matches. $\oplus$ is a disjunction; $\&$ is a conjuction; it restricts. \footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}
 
 Recalling the identity rule
 
@@ -81,15 +82,8 @@ and the definition of $(-)^\bot$ by the De Morgan laws $(A\oplus B)^\bot = A^\bo
  
 % not spiritual types...
 
-% mention Blume, Acar, Chae
-
-% negative polarity <-> "left permeable"
-% right permeable (⊕) left permeable by &
-
 % true inverse
 
-% Perhaps counterintuitively, we get pattern-match exhaustiveness checking for free. $\oplus$ is a disjunction and thus we may generalize as we see fit, but $\&$ is a conjunction; it restricts\footnote{$\&$ is a product; it would be farcical for a programmer to supply \verb|1| when a term of type \verb|(Int * Int)| is required. Yet this is exactly what allowing inexhaustive and redundant pattern matches encourages!}.
-% insisting on specificity=pattern-match exhaustiveness checking
 % not like row polymorphism in that left-right must be distinguished, insightful (for instance existential types)
 
 \subsection{Reusing Pattern-Match Arms}
