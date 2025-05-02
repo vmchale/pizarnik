@@ -182,6 +182,9 @@ occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
 occ (Ρ _ n a)       = NmSet.insert n$foldMap (occ@<>) a
 
+occρ :: Nm a -> Nm.NmMap (TSeq a) -> Bool
+occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
+
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 -- TODO: occurs check at substitution function
@@ -282,7 +285,7 @@ sv _ _ _ [] t1 = throwError$LE t1 []
 ctx'ize us c s = us c s `onM` peek s
 
 ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> TM a (T a, Subst a -> Subst a)
-ρc n σ te | n `NmSet.member` (foldMap occ@<>σ) = throwError $ O (TV (Nm.loc n) n) te
+ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
           | otherwise = nρ n σ
 
 -- fan out
@@ -345,7 +348,7 @@ nρ n@(Nm t _ l) σ = do
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
--- TODO: eat into stack var if present
+-- FIXME: eat into stack var if present!!
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
     where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
@@ -408,16 +411,22 @@ lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
+    | occρ n σ1 = throwError$O t0 t1
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
     | otherwise = sf t0 t1
     -- TODO: Σ, TT
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
                             | otherwise = sf t0 t1
-lt c (Σ _ σ0) (Ρ _ n σ1) = do
+lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
+                               | otherwise = do
     (_,g) <- nρ n (σ0<>σ1)
     g<$>mσ lt c σ0 σ1
-lt c t0@(Ρ _ _ σ0) t1@(Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
-                                 | otherwise = sf t0 t1
+lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
+-- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t)
+lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
+                                   | occρ n1 σ0 = throwError$O t1 t0
+                                   | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                                   | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
 lt _ t0@TP{} t1@QT{} = sf t0 t1
