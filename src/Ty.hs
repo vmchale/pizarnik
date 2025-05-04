@@ -282,7 +282,7 @@ sv u c s (t0:ts0) (t1:ts1) = do
 sv _ _ _ t0 [] = throwError$LE t0 []
 sv _ _ _ [] t1 = throwError$LE t1 []
 
-ctx'ize us c s = us c s `onM` peek s
+ctx'ize us c s = us c s `onM` (rwAr (ars c)<=<peek s)
 
 ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> TM a (T a, Subst a -> Subst a)
 ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
