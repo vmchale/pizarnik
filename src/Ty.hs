@@ -240,6 +240,7 @@ su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
                               | otherwise = cf t0 t1
+su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
 
 uσ u c s l σ0 σ1 =
     us s (Nm.toList l ς)
@@ -345,6 +346,7 @@ nρ n@(Nm t _ l) σ = do
 φ _ _ t0@TT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
+φ _ _ SV{} _ = ie; φ _ _ _ SV{} = ie
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
@@ -437,6 +439,7 @@ lt _ t0@QT{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@TT{} = sf t0 t1
 lt _ t0@TP{} t1@Σ{} = sf t0 t1
 lt _ t0@Σ{} t1@TP{} = sf t0 t1
+lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
@@ -618,3 +621,5 @@ onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 
 (@<>) :: (Monoid m, Foldable f) => (a -> m) -> f a -> m
 (@<>) = foldMap
+
+ie=error"internal error."
