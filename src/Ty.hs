@@ -212,6 +212,10 @@ su c s t@(Ρ _ n σ0) (Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n (σ0<>σ1<>ς) t
     pure (n',g s')
+su c s (Σ x σ0) t@(Ρ _ n σ1) = do
+    (ς,s') <- sσ c s x σ0 σ1
+    (n',g) <- ρc n (σ0<>σ1<>ς) t
+    pure (n',g s')
 su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         -- FIXME propagate back?
@@ -229,9 +233,10 @@ su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
                                    | otherwise = cf t0 t1
 su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
-su c s (Σ x a0) (Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do
+su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do
     (ς,s') <- sσ c s x a0 a1
     pure (Σ x ς, s')
+                               | otherwise = cf t0 t1
 su _ _ t0@TT{} t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1@TT{} = cf t0 t1
