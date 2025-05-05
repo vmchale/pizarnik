@@ -207,11 +207,12 @@ su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, 
     pure (roll th a',s')
 su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
-su c s t@(Ρ _ n σ0) (Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
+su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
     -- FIXME propagate back?
     (ς,s') <- sσ c s x σ0 σ1
-    (n',g) <- ρc n (σ0<>σ1<>ς) t
+    (n',g) <- ρc n (σ0<>σ1<>ς) t0
     pure (n',g s')
+                                 | otherwise = cf t0 t1
 su c s (Σ x σ0) t@(Ρ _ n σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n (σ0<>σ1<>ς) t
