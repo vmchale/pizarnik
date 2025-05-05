@@ -485,8 +485,12 @@ tMM b (M is ds) = M is <$> tD b ds
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
-tAS :: Int -> Ext a -> ASeq a -> Either (TE a) ([A (TS a)], Int)
-tAS u b a = fmap (\(x,_,m) -> (x,m)) (runTM u $ do {(SL _ a',s) <- tseq b mempty a; traverse (traverse (s@*)) a'})
+-- ['A₁₁₁ -- 'A₁₁₁ Int,'A₁₀₉ -- 'A₁₀₉ Int]
+tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) (ASeq (TS a), Int)
+tAS u b _ a = fmap π₁₃ $ runTM u $ do
+    (t,s) <- tseq b mempty a
+    taseq (s@*) t
+  where π₁₃ (x,_,z)=(x,z)
 
 {-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()
