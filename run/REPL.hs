@@ -81,8 +81,6 @@ printT src = do
 printA :: String -> Repl ()
 printA src = do
     (X l s c@(Node (t,ar) _)) <- lift get
-    -- TODO: typecheck w/ context
-    -- also e.g. mult : K K -- K on empty stack should raise objection
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do

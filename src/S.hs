@@ -34,13 +34,12 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
     where bt l True= ta l
           bt l False = fa l
 
-
 (≺) :: T a -> T a -> Bool
 (TT _ tt₀) ≺ (TT _ tt₁) | tt₀==tt₁ = True
 (TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
 _ ≺ _                   = False
 
--- $ [] are they inverses in some sense (fruitful interaction?)
+-- (precisely why stack-based is interesting, inverse is application...?)
 
 ψ :: Ctx (TS a) -> [ASeq (TS a)] -> S a -> S a
 ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (g t) (map aas aa) = r c (tail as₀) as -- FIXME: tail assumes one (count types on right)
