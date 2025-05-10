@@ -69,14 +69,14 @@ loop = do
 
 printT :: String -> Repl ()
 printT src = do
-    (X l s (Node (t,ar) _)) <- lift get
+    (X l _ (Node (t,ar) _)) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
             let tyctx = Ext (aLs<$>t) IM.empty ar
-            case tAS i tyctx s at of
-                Right (SL a _,_) -> pE a
-                Left err         -> pE err
+            case tAS i tyctx [] at of
+                Right ((_, SL a _),_) -> pE a
+                Left err              -> pE err
 
 printA :: String -> Repl ()
 printA src = do
@@ -86,12 +86,10 @@ printA src = do
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
-            -- FIXME
-            --  :ty `e `a mult
-            -- 'A -- 'B
             let tyctx = Ext (aLs<$>t) IM.empty ar
             case tAS i tyctx s at of
-                Right (a,i') -> do
+                Right ((TS (_:_:_) _,_),_) -> pE "not enough arguments on the stack."
+                Right ((_,a),i') -> do
                     let s' = r c (aas a) s
                     lift $ put (X (i',ii,ti,m) s' c)
                     stackpp s'

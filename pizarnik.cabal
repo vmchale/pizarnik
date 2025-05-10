@@ -73,7 +73,7 @@ library
         , directory
         , filepath
         , microlens      >=0.4.0.0
-        , mtl
+        , mtl            >=2.2.1
         , prettyprinter  >=1.7.0
         , text
         , transformers
@@ -110,7 +110,6 @@ test-suite pizarnik-test
         , pizarnik
         , tasty
         , tasty-hunit
-        , transformers
 
 benchmark pizarnik-bench
     import:         warnings
@@ -121,4 +120,3 @@ benchmark pizarnik-bench
         , base
         , criterion
         , pizarnik
-        , transformers

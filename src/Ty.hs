@@ -486,12 +486,17 @@ tMM b (M is ds) = M is <$> tD b ds
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
--- ['A₁₁₁ -- 'A₁₁₁ Int,'A₁₀₉ -- 'A₁₀₉ Int]
-tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) (ASeq (TS a), Int)
-tAS u b _ a = fmap π₁₃ $ runTM u $ do
-    (t,s) <- tseq b mempty a
-    taseq (s@*) t
-  where π₁₃ (x,_,z)=(x,z)
+-- `e `a mult
+-- `a mult
+--
+-- evaluator pinches stack vars off pattern match...
+tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
+tAS u b s a = fmap π₁₃ $ runTM u $ do
+    (t0,s0) <- sseq n (aLs a) mempty (reverse s)
+    (t1,s1) <- tseq b s0 a
+    (t2,s2) <- cat n s1 t0 (aLs t1)
+    (,) <$> s2@*t2 <*> taseq (s2@*) t1
+  where π₁₃ (x,_,z)=(x,z); n=π b
 
 {-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()
@@ -506,6 +511,12 @@ tD1 b (F _ n ts as) = do
     s' <- mtsc (π b) s (aLs as') ts
     as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
+
+sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> TM a (TS a, Subst a)
+sseq _ l s []     = do {a <- fsv l "A"; pure (TS [a] [a], s)}
+sseq b l s (a:as) = do
+    (tϵ, s0) <- sseq b l s as
+    cat b s0 (aL a) tϵ
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
@@ -578,7 +589,7 @@ ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs
 ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
 ta b s (C l tt)        = do
     p <- lT (arit b) tt
-    -- TODO: pad beginning inverse constructors with ρ₀ etc. not a₀?
+    -- TODO: pad beginning not-inverse constructors with a₀ etc. not ρ₀?
     ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat _ as)      = do

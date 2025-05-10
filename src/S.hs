@@ -64,9 +64,10 @@ _ ≺ _                   = False
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
 ι _ a@C{} as               = a:as
-ι c (Pat _ (SL _ aa)) as   = ψ c aa as
+ι c (Pat _ (SL _ aa)) as   = ψ c aa as -- FIXME: this pinches off stack variables...
 ι c (V _ n) as             = let (c',a) = lV c n in r c' (aas a) as
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
+ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
 
 lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
 lV c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
