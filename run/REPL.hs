@@ -6,7 +6,7 @@ import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put, runStateT)
 import           Data.Bifunctor                   (first)
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
@@ -38,21 +38,24 @@ alexSt (u,t,i) = (u,t,i,IM.empty)
 
 names = pure ["dip", "dup", "swap"]
 
+sRepl = runExceptT.flip runStateT (0,mempty,mempty)
+
 runRepl :: [FilePath] -> Repl a -> IO a
 runRepl [fp] x = do
     h <- (</> ".pizarnik") <$> getHomeDirectory
-    liftIO (runExceptT $ tMs ["."] fp) >>= \case
+    liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
-        Right (st,ctx) -> do
+        Right (ctx,st) -> do
             let t=fmap (first lm) ctx
             flip evalStateT (X (alexSt st) [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
-    c (":", "")    = pure (":", strC ["help", "ty"])
+    c (":", "")    = pure (":", strC ["ty"])
     c ("t:", "")   = pure ("t:", strC ["y"])
     c ("yt:", "")  = pure ("yt:", strC [""])
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
+
 
 strC = map simpleCompletion
 
@@ -79,9 +82,13 @@ printA :: String -> Repl ()
 printA src = do
     (X l s c@(Node (t,ar) _)) <- lift get
     -- TODO: typecheck w/ context
+    -- also e.g. mult : K K -- K on empty stack should raise objection
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
+            -- FIXME
+            --  :ty `e `a mult
+            -- 'A -- 'B
             let tyctx = Ext (aLs<$>t) IM.empty ar
             case tAS i tyctx s at of
                 Right (a,i') -> do

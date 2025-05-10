@@ -3,17 +3,16 @@
 
 module Main (main) where
 
-import           Control.Monad.Trans.Except (runExceptT)
 import           P
-import           Test.Tasty                 (TestTree, defaultMain, testGroup)
-import           Test.Tasty.HUnit           (assertFailure, testCase, (@?=))
+import           Test.Tasty       (TestTree, defaultMain, testGroup)
+import           Test.Tasty.HUnit (assertFailure, testCase, (@?=))
 
 main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
         -- TODO: error line no.?
       ( tErr [] "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
-      : tErr ["."] "test/data/permeable.piz" "20:8: ‘`nil’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
+      : tErr ["."] "test/data/permeable.piz" "20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
       : tErr [""] "test/data/badBool.piz" "something"
       : [ tI fp | fp <- [ "lib/list.piz"
                         , "lib/either.piz"
@@ -31,12 +30,12 @@ main = defaultMain $
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
 tErr incls fp expected = testCase fp $
-    runExceptT (tMs incls fp) >>= \case
+    rRepl (tMs incls fp) >>= \case
         Right{} -> assertFailure "expected error."
         Left e  -> show e @?= expected
 
 tFile :: [FilePath] -> FilePath -> TestTree
 tFile incls fp = testCase fp $ do
-    runExceptT (tMs incls fp) >>= \case
+    rRepl (tMs incls fp) >>= \case
         Right{} -> pure ()
         Left e  -> assertFailure (show e)
