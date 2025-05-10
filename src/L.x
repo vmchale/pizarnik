@@ -230,9 +230,6 @@ instance Pretty Tok where
     pretty (TokT _ t)   = pretty t
     pretty (TokKw _ k)  = "keyword" <+> sq k
 
-runAlexSt :: BSL.ByteString -> Alex a -> Either String (AlexUserState, a)
-runAlexSt inp = withAlexSt inp 0 alexInitUserState
-
 withAlexSt :: BSL.ByteString -> Int -> AlexUserState -> Alex a -> Either String (AlexUserState, a)
 withAlexSt inp scd ust (Alex f) = first alex_ust <$> f
     (AlexState { alex_bpos = 0
