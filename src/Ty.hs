@@ -6,7 +6,7 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (unless, when, zipWithM, (<=<))
+import           Control.Monad                    (when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
@@ -226,26 +226,24 @@ su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
 su _ s (Ρ _ n σ) t@TT{} = pure (t, nv n σ t s)
 su _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
 su _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
-su c s (Ρ x n0 σ0) t@(Ρ _ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = do
+su c s t0@(Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
-    (n',g) <- ρc n0 (σ0<>σ1<>ς) t
+    (n',g) <- ρc n0 (σ0<>σ1<>ς) t1
     pure (n',g s')
 su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
                                    | otherwise = cf t0 t1
 su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
-su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do
-    (ς,s') <- sσ c s x a0 a1
-    pure (Σ x ς, s')
+su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
+su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
+                              | otherwise = cf t0 t1
 su _ _ t0@TT{} t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
-su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
-                              | otherwise = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
 
 uσ u c s l σ0 σ1 =
@@ -406,9 +404,8 @@ mσ u c σ0 σ1 =
 
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
-lt c t0@(Σ _ σ0) t1@(Σ _ σ1) = do
-    unless (σ0 `Nm.isSubmapOf` σ1)
-        (sf t0 t1) *> mσ lt c σ0 σ1
+lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                             | otherwise = sf t0 t1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
@@ -426,35 +423,30 @@ lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
                             | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
-                               | otherwise = do
-    (_,g) <- nρ n (σ0<>σ1)
-    g<$>mσ lt c σ0 σ1
+                               | otherwise = do {(_,g) <- nρ n (σ0<>σ1); g<$>mσ lt c σ0 σ1}
 lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
 -- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t)
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
+                                   -- TODO: should we allow ρ to expand? we handle it exactly different on line 426
                                    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
-lt _ t0@TP{} t1@QT{} = sf t0 t1
-lt _ t0@TP{} t1@TT{} = sf t0 t1
-lt _ t0@TT{} t1@QT{} = sf t0 t1
-lt _ t0@TT{} t1@TP{} = sf t0 t1
-lt _ t0@QT{} t1@TP{} = sf t0 t1
-lt _ t0@QT{} t1@TT{} = sf t0 t1
-lt _ t0@TP{} t1@Σ{} = sf t0 t1
-lt _ t0@Σ{} t1@TP{} = sf t0 t1
+lt _ t0@TP{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TP{} = sf t0 t1
+lt _ t0@TP{} t1@TT{} = sf t0 t1; lt _ t0@TT{} t1@TP{} = sf t0 t1
+lt _ t0@TT{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TT{} = sf t0 t1
+lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
-mTS c (TS l0 r0) (TS l1 r1) = do {s <- ms (\cϵ t0 t1 -> lt cϵ t1 t0) c mempty l0 l1; mc lt c s r0 r1 $> s}
+mTS c = mtsc c mempty
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc c s asig tsig = do {asig' <- s@*asig; mTS c asig' tsig}
+mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
