@@ -119,7 +119,7 @@ T :: { T AlexPosn }
   | stringTy { TP $1 A.String }
   | tag { TT (Nm.loc $1) $1 }
   | lbracket TS rbracket { QT $1 $2 }
-  | T parens(sepBy(T,comma)) { troll $1 (reverse $2) }
+  | T parens(sepBy(T,comma)) { roll $1 (reverse $2) }
   | braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
   | T un T { UU $2 [$1,$3] }
 
@@ -157,9 +157,9 @@ locArms = Nm.loc . fst . head
 
 mkΣ = Nm.fromList
 
-troll :: T a -> [T a] -> T a
-troll t []      = t
-troll t (t':ts) = troll (TA (tL t) t t') ts
+roll :: T a -> [T a] -> T a
+roll t []      = t
+roll t (t':ts) = roll (TA (tL t) t t') ts
 
 parseErr :: Tok -> [String] -> Parse a
 parseErr t = throwError . Unexpected t
