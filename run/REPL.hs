@@ -86,7 +86,7 @@ printA src = do
         Right ((i,ii,ti,m),at) -> do
             let tyctx = Ext (aLs<$>t) IM.empty ar
             case tAS i tyctx s at of
-                Right ((TS (_:_:_) _,_),_) -> po "not enough arguments on the stack."
+                Right ((TS (_:_:_) _,_),_) -> po"not enough arguments on the stack."
                 Right ((_,a),i') -> do
                     let s' = r c (aas a) s
                     lift $ put (X (i',ii,ti,m) s' c)
