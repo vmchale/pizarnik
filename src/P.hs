@@ -51,8 +51,6 @@ tMs incls fp = do
         Node <$> tM ctx n <*> pure ms
 
 -- TODO: multiple roots
--- also start with some context (so that we can load modules in the REPL)
-
 rMs :: [FilePath] -- ^ Include dirs
     -> FilePath -- ^ Root module
     -> RIO (IM.IntMap (M AlexPosn AlexPosn))

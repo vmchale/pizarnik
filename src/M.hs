@@ -44,6 +44,7 @@ pRoot incls fp = rMM $ do
         | otherwise = do
             m@(M is _) <- pMIO incls mn
             let nDeps=(mn,is):mDeps
+                -- TODO: for root modules we'd need to alter/concat here (checking for collisions rip)
                 st'= MS (IM.insert i m mSt) nDeps
             step st' (is++mns)
 

@@ -356,7 +356,7 @@ nρ n@(Nm t _ l) σ = do
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
--- FIXME: eat into stack var if present!!
+-- FIXME: eat into stack var when present
 rwAr :: Ar -> TSeq a -> TM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
     where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
