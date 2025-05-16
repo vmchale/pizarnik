@@ -168,7 +168,7 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Nothing -> Ρ l n <$> traverse (s@@) a
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
-(@>) _ SV{} = error "Internal error: (@>) applied to stack variable "
+(@>) _ SV{} = error"Internal error: (@>) applied to stack variable "
 
 occ :: T a -> IS.IntSet
 occ (TV _ n)        = NmSet.singleton n
