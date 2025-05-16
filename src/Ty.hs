@@ -592,7 +592,7 @@ ta b s (Pat _ as)      = do
 
 an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 an ar as = do
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) undefined $> (ts /| n)}) as
+    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
 
@@ -606,7 +606,7 @@ dU c s tss = do
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     al <- traverse ai ls'
     (σ,ul) <- an (ars c) (concat al)
-    (l',s') <- urs s ul; (r',s'') <- urs s' rs'
+    (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
     pure (TS (l'++[σ]) r', s'')
   where ls=map tlefts tss; rs=map trights tss
@@ -614,13 +614,11 @@ dU c s tss = do
 
         tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
 
-        urs sϵ [t]    = pure (t, sϵ)
-        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; φsc c s0 tr t}
+        frs sϵ [t]    = pure (t, sϵ)
+        frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
 
-        ai :: [T a] -> TM a [(Nm a, [T a])]
-        ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
-              | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
-              | otherwise = throwError (PM ts)
+        urs sϵ [t]    = pure (t, sϵ)
+        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; susc c s0 tr t}
 
         traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
         pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
