@@ -102,7 +102,6 @@ sepTup(p,q)
 
 brackets(p) : lbracket p rbracket { ($1, $2) }
 braces(p) : lbrace p rbrace { ($1, $2) }
-parens(p) : lparen p rparen { $2 }
 
 Arm :: { (Nm AlexPosn, TSeq AlexPosn) }
     : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwError . AnonymousArm =<< lift get_pos } }
@@ -118,8 +117,8 @@ T :: { T AlexPosn }
   | boolTy { ʙ $1 }
   | stringTy { TP $1 A.String }
   | tag { TT (Nm.loc $1) $1 }
-  | lbracket TS rbracket { QT $1 $2 }
-  | T parens(sepBy(T,comma)) { roll $1 (reverse $2) }
+  | brackets(TS) { uncurry QT $1 }
+  | T lparen sepBy(T,comma) rparen { roll $1 (reverse $3) }
   | braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
   | T un T { UU $2 [$1,$3] }
 
