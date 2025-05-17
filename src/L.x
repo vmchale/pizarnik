@@ -115,8 +115,6 @@ tokens :-
         @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
         '@tyname                { tok (\p s -> TokSV p <$> nIdent p (mkText s)) }
         "`"@tag                 { tok (\p s -> TokT p <$> nIdent p (mkText s)) }
-        -- ⊲
-        -- ⊳
 
     }
 
