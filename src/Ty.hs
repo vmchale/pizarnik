@@ -38,7 +38,7 @@ data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
-instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])
+instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromDistinctAscList [(-2,0),(-1,0)])
 
 data TE a = BE (BE a) | O (T a) (T a)
           | PM (TSeq a)
@@ -73,7 +73,7 @@ data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 type TM x = StateT (TSt x) (Either (TE x))
 
 runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
-runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty (IM.fromList [(-1,0),(-2,0)])))
+runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty (IM.fromDistinctAscList [(-2,0),(-1,0)])))
 
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
