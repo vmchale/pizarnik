@@ -43,7 +43,7 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromDistinctAsc
 data TE a = BE (BE a) | O (T a) (T a)
           | PM (TSeq a)
           | LE (TSeq a) (TSeq a)
-          | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
+          | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a) | UF (T a) (T a)
           | AM (Nm a) | IS (Nm a)
 
 {-# SCC tLs #-}
@@ -59,6 +59,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
     pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
     pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
+    pretty (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
     pretty (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
 
 tc t p = pretty (tL t) <> ":" <+> p
@@ -190,6 +191,20 @@ roll = foldr (\t₀ -> TA (tL t₀) t₀)
 -- TODO: occurs check at substitution function
 
 nv n σ t | Nm.null σ = iTV n t
+
+-- unifies
+uu :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
+uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
+uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
+uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) = if tt₀==tt₁ then pure (t0,s) else throwError$UF t0 t1
+uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars tho...
+                                 | otherwise = throwError$UF t0 t1
+uu c s t0@(Σ _ as) t1@(Ρ l n σ) | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
+                                | otherwise = throwError$UF t0 t1
+
+uus=sv uu;usc=ctx'ize uus
 
 -- "subsumes"
 su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
@@ -587,8 +602,17 @@ ta b s (C l tt)        = do
 ta b s (Pat _ as)      = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
+    -- TODO: maybe "pick off" negatives here
     (t, s1) <- dU (π b) s0 sigs
     pure (Pat t (SL t as'), s1)
+
+-- e.g. `e⁻¹ `e⁻¹ `e & `e⁻¹ `a⁻¹ `a & ... rewritten to K⁻¹ K⁻¹ somehow
+-- basically if `e⁻¹ { ... } and `a⁻¹ { ... } have a type that UNIFIES then we can "pick-2"
+-- FIXME pop off all inverse constructors e.g. `t⁻¹ `f⁻¹
+ai :: [T a] -> TM a [(Nm a, [T a])]
+ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
+      | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
+      | otherwise = throwError (PM ts)
 
 an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 an ar as = do
@@ -618,7 +642,7 @@ dU c s tss = do
         frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
 
         urs sϵ [t]    = pure (t, sϵ)
-        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; susc c s0 tr t}
+        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
         traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
         pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
@@ -634,3 +658,6 @@ onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 (@<>) = foldMap
 
 ie=error"internal error."
+
+eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
+eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
