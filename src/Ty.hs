@@ -189,20 +189,22 @@ occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 -- TODO: occurs check at substitution function
-
 nv n σ t | Nm.null σ = iTV n t
 
--- unifies
 uu :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) = if tt₀==tt₁ then pure (t0,s) else throwError$UF t0 t1
-uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars tho...
+uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
+uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
                                  | otherwise = throwError$UF t0 t1
-uu c s t0@(Σ _ as) t1@(Ρ l n σ) | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
+uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
+                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
                                 | otherwise = throwError$UF t0 t1
+uu _ s t0@(TP _ p0) (TP _ p1) | p0==p1 = pure (t0,s)
+uu _ _ t0@TP{} t1 = throwError$UF t0 t1
+uu _ _ t0 t1@TP{} = throwError$UF t0 t1
 
 uus=sv uu;usc=ctx'ize uus
 
