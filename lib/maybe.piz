@@ -1,0 +1,20 @@
+@i prelude/fn
+
+%-
+
+type Maybe a = { a `just ⊕ `nothing };
+
+isJust : Maybe(a) -- Bool
+       := [ { `just⁻¹ _ True & `nothing⁻¹ False } ]
+
+isNothing : Maybe(a) -- Bool
+          := [ { `just⁻¹ _ False & `nothing⁻¹ True } ]
+
+maybe : b [a -- b] Maybe(a) -- b
+      := [ { `just⁻¹ nip2 swap $ & `nothing⁻¹ _ } ]
+
+join : Maybe(Maybe(a)) -- Maybe(a)
+     := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
+
+mapMaybe : [a -- b] Maybe(a) -- Maybe(b)
+         := [ { `just⁻¹ swap $ `just & `nothing⁻¹ _ `nothing } ]
