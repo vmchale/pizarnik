@@ -25,3 +25,6 @@ maybe0 : b [a -- b] Maybe(a) -- b
 
 join : Maybe(Maybe(a)) -- Maybe(a)
      := [ { `just⁻¹ & `nothing⁻¹ `nothing } ]
+
+mapMaybe : [a -- b] Maybe(a) -- Maybe(b)
+         := [ { `just⁻¹ swap $ `just & `nothing⁻¹ _ `nothing } ]
