@@ -609,16 +609,35 @@ ta b s (Pat _ as)      = do
     (t, s1) <- dU (π b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
--- e.g. `e⁻¹ `e⁻¹ `e & `e⁻¹ `a⁻¹ `a & ... rewritten to K⁻¹ K⁻¹ somehow
--- basically if `e⁻¹ { ... } and `a⁻¹ { ... } have a type that UNIFIES then we can "pick-2"
--- FIXME pop off all inverse constructors e.g. `t⁻¹ `f⁻¹
 ai :: [T a] -> TM a [(Nm a, [T a])]
 ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
       | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
       | otherwise = throwError (PM ts)
 
+-- gather by prefix, e.g.
+--
+--     `t⁻¹ `t⁻¹ `t
+--   & `t⁻¹ `f⁻¹ `f
+--   & `f⁻¹ `t⁻¹ `f
+--
+--   into
+--     `t⁻¹ { `t⁻¹ `t & `f⁻¹  `f }
+--   & `f⁻¹ `t⁻¹ `f
+
+-- `t `t -- `t
+-- `t `f -- `f
+-- `f `t -- `f
+--
+-- pinch `t together
+--
+-- `t -- `t
+-- `f -- `f
+--
+-- now on the left it's like dU?
+
 an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 an ar as = do
+    -- what about duplicate tags
     (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
     pure (Σ l (Nm.fromList (zip nms tss)), tas)
   where l=loc (fst$head as); nms=map fst as
@@ -626,11 +645,24 @@ an ar as = do
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
+-- pick/rewrite
+--
+--   a a
+-- & a b
+--
+-- to
+--
+-- a {a & b}
+ψ :: [TS a] -> [(Nm a, [TS a])]
+ψ = undefined
+-- then dU since they'd need to be disparate
+
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
+    -- (left-types aka negatives fan out among themselves but only one at a time...)
     al <- traverse ai ls'
     (σ,ul) <- an (ars c) (concat al)
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
