@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module P ( fmt, rMs, tMs, rRepl ) where
 
 import           A
