@@ -1,4 +1,8 @@
-\documentclass[acmsmall,screen]{acmart}
+\documentclass[acmsmall,screen,review]{acmart}
+
+\usepackage{mathpartir}
+
+\def\mathtag#1{\thinspace\text{\textasciigrave} \mathtt{#1}}
 
 \begin{document}
 
@@ -6,9 +10,14 @@
 
 \begin{abstract}
   Extensible cases, dual to row polymorphism, and
+  % de morgan realized... munch-maccagnoni notes?
+  % exhaustiveness is novel.
+  % cute thing happens with the cut rule in stack-based inverses
+  % mention pizarnik available to try
 \end{abstract}
 
-\title{Extensible Cases Plus Pattern Match as Inverse Realizes Linear Logic's De Morgan Laws and Enforce Exhaustiveness for Free}
+% only part of LL...
+\title{Pattern Match as Inverse in Stack-Based Concatenative Languages Realizes Linear Logic, Enforces Exhaustiveness for Free}
 \author{V. E. McHale}
 \orcid{0000-0001-6093-2967}
 \affiliation{
@@ -19,15 +28,51 @@
 \email{vamchale@gmail.com}
 \maketitle
 
-\section{Background}
+\section{Introduction}
 
-Extensible cases were implemented by Blume, Acar, and Chae \cite{blume2006}, solving the expression problem.
+\subsection{Typing Stack-Based Concatenative Languages}
+
+% Introduce Pizarnik?
+% Named constructor types
+
+\subsection{Pattern-Matching as Inverse}
+
+Ehrenberg \cite{ehrenberg2009} points out that pattern-matching in stack-based concatenative languages can be thought of as inverse.
 
 % linear logic: two inverses, "fruitful interaction"
 
 \section{Realizing Linear Logic}
 
-Munch-Maccagnoni \cite{munchmaccagnoni2009} points out that linear logic's $\&$ ("with") can be the type of pattern matching.
+Munch-Maccagnoni \cite{munchmaccagnoni2009} points out that linear logic's $\&$ ("with") can be the type of pattern matching. $\&$ is dual to $\oplus$, that is, to accept a sum type as input, one writes a pattern-match clause.
+% first-class pattern matches = blume2006
+
+% note the left-right swap, elegance ll single-sided rules? (cut rule nice)
+% atoms: last irreducible
+
+% pattern match exhaustiveness checking (cite importance purescript gadts...)
+
+\subsection{The Cut Rule}
+% cite importance of cut elim hm
+
+In the one-sided presentation of linear logic, the cut rule is:
+
+\begin{mathpar}
+
+\inferrule
+{\vdash\Gamma,A \\ \vdash A^\bot,\Delta}
+{\vdash\Gamma,\Delta}
+
+\end{mathpar}
+
+This is reminiscent of
+
+\section{Examples}
+
+Extensible cases are atoms and are typeable.
+
+% kombinierbar
+
+% champion PolyMLR etc.?
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{pm.bib}
