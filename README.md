@@ -7,6 +7,8 @@ evocative syntax for pattern-matching.
 
 # Pattern-Match Arms as Functions
 
+Extensible cases are atoms, and typeable.
+
 ```
 type B = {`t ⊕ `f};
 
