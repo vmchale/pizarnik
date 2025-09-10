@@ -2,13 +2,14 @@
 
 module Imp ( resolveI ) where
 
-import           Control.Exception (Exception, throwIO)
-import           Control.Monad     (filterM)
-import qualified Data.Text         as T
+import           Control.Exception  (Exception, throwIO)
+import           Control.Monad      (filterM)
+import           Data.List.NonEmpty (NonEmpty ((:|)))
+import qualified Data.Text          as T
 import           Nm
-import           Prettyprinter     (Pretty (pretty), punctuate, (<+>))
-import           System.Directory  (doesFileExist)
-import           System.FilePath   ((</>))
+import           Prettyprinter      (Pretty (pretty), punctuate, (<+>))
+import           System.Directory   (doesFileExist)
+import           System.Info        (os)
 
 data IE = IE MN | Amb [FilePath]
 
@@ -26,4 +27,6 @@ rIIO :: [FilePath] -> MN -> IO [FilePath]
 rIIO incl n = filterM doesFileExist (map (</> toFile n) incl)
 
 toFile :: MN -> FilePath
-toFile = (<> ".piz") . foldr (</>) mempty . fmap T.unpack . mN
+toFile = (<> ".piz") . (\(x:|xs) -> foldl' (</>) x xs) . fmap T.unpack . mN
+
+x </> y = x <> (case os of {"windows" -> "\\"; _ -> "/"}) <> y
