@@ -28,5 +28,5 @@ rIIO incl n = filterM doesFileExist (map (</> toFile n) incl)
 
 toFile :: MN -> FilePath
 toFile = (<> ".piz") . (\(x:|xs) -> foldl' (</>) x xs) . fmap T.unpack . mN
-
-x </> y = x <> (case os of {"windows" -> "\\"; _ -> "/"}) <> y
+  where
+    x </> y = x <> (case os of {"windows" -> "\\"; _ -> "/"}) <> y
