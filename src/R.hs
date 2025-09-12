@@ -42,7 +42,7 @@ instance Show Ex where show=show.pretty
 type Lens a b = forall f. Functor f => (b -> f b) -> a -> f a
 
 view l = getConst.l Const
-set l x = runIdentity . l (\_ -> Identity x)
+set l x = runIdentity.l (\_ -> Identity x)
 
 bfl,btl,bal :: Lens Ex Bd
 btl f (Ex ff t a) = (\x -> Ex ff x a) <$> f t
