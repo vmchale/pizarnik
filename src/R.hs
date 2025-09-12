@@ -1,4 +1,4 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes          #-}
 
 module R ( Ex (..)
          , Bd, Bt
@@ -14,9 +14,9 @@ import           Control.Monad.Except             (throwError)
 import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, put, runStateT)
 import           Data.Bifunctor                   (first, second)
 import           Data.Functor                     (($>))
+import           Data.Functor.Const               (Const (..))
+import           Data.Functor.Identity            (Identity (..))
 import qualified Data.IntMap                      as IM
-import           Lens.Micro                       (Lens', set)
-import           Lens.Micro.Extras                (view)
 import           Nm
 import           Nm.Map                           (NmMap (NmMap))
 import           Pr
@@ -39,12 +39,17 @@ instance Pretty Ex where pretty (Ex v t a) = pBound v <##> pBound t <##> pBound 
 
 instance Show Ex where show=show.pretty
 
-bfl,btl,bal :: Lens' Ex Bd
+type Lens a b = forall f. Functor f => (b -> f b) -> a -> f a
+
+view l = getConst.l Const
+set l x = runIdentity . l (\_ -> Identity x)
+
+bfl,btl,bal :: Lens Ex Bd
 btl f (Ex ff t a) = (\x -> Ex ff x a) <$> f t
 bfl f (Ex ff t a) = (\x -> Ex x t a) <$> f ff
 bal f (Ex ff t a) = Ex ff t <$> f a
 
-bvl,bsl :: Lens' Rs Bt
+bvl,bsl :: Lens Rs Bt
 bsl f (Rs m e t v) = Rs m e t <$> f v
 bvl f (Rs m e t v) = (\x -> Rs m e x v) <$> f t
 
@@ -76,7 +81,7 @@ doLocal act = do
     (tvs,svs) <- gets (btv &&& bsv)
     act <* modify (\r -> r { btv = tvs, bsv = svs })
 
-frv :: Lens' Rs Bt -> Nm a -> RM x (Nm a)
+frv :: Lens Rs Bt -> Nm a -> RM x (Nm a)
 frv l (Nm t (U i) x) = do
     st <- get
     let bϵ=view l st
@@ -96,7 +101,7 @@ fra b i = do
   where g _ []     = ([], [])
         g e (n:ii) = (case IM.lookup n e of {Just iϵ -> second ((n,iϵ):); Nothing -> first (n:)}) (g e ii)
 
-frd :: Lens' Ex Bd -> Ex -> Nm a -> RM a (Nm a)
+frd :: Lens Ex Bd -> Ex -> Nm a -> RM a (Nm a)
 frd l b n@(Nm t (U i) x) | i `IM.member` view l b = throwError (D n)
                          | otherwise = do {st <- get; let exϵ=ex st; bl=view l exϵ in if i `IM.member` bl then throwError (D n) else let j=max_ st+1 in put (st { max_ = j, ex=set l (IM.insert i j bl) exϵ }) $> Nm t (U j) x}
 

@@ -4,6 +4,7 @@ module Imp ( resolveI ) where
 
 import           Control.Exception  (Exception, throwIO)
 import           Control.Monad      (filterM)
+import           Data.List          (foldl')
 import           Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.Text          as T
 import           Nm
@@ -28,5 +29,5 @@ rIIO incl n = filterM doesFileExist (map (</> toFile n) incl)
 
 toFile :: MN -> FilePath
 toFile = (<> ".piz") . (\(x:|xs) -> foldl' (</>) x xs) . fmap T.unpack . mN
-  where
-    x </> y = x <> (case os of {"windows" -> "\\"; _ -> "/"}) <> y
+
+x </> y = x <> (case os of {"windows" -> "\\"; _ -> "/"}) <> y

@@ -71,8 +71,6 @@ library
         , bytestring
         , containers     >=0.6.2.1
         , directory
-        , filepath
-        , microlens      >=0.4.0.0
         , mtl            >=2.2.1
         , prettyprinter  >=1.7.0
         , text
