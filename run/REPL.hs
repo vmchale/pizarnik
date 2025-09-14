@@ -22,7 +22,7 @@ import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
                                                    simpleCompletion)
 import           System.Directory                 (getHomeDirectory)
-import           System.FilePath                  ((</>))
+import           System.Info                      (os)
 import           System.IO                        (stdout)
 import           Ty
 
@@ -55,6 +55,8 @@ runRepl [fp] x = do
     c ("yt:", "")  = pure ("yt:", strC [""])
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
+
+    f </> h = f <> case os of {"windows"->"\\";_->"/"} <> h
 
 
 strC = map simpleCompletion
