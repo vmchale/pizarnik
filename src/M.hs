@@ -55,6 +55,4 @@ pMIO :: [FilePath] -> MN -> MM (M AlexPosn AlexPosn)
 pMIO incls mn = do {fp <- liftIO (resolveI incls mn); pIO fp}
 
 pIO :: FilePath -> MM (M AlexPosn AlexPosn)
-pIO fp = mst $ \st -> do
-    contents <- liftIO $ BSL.readFile fp
-    except $ pM st contents
+pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (pM st src)}
