@@ -41,11 +41,11 @@ foldr : [ a b -- b ] b List(a) -- b
            & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
 ```
 
-The same `foldr` works on nonempty lists and lists; `head` only works on nonempty lists.
+The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists, enforced by static typing.
 
 # Or-Patterns
 
-`&` (with) forms or-patterns, viz.
+`&` (with) gives us the functionality of or-patterns:
 
 ```
 @i prelude/fn
