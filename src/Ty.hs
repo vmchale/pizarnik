@@ -663,18 +663,18 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 -- `e `a -- `a`
 
 ψ₁ :: Ar -> [TS a] -> Nm.NmMap [TS a]
-ψ₁ _ tss = tally (zip (map (unc.(!!n)) sr) tss)
+ψ₁ _ tss = tally (zip (map p sr) tss)
     where sr=map (reverse.tlefts) tss
           n=minimum (map g sr)
 
-          unc :: T a -> [Nm a]
-          unc (TT _ n) = [n]
-          unc (Σ x σ)  | all null σ = Nm.keys σ x
+          p :: [T a] -> [Nm a]
+          p = cs.(!!n) where cs (TT _ nm) = [nm]
+                             cs (Σ x σ)   | all null σ = Nm.keys σ x
 
           g (TT{}:ts) = 1 + g ts -- TODO: munch by arity
           g (Σ{}:ts)  = 1 + g ts
           g (TC{}:ts) = 1 + g ts -- TODO: is this right?
-          g (TA{}:ts) = 1 + g ts -- TODO: is this right?
+          g (TA{}:ts) = 1 + g ts
           g (UU{}:ts) = undefined
           g [SV{}]    = -1
           g (Ρ{}:ts)  = g ts
