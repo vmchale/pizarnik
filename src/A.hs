@@ -131,10 +131,8 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | UU { tL :: a, uts :: [T a] }
 
 instance PT (T a) where
-    pp t@TP{}          = pure t
-    pp t@TT{}          = pure t
-    pp t@TC{}          = pure t
-    pp t@Ρ{}           = pure t
+    pp t@TP{} = pure t; pp t@TT{} = pure t
+    pp t@TC{} = pure t; pp t@Ρ{} = pure t
     pp (TV x n)        = TV x <$> fr vr n
     pp (SV x n)        = SV x <$> fr sr n
     pp (TA x t₀ t₁)    = TA x <$> pp t₀ <*> pp t₁
