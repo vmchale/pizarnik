@@ -5,7 +5,7 @@ module Ty ( TE, Ar, Ext (..), tM, tAS ) where
 import           A
 import           B
 import           C
-import           Control.Exception                (Exception)
+import           Control.Exception                (Exception, assert)
 import           Control.Monad                    (when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
@@ -669,11 +669,11 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
     pure $ tally (zip (map (p n) sr) tss)
     where sr=map (reverse.tlefts) tss
 
+         -- FIXME: should skip by arity
           p :: Int -> [T a] -> [Nm a]
           p n = cs.(!!n) where cs (TT _ nm) = [nm]
                                cs (Σ x σ)   = Nm.keys σ x
 
-          -- TODO: if we have `false {`just ρ} & `false `nothing... think about eating past universal variables?
           g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
           g (Σ{}:ts)       = (1+) <$> g ts
           g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?

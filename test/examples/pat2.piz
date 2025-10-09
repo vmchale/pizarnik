@@ -1,0 +1,8 @@
+@i prelude/fn
+@i lib/maybe
+
+%-
+
+something : Bool (Maybe(a)) -- Bool
+          := [ { `just⁻¹ drop True⁻¹ True & `nothing⁻¹ False⁻¹ False & `just⁻¹ drop False⁻¹ False } ]
+          # TODO: if we have true⁻¹ {`just ρ} -- `true & `false {`just ρ} & `false `nothing... justify eating past universal variables
