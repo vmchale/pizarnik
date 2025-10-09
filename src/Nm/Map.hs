@@ -2,11 +2,13 @@ module Nm.Map ( NmMap (..)
               , insert
               , member
               , notMember
+              , keys
               , Nm.Map.lookup
               , Nm.Map.null
               , singleton
               , empty
               , intersectionWith
+              , augment
               , isSubmapOf
               , fromList
               , nmlist
@@ -59,6 +61,9 @@ isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
 intersectionWith :: (a -> b -> c) -> NmMap a -> NmMap b -> NmMap c
 intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0 x1) (IM.intersection c0 c1)
 
+augment :: (Maybe b -> b) -> Nm a -> NmMap b -> NmMap b
+augment g (Nm t (U u) _) (NmMap x c) = NmMap (IM.alter (Just . g) u x) (IM.insert u t c)
+
 toList :: a -> NmMap b -> [(Nm a, b)]
 toList l (NmMap x ns) = map (first (\u -> Nm (ns IM.! u) (U u) l)) (IM.toList x)
 
@@ -72,3 +77,6 @@ instance Pretty a => Show (NmMap a) where show=show.pretty
 
 fromList :: [(Nm a, b)] -> NmMap b
 fromList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }
+
+keys :: NmMap a -> b -> [Nm b]
+keys (NmMap _ c) l = map (\(u,t) -> Nm t (U u) l) (IM.toList c)

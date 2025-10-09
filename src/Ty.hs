@@ -632,8 +632,6 @@ ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
 --
 -- `t -- `t
 -- `f -- `f
---
--- now on the left it's like dU?
 
 an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
 an ar as = do
@@ -645,7 +643,12 @@ an ar as = do
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
--- pick/rewrite
+tally :: [([Nm a], b)] -> Nm.NmMap [b]
+tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.augment g n | n <- ns] z) Nm.empty
+  where
+    thread = foldr (.) id
+
+-- rewrite
 --
 --   a a
 -- & a b
@@ -653,23 +656,48 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 -- to
 --
 -- a {a & b}
-ψ :: [TS a] -> [(Nm a, [TS a])]
-ψ = undefined
--- then dU since they'd need to be disparate
+--
+-- "pick leftmost to consolidate"
+-- `e⁻¹ `e⁻¹ `e & `e⁻¹ `a⁻¹ `a & ...
+-- `e `e -- `e
+-- `e `a -- `a`
+
+ψ₁ :: Ar -> [TS a] -> Nm.NmMap [TS a]
+ψ₁ _ tss = tally (zip (map (unc.(!!n)) sr) tss)
+    where sr=map (reverse.tlefts) tss
+          n=minimum (map g sr)
+
+          unc :: T a -> [Nm a]
+          unc (TT _ n) = [n]
+          unc (Σ x σ)  | all null σ = Nm.keys σ x
+
+          g (TT{}:ts) = 1 + g ts -- TODO: munch by arity
+          g (Σ{}:ts)  = 1 + g ts
+          g (TC{}:ts) = 1 + g ts -- TODO: is this right?
+          g (TA{}:ts) = 1 + g ts -- TODO: is this right?
+          g (UU{}:ts) = undefined
+          g [SV{}]    = -1
+          g (Ρ{}:ts)  = g ts
+          g (TV{}:ts) = g ts
+          g (TP{}:ts) = g ts
+          g (QT{}:ts) = g ts
 
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
-    -- (left-types aka negatives fan out among themselves but only one at a time...)
-    al <- traverse ai ls'
-    (σ,ul) <- an (ars c) (concat al)
+        tsψ = zt ls' rs'
+    -- (left-types aka negatives do not generalize but "fork specifically")
+    -- contravariance like function types w.r.t. subtyping... (polarity)
+    al <- traceShow (ψ₁ rr tsψ) $ traverse ai ls'
+    (σ,ul) <- an rr (concat al)
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
     pure (TS (l'++[σ]) r', s'')
   where ls=map tlefts tss; rs=map trights tss
         rm=maximum (length<$>map trights tss)
+        rr=ars c
 
         tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
 
@@ -696,3 +724,5 @@ ie=error"internal error."
 
 eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
 eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
+
+zt=zipWith TS
