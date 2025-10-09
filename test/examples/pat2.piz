@@ -4,5 +4,5 @@
 %-
 
 something : Bool (Maybe(a)) -- Bool
-          := [ { `just⁻¹ drop True⁻¹ True & `nothing⁻¹ False⁻¹ False & `just⁻¹ drop False⁻¹ False } ]
+          := [ { `just⁻¹ drop True⁻¹ True & `nothing⁻¹ False⁻¹ False & `just⁻¹ drop False⁻¹ False & `nothing⁻¹ True⁻¹ True } ]
           # TODO: if we have true⁻¹ {`just ρ} -- `true & `false {`just ρ} & `false `nothing... justify eating past universal variables
