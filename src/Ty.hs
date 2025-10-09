@@ -469,6 +469,7 @@ mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
+-- FIXME: check consistency of arities somewhere
 lT :: Ar -> Nm a -> TM a Int
 lT ex n@(Nm _ (U u) _) = do
     ar <- gets (arit.lo)
@@ -662,35 +663,37 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 -- `e `e -- `e
 -- `e `a -- `a`
 
-ψ₁ :: Ar -> [TS a] -> Nm.NmMap [TS a]
-ψ₁ _ tss = tally (zip (map p sr) tss)
+ψ₁ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
+ψ₁ a tss = do
+    n <- minimum <$> traverse g sr
+    pure $ tally (zip (map (p n) sr) tss)
     where sr=map (reverse.tlefts) tss
-          n=minimum (map g sr)
 
-          p :: [T a] -> [Nm a]
-          p = cs.(!!n) where cs (TT _ nm) = [nm]
-                             cs (Σ x σ)   | all null σ = Nm.keys σ x
+          p :: Int -> [T a] -> [Nm a]
+          p n = cs.(!!n) where cs (TT _ nm) = [nm]
+                               cs (Σ x σ)   = Nm.keys σ x
 
-          g (TT{}:ts) = 1 + g ts -- TODO: munch by arity
-          g (Σ{}:ts)  = 1 + g ts
-          g (TC{}:ts) = 1 + g ts -- TODO: is this right?
-          g (TA{}:ts) = 1 + g ts
-          g (UU{}:ts) = undefined
-          g [SV{}]    = -1
-          g (Ρ{}:ts)  = g ts
-          g (TV{}:ts) = g ts
-          g (TP{}:ts) = g ts
-          g (QT{}:ts) = g ts
+          -- TODO: if we have `false {`just ρ} & `false `nothing... think about eating past universal variables?
+          g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
+          g (Σ{}:ts)       = (1+) <$> g ts
+          g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?
+          g (TA{}:ts)      = (1+) <$> g ts
+          g (UU{}:ts)      = undefined
+          g [SV{}]         = pure (-1)
+          g (Ρ{}:ts)       = g ts
+          g (TV{}:ts)      = g ts
+          g (TP{}:ts)      = g ts
+          g (QT{}:ts)      = g ts
 
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
-        tsψ = zt ls' rs'
+    tψ <- ψ₁ rr (zt ls' rs')
     -- (left-types aka negatives do not generalize but "fork specifically")
     -- contravariance like function types w.r.t. subtyping... (polarity)
-    al <- traceShow (ψ₁ rr tsψ) $ traverse ai ls'
+    al <- traceShow tψ $ traverse ai ls'
     (σ,ul) <- an rr (concat al)
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
