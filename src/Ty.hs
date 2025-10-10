@@ -634,13 +634,6 @@ ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
 -- `t -- `t
 -- `f -- `f
 
-an :: Ar -> [(Nm a, [T a])] -> TM a (T a, [[T a]])
-an ar as = do
-    -- what about duplicate tags
-    (tas, tss) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT ar nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
-    pure (Σ l (Nm.fromList (zip nms tss)), tas)
-  where l=loc (fst$head as); nms=map fst as
-
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
@@ -663,23 +656,29 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 -- `e `e -- `e
 -- `e `a -- `a`
 
-ψ₁ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
-ψ₁ a tss = do
+ψ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
+ψ a tss = do
     n <- minimum <$> traverse g sr
-    pure $ tally (zip (map (p n) sr) tss)
+    ϝ <- traverse (p n) sr
+    pure $ tally (zip ϝ tss)
     where sr=map (reverse.tlefts) tss
 
-         -- FIXME: should skip by arity
-          p :: Int -> [T a] -> [Nm a]
-          p n = cs.(!!n) where cs (TT _ nm) = [nm]
-                               cs (Σ x σ)   = Nm.keys σ x
+         -- FIXME: needs to count by arity not plain length
+          p :: Int -> [T a] -> TM a [Nm a]
+          p n = fmap cs.(!*n) where cs (TT _ nm) = [nm]
+                                    cs (Σ x σ)   = Nm.keys σ x
+
+          (t:_) !* 1          = pure t
+          (TP{}:ts) !* n      = ts!*(n-1)
+          (Σ{}:ts) !* n       = ts!*(n-1)
+          (QT{}:ts) !* n      = ts!*(n-1)
+          ((TT _ tt):ts) !* n = do {k <- lT a tt; ts!*(n-k-1)}
 
           g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
           g (Σ{}:ts)       = (1+) <$> g ts
           g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?
           g (TA{}:ts)      = (1+) <$> g ts
-          g (UU{}:ts)      = undefined
-          g [SV{}]         = pure (-1)
+          g [SV{}]         = pure 0
           g (Ρ{}:ts)       = g ts
           g (TV{}:ts)      = g ts
           g (TP{}:ts)      = g ts
@@ -690,11 +689,12 @@ dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
-    tψ <- ψ₁ rr (zt ls' rs')
+    tψ <- ψ rr (zt ls' rs')
     -- (left-types aka negatives do not generalize but "fork specifically")
     -- contravariance like function types w.r.t. subtyping... (polarity)
-    al <- traceShow tψ $ traverse ai ls'
-    (σ,ul) <- an rr (concat al)
+    -- al <- traceShow tψ $ traverse ai ls'
+    al <- traverse ai ls'
+    (σ,ul) <- an (concat al)
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
     pure (TS (l'++[σ]) r', s'')
@@ -712,6 +712,12 @@ dU c s tss = do
 
         traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
         pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
+
+        an :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
+        an as = do
+            (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT rr nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
+            pure (Σ l (Nm.fromList (zip nms tls)), tas)
+          where l=loc (fst$head as); nms=map fst as
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
