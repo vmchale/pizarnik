@@ -5,7 +5,7 @@ module Ty ( TE, Ar, Ext (..), tM, tAS ) where
 import           A
 import           B
 import           C
-import           Control.Exception                (Exception, assert)
+import           Control.Exception                (Exception)
 import           Control.Monad                    (when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
