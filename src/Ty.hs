@@ -671,8 +671,8 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           (t:_) !* 1          = pure t
           (TP{}:ts) !* n      = ts!*(n-1)
           (Σ{}:ts) !* n       = ts!*(n-1)
-          (QT{}:ts) !* n      = ts!*(n-1)
           ((TT _ tt):ts) !* n = do {k <- lT a tt; ts!*(n-k-1)}
+          (QT{}:ts) !* n      = ts!*n
 
           g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
           g (Σ{}:ts)       = (1+) <$> g ts
