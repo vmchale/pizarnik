@@ -56,9 +56,6 @@ runRepl [fp] x = do
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
 
-    f </> h = f <> case os of {"windows"->"\\";_->"/"} <> h
-
-
 strC = map simpleCompletion
 
 loop :: Repl ()
@@ -105,3 +102,8 @@ bytesl = encodeUtf8 . TL.pack
 
 namePrefix :: [String] -> String -> [String]
 namePrefix ns prevRev = filter (last (words (reverse prevRev)) `isPrefixOf`) ns
+
+(</>) =
+    case os of
+    "windows" -> \x y -> x ++ "\\" ++ y
+    _         -> \x y -> x ++ "/" ++ y
