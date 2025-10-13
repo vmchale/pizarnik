@@ -15,7 +15,7 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
-import           Data.List                        (unsnoc)
+import           Data.List                        (foldl', unsnoc)
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           Nm
