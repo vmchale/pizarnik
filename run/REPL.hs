@@ -34,12 +34,12 @@ data X = X !AlexUserState (S AlexPosn) (Tree (F (TS AlexPosn), Ar))
 
 type Repl = InputT (StateT X IO)
 
-alexSt (u,t,i) = (u,t,i,IM.empty)
+alexSt (u,t,i,_) = (u,t,i,IM.empty)
 
 -- TODO: loaded identifiers, modules...
 names = pure ["dip", "dup", "swap"]
 
-sRepl = runExceptT.flip runStateT (0,mempty,mempty)
+sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty)
 
 runRepl :: [FilePath] -> Repl a -> IO a
 runRepl fp x = do

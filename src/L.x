@@ -9,6 +9,7 @@
              , alexMonadScan
              , alexInitUserState
              , withAlexSt
+             , nMIdent
              -- * Lexer states
              , postImp
              , get_pos
@@ -55,7 +56,7 @@ tokens :-
         "@i"                    { kw I }
         "%-"                    { sym IT `andBegin` postImp }
 
-        @modname                { tok (\p s -> TokMN p <$> nMIdent (mkText s)) }
+        @modname                { tok (\p s -> TokMN p <$> aus (nMIdent (mkText s))) }
 
     }
 
@@ -156,8 +157,8 @@ gets_alex f = Alex (Right . (id &&& f))
 get_pos :: Alex AlexPosn
 get_pos = gets_alex alex_pos
 
-nMIdent :: T.Text -> Alex MN
-nMIdent t = aus $ \st@(max', ns, us, ums) ->
+nMIdent :: T.Text -> AlexUserState -> (AlexUserState, MN)
+nMIdent t = \st@(max', ns, us, ums) ->
     case M.lookup t ns of
         Just i -> (st, MN d (U i))
         Nothing -> let i=max'+1; nM=MN d (U i)

@@ -1,14 +1,11 @@
-module M ( ReplLexerSt, MS (..), pRoot ) where
+module M ( MS (..), pRoot ) where
 
 import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Except       (ExceptT, except)
-import           Control.Monad.Trans.State.Strict (StateT (StateT), runStateT)
-import           Data.Bifunctor                   (second)
+import           Control.Monad.Trans.State.Strict (StateT (StateT))
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
-import           Data.List.NonEmpty               (NonEmpty (..))
-import qualified Data.Map                         as M
 import qualified Data.Text                        as T
 import           Data.Tuple                       (swap)
 import           Imp
@@ -16,31 +13,32 @@ import           L
 import           Nm
 import           Parse
 
-type MM = StateT AlexUserState (ExceptT ParseE IO)
-type R = StateT ReplLexerSt (ExceptT ParseE IO)
+type R = StateT AlexUserState (ExceptT ParseE IO)
 
 data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
 
-type ReplLexerSt = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn))
-
-rMM :: MM a -> R a
-rMM a = StateT $ \(u,t,i) -> fmap (second π) (runStateT a (u,t,i,IM.empty)) where π (x,y,z,_)=(x,y,z)
+rMN :: T.Text -> R MN
+rMN str = StateT $ pure.swap.nMIdent (asMN str)
+  where
+    asMN s | Just p <- T.stripSuffix ".piz" s = p
+           | otherwise = error ("failed to guess module name: " ++ T.unpack s)
+-- T.stripSuffix
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> [FilePath] -- Modules
       -> R ([Int], MS)
-pRoot incls fps = rMM $ do
+pRoot incls fps = do
+    rootn <- traverse (rMN.T.pack) fps
     ms <- traverse pIO fps
     let is = map (\(M i _) -> i) ms
-        rootU = zipWith const [(-1),(-2)..] ms
+        rootU = map (unU.mU) rootn
         -- FIXME: if root module is imported, parses twice...
         -- would that lead to aliased type names??
-        rootn = [ MN ("(root)" :| []) (U i) | i <- rootU ]
         initMs=MS (IM.fromList $ zip rootU ms) (zip rootn is)
     ([], mϵ) <- step initMs (concat is)
     pure (rootU, mϵ)
   where
-    step :: MS -> [MN] -> MM ([MN], MS)
+    step :: MS -> [MN] -> R ([MN], MS)
     step st [] = pure ([], st)
     step st@(MS mSt mDeps) (mn@(MN _ (U i)):mns)
         | i `IM.member` mSt = step st mns
@@ -50,11 +48,11 @@ pRoot incls fps = rMM $ do
                 st'= MS (IM.insert i m mSt) nDeps
             step st' (is++mns)
 
-mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> MM a
+mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> R a
 mst f = StateT $ fmap swap.f
 
-pMIO :: [FilePath] -> MN -> MM (M AlexPosn AlexPosn)
+pMIO :: [FilePath] -> MN -> R (M AlexPosn AlexPosn)
 pMIO incls mn = do {fp <- liftIO (resolveI incls mn); pIO fp}
 
-pIO :: FilePath -> MM (M AlexPosn AlexPosn)
+pIO :: FilePath -> R (M AlexPosn AlexPosn)
 pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (pM st src)}
