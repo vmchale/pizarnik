@@ -26,13 +26,15 @@ type ReplLexerSt = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn))
 rMM :: MM a -> R a
 rMM a = StateT $ \(u,t,i) -> fmap (second π) (runStateT a (u,t,i,IM.empty)) where π (x,y,z,_)=(x,y,z)
 
-pFlat :: [FilePath] -- ^ Include dirs
+pRoot :: [FilePath] -- ^ Include dirs
       -> [FilePath] -- Modules
       -> R ([Int], MS)
-pFlat incls fps = rMM $ do
+pRoot incls fps = rMM $ do
     ms <- traverse pIO fps
     let is = map (\(M i _) -> i) ms
         rootU = zipWith const [(-1),(-2)..] ms
+        -- FIXME: if root module is imported, parses twice...
+        -- would that lead to aliased type names??
         rootn = [ MN ("(root)" :| []) (U i) | i <- rootU ]
         initMs=MS (IM.fromList $ zip rootU ms) (zip rootn is)
     ([], mϵ) <- step initMs (concat is)
@@ -45,16 +47,8 @@ pFlat incls fps = rMM $ do
         | otherwise = do
             m@(M is _) <- pMIO incls mn
             let nDeps=(mn,is):mDeps
-                -- TODO: for root modules we'd need to alter/concat here (checking for collisions rip)
                 st'= MS (IM.insert i m mSt) nDeps
             step st' (is++mns)
-
-pRoot :: [FilePath] -- ^ Include dirs
-      -> FilePath -- ^ Root module
-      -> R MS
-pRoot incls fp = do
-    ([-1],m) <- pFlat incls [fp]
-    pure m
 
 mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> MM a
 mst f = StateT $ fmap swap.f

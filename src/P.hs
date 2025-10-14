@@ -26,33 +26,32 @@ type RIO = StateT ReplLexerSt (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-tr :: IM.IntMap (M a b)
-   -> Tree (M a b)
-tr c = go (c IM.! (-1))
-  where
-    go m@(M is _) = Node m (go.(c IM.!).unU.mU<$>is)
+-- FIXME: check for clashes
+comb :: [M a b] -> RIO (M a b)
+comb = foldM (\(M is ds) (M is' ds') -> pure (M (is++is') (ds++ds'))) (M [] [])
 
-tMs :: [FilePath] -> FilePath -> RIO (Tree (M AlexPosn (TS AlexPosn), Ar))
+tMs :: [FilePath] -> [FilePath] -> RIO (Tree (M AlexPosn (TS AlexPosn), Ar))
 tMs incls fp = do
-    rm <- rMs incls fp
+    (i,c) <- rMs incls fp
     (u,_,_) <- get
-    lift $ except $ bimap TyE (fmap (second arit)) (evalStateT (tg (mempty :: Ext AlexPosn) (tr rm)) u)
+    r <- comb [ c IM.! n | n <- i ]
+    let tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
+    lift $ except $ bimap TyE (fmap (second arit)) (evalStateT (tg (mempty :: Ext AlexPosn) (tr r)) u)
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns
         let ctx = foldMap (snd.rootLabel) ms
         Node <$> tM ctx n <*> pure ms
 
--- TODO: multiple roots
 rMs :: [FilePath] -- ^ Include dirs
-    -> FilePath -- ^ Root module
-    -> RIO (IM.IntMap (M AlexPosn AlexPosn))
+    -> [FilePath] -- ^ Root modules
+    -> RIO ([Int], IM.IntMap (M AlexPosn AlexPosn))
 rMs incls fp = do
-    MS ms ims <- mapStateT (withExceptT PE) $ pRoot incls fp
+    (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     (u,t,i) <- get
     let s=tsort ims
     (u',ex',m) <- go ms u undefined IM.empty s
-    put (apply ex' (u',t,i)) $> m
+    put (apply ex' (u',t,i)) $> (rs,m)
   where
     go _ u exϵ _ [] = pure (u, exϵ, IM.empty)
     go ms u _ mex (n@(MN _ (U i)):mns) = do
@@ -77,4 +76,4 @@ exs n = foldM mx (Ex IM.empty IM.empty IM.empty)
     mx :: Ex -> Ex -> RIO Ex
     mx (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> mi bv0 bv1 MDF <*> mi bc0 bc1 MDC <*> mi a0 a1 MDT
       where
-        mi b0 b1 err | IM.disjoint b0 b1 = pure (b0<>b1) | otherwise = throwError (err n)
+        mi b0 b1 e | IM.disjoint b0 b1 = pure (b0<>b1) | otherwise = throwError (e n)

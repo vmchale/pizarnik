@@ -36,12 +36,13 @@ type Repl = InputT (StateT X IO)
 
 alexSt (u,t,i) = (u,t,i,IM.empty)
 
+-- TODO: loaded identifiers, modules...
 names = pure ["dip", "dup", "swap"]
 
 sRepl = runExceptT.flip runStateT (0,mempty,mempty)
 
 runRepl :: [FilePath] -> Repl a -> IO a
-runRepl [fp] x = do
+runRepl fp x = do
     h <- (</> ".pizarnik") <$> getHomeDirectory
     liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)

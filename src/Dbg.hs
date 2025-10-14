@@ -15,7 +15,7 @@ import           Prettyprinter             (defaultLayoutOptions, layoutSmart, p
 import           Prettyprinter.Render.Text (putDoc, renderIO)
 import           System.IO                 (stdout)
 
-adbg :: [FilePath] -> FilePath -> IO ()
+adbg :: [FilePath] -> [FilePath] -> IO ()
 adbg incls fp = do
     tms <- rRepl $ tMs incls fp
     case tms of
@@ -25,9 +25,9 @@ adbg incls fp = do
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pA)
 
-dT :: [FilePath] -> FilePath -> IO ()
-dT incls fp = do
-    res <- rRepl $ rMs incls fp
-    either throwIO (putDoc.pBound) res
+dT :: [FilePath] -> [FilePath] -> IO ()
+dT incls fps = do
+    res <- rRepl $ rMs incls fps
+    either throwIO (putDoc.pBound.snd) res
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions

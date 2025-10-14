@@ -10,4 +10,4 @@ main = defaultMain
                        , "examples/vierergruppe.piz"
                        ]
         ]
-    ] where b fp = bench fp $ whnfIO $ rRepl $ tMs ["."] fp
+    ] where b fp = bench fp $ whnfIO $ rRepl $ tMs ["."] [fp]

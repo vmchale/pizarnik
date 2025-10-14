@@ -31,12 +31,12 @@ main = defaultMain $
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
 tErr incls fp expected = testCase fp $
-    rRepl (tMs incls fp) >>= \case
+    rRepl (tMs incls [fp]) >>= \case
         Right{} -> assertFailure "expected error."
         Left e  -> show e @?= expected
 
 tFile :: [FilePath] -> FilePath -> TestTree
 tFile incls fp = testCase fp $ do
-    rRepl (tMs incls fp) >>= \case
+    rRepl (tMs incls [fp]) >>= \case
         Right{} -> pure ()
         Left e  -> assertFailure (show e)
