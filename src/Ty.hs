@@ -243,7 +243,7 @@ su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
 su _ s (Ρ _ n σ) t@TT{} = pure (t, nv n σ t s)
 su _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
 su _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
-su c s t0@(Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
+su c s (Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n0 (σ0<>σ1<>ς) t1
     pure (n',g s')
