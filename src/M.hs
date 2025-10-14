@@ -18,7 +18,7 @@ type R = StateT AlexUserState (ExceptT ParseE IO)
 data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
 
 rMN :: T.Text -> R MN
-rMN str = StateT $ pure.swap.nMIdent (asMN str)
+rMN str = mst $ pure.nMIdent (asMN str)
   where
     asMN s | Just p <- T.stripSuffix ".piz" s = p
            | otherwise = error ("failed to guess module name: " ++ T.unpack s)
