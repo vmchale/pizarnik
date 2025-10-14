@@ -26,11 +26,6 @@ type RIO = StateT ReplLexerSt (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-pex :: MN -> Ex -> Ex -> RIO Ex
-pex n (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> m'merge bv0 bv1 MDF <*> m'merge bc0 bc1 MDC <*> m'merge a0 a1 MDT
-  where
-    m'merge b0 b1 err | IM.disjoint b0 b1 = pure (b0<>b1) | otherwise = throwError (err n)
-
 tr :: IM.IntMap (M a b)
    -> Tree (M a b)
 tr c = go (c IM.! (-1))
@@ -61,7 +56,7 @@ rMs incls fp = do
   where
     go _ u exϵ _ [] = pure (u, exϵ, IM.empty)
     go ms u _ mex (n@(MN _ (U i)):mns) = do
-        exc <- foldM (pex n) eex deps
+        exc <- exs n deps
         (u',exϵ,md) <- lift $ except $ first RE $ rM u exc mp
         second (IM.insert i md) <$> go ms u' exϵ (IM.insert i exϵ mex) mns
       where
@@ -76,4 +71,10 @@ m'lookup=IM.findWithDefault (error"Internal error: module not found.")
 rRepl :: RIO a -> IO (Either (E AlexPosn) a)
 rRepl = runExceptT.flip evalStateT (0,mempty,mempty)
 
-eex = Ex IM.empty IM.empty IM.empty
+exs :: MN -> [Ex] -> RIO Ex
+exs n = foldM mx (Ex IM.empty IM.empty IM.empty)
+  where
+    mx :: Ex -> Ex -> RIO Ex
+    mx (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> mi bv0 bv1 MDF <*> mi bc0 bc1 MDC <*> mi a0 a1 MDT
+      where
+        mi b0 b1 err | IM.disjoint b0 b1 = pure (b0<>b1) | otherwise = throwError (err n)
