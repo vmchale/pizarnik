@@ -13,7 +13,8 @@ import           Prettyprinter (Doc, pretty)
 type S a = [A (TS a)]
 
 type F a = IM.IntMap (ASeq a)
-type Ctx a = Tree (F a, IM.IntMap Int)
+type MC a = Tree (F a, IM.IntMap Int)
+type Ctx a = [MC a]
 
 r :: Ctx (TS a) -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
@@ -64,16 +65,20 @@ _ ≺ _                   = False
 ι _ a@Q{} as               = a:as
 ι _ a@C{} as               = a:as
 ι c (Pat _ (SL _ aa)) as   = ψ c aa as -- FIXME: this pinches off stack variables...
-ι c (V _ n) as             = let (c',a) = lV c n in r c' (aas a) as
+ι c (V _ n) as             = let (c',a) = lV c n in r [c'] (aas a) as
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
 
-lV :: Ctx a -> Nm a -> (Ctx a, ASeq a)
-lV c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = (c,a)
-                                   | otherwise = tr s
+lV :: Ctx a -> Nm a -> (MC a, ASeq a)
+lV (c:cs) n | Just (c',a) <- lVm c n = (c',a)
+            | otherwise = lV cs n
+lV [] _ = error"internal error: variable not found."
+
+lVm c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = Just (c,a)
+                                    | otherwise = tr s
   where
-    tr [] = error"internal error: variable not found."
-    tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = (c',a)
+    tr [] = Nothing -- error"internal error: variable not found."
+    tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
                               | otherwise = tr cs
 
 thread = foldr (.) id

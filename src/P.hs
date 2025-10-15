@@ -26,17 +26,13 @@ type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
--- FIXME: check for clashes
-comb :: [M a b] -> RIO (M a b)
-comb = foldM (\(M is ds) (M is' ds') -> pure (M (is++is') (ds++ds'))) (M [] [])
-
-tMs :: [FilePath] -> [FilePath] -> RIO (Tree (M AlexPosn (TS AlexPosn), Ar))
+tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
 tMs incls fp = do
     (i,c) <- rMs incls fp
     (u,_,_,_) <- get
-    r <- comb [ c IM.! n | n <- i ]
+    let r = [ c IM.! n | n <- i ]
     let tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
-    lift $ except $ bimap TyE (fmap (second arit)) (evalStateT (tg (mempty :: Ext AlexPosn) (tr r)) u)
+    lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) r) u)
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns
