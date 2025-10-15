@@ -663,7 +663,6 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
     pure $ tally (zip ϝ tss)
     where sr=map (reverse.tlefts) tss
 
-         -- FIXME: needs to count by arity not plain length
           p :: Int -> [T a] -> TM a [Nm a]
           p n = fmap cs.(!*n) where cs (TT _ nm) = [nm]
                                     cs (Σ x σ)   = Nm.keys σ x

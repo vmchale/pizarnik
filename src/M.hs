@@ -21,8 +21,7 @@ rMN :: T.Text -> R MN
 rMN str = mst $ pure.nMIdent (asMN str)
   where
     asMN s | Just p <- T.stripSuffix ".piz" s = p
-           | otherwise = error ("failed to guess module name: " ++ T.unpack s)
--- T.stripSuffix
+           | otherwise = error ("failed to read as module name: " ++ T.unpack s)
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> [FilePath] -- Modules
@@ -32,8 +31,6 @@ pRoot incls fps = do
     ms <- traverse pIO fps
     let is = map (\(M i _) -> i) ms
         rootU = map (unU.mU) rootn
-        -- FIXME: if root module is imported, parses twice...
-        -- would that lead to aliased type names??
         initMs=MS (IM.fromList $ zip rootU ms) (zip rootn is)
     ([], mϵ) <- step initMs (concat is)
     pure (rootU, mϵ)

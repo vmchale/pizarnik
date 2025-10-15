@@ -50,6 +50,7 @@ rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     (u,t,i,mn) <- get
     let s=tsort ims
+    -- FIXME M.Map T.Text Int of aliases of names root modules should be final state
     (u',ex',m) <- go ms u undefined IM.empty s
     put (apply ex' (u',t,i,mn)) $> (rs,m)
   where
