@@ -9,6 +9,7 @@ module A ( A (..)
          , SL (..), ASeq
          , faseq, taseq
          , unA
+         , aT
          , am
          , tTS
          , pSeq
