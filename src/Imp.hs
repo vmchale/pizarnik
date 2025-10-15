@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Imp ( resolveI ) where
 
 import           Control.Exception  (Exception, throwIO)

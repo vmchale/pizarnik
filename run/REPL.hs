@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module REPL ( repl ) where
 
 import           A
