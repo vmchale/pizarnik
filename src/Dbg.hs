@@ -14,13 +14,16 @@ import           L
 import           P
 import           Parse
 import           Pr
-import           Prettyprinter             (defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
+import           Prettyprinter             (Doc, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
 import           Prettyprinter.Render.Text (putDoc, renderIO)
 import           S
 import           System.IO                 (stdout)
 
 dbgR :: [Tree (F (TS AlexPosn), b)] -> IO ()
-dbgR = traverse_ (rDoc.(<>hardline).vsep.map (\(i,a) -> pretty i <+> "→" <+> aT a).IM.toList.fst).concatMap toList
+dbgR = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+  where
+    pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
+    pBoundT = vsep.map (\(i,a) -> pretty i <+> "→" <+> aT a).IM.toList
 
 adbg :: [FilePath] -> [FilePath] -> IO ()
 adbg incls fp = do
