@@ -25,13 +25,13 @@ rMN str = mst $ pure.nMIdent (asMN str)
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> [FilePath] -- Modules
-      -> R ([Int], MS)
+      -> R ([U], MS)
 pRoot incls fps = do
     rootn <- traverse (rMN.T.pack) fps
     ms <- traverse pIO fps
     let is = map (\(M i _) -> i) ms
-        rootU = map (unU.mU) rootn
-        initMs=MS (IM.fromList $ zip rootU ms) (zip rootn is)
+        rootU = map mU rootn
+        initMs=MS (IM.fromList $ zip (map unU rootU) ms) (zip rootn is)
     ([], mϵ) <- step initMs (concat is)
     pure (rootU, mϵ)
   where

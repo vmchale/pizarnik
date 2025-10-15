@@ -30,7 +30,7 @@ tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
 tMs incls fp = do
     (i,c) <- rMs incls fp
     (u,_,_,_) <- get
-    let r = [ c IM.! n | n <- i ]
+    let r = [ c IM.! unU n | n <- i ]
     let tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
     lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) r) u)
   where
@@ -41,7 +41,7 @@ tMs incls fp = do
 
 rMs :: [FilePath] -- ^ Include dirs
     -> [FilePath] -- ^ Root modules
-    -> RIO ([Int], IM.IntMap (M AlexPosn AlexPosn))
+    -> RIO ([U], IM.IntMap (M AlexPosn AlexPosn))
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     (u,t,i,mn) <- get

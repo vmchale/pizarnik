@@ -7,7 +7,7 @@ import           A
 import           Control.Exception         (throwIO)
 import           Control.Monad             ((<=<))
 import qualified Data.ByteString.Lazy      as BSL
-import           Data.Foldable             (toList, traverse_)
+import           Data.Foldable             (traverse_)
 import qualified Data.IntMap               as IM
 import           Data.Tree                 (Tree)
 import           L
