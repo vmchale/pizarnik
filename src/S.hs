@@ -5,6 +5,7 @@ import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Data.List     (find)
 import           Data.Tree     (Tree (Node))
+import           F
 import           Nm
 import qualified Nm.Map        as Nm
 import           Pr
@@ -80,8 +81,6 @@ lVm c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = Just (c,a)
     tr [] = Nothing -- error"internal error: variable not found."
     tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
                               | otherwise = tr cs
-
-thread = foldr (.) id
 
 stack :: S a -> Doc ann
 stack = p.reverse where

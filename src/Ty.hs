@@ -18,6 +18,7 @@ import qualified Data.IntSet                      as IS
 import           Data.List                        (foldl', unsnoc)
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
+import           F
 import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
@@ -639,8 +640,6 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 tally :: [([Nm a], b)] -> Nm.NmMap [b]
 tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.augment g n | n <- ns] z) Nm.empty
-  where
-    thread = foldr (.) id
 
 -- rewrite
 --

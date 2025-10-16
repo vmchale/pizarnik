@@ -19,11 +19,11 @@ import           Prettyprinter.Render.Text (putDoc, renderIO)
 import           S
 import           System.IO                 (stdout)
 
-dbgR :: [Tree (F (TS AlexPosn), b)] -> IO ()
-dbgR = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+dbgR :: AlexUserState -> [Tree (F (TS AlexPosn), b)] -> IO ()
+dbgR (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
   where
     pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
-    pBoundT = vsep.map (\(i,a) -> pretty i <+> "→" <+> aT a).IM.toList
+    pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> aT a).IM.toList
 
 adbg :: [FilePath] -> [FilePath] -> IO ()
 adbg incls fp = do

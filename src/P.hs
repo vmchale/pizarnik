@@ -13,6 +13,7 @@ import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.Tree                        (Tree (..))
 import           E
+import           F
 import           L
 import           M
 import           Nm
@@ -59,9 +60,11 @@ rMs incls fp = do
       where
         mp@(M is _)=m'lookup i ms; deps=(`mnlookup` mex)<$>is
 
-    -- TODO: is `IM.compose` should keep things not in ex' maybe? or in another root module's ex'
     apply :: Ex -> AlexUserState -> AlexUserState
-    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn) -> (u, fmap (\x -> IM.findWithDefault x x ex') t, i `IM.compose` ex',mn)
+    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn) -> (u, fmap (\x -> IM.findWithDefault x x ex') t, i `fw` ex',mn)
+      where
+        -- FIXME: performance...
+        fw m a = thread [ case IM.lookup k a of Just k' -> (IM.insert k' n).(IM.delete k); Nothing -> id | (k,n) <- IM.toList m ] m
 
 mnlookup (MN _ (U i)) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")
