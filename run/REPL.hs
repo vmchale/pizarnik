@@ -53,6 +53,7 @@ runRepl fp x = do
     c ("t:", "")   = pure ("t:", strC ["y"])
     c ("yt:", "")  = pure ("yt:", strC [""])
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
+    c ("", "")     = do {ns <- names; pure ("", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
 
 strC = map simpleCompletion
