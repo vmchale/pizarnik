@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- https://docs.kde.org/stable5/en/kate/katepart/highlight.html -->
 <language name="Pizarnik" section="Sources" version="1.0" extensions="*.piz"kateversion="2.4">
     <highlighting>
       <contexts>
