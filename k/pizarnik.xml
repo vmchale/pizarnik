@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<language name="Pizarnik" section="Sources" version="1.0" extensions="*.piz"kateversion="2.4">
+    <highlighting>
+      <contexts>
+          <context attribute="Normal Text" lineEndContext="#stay" name="Normal Text">
+              <RegExpr String="type" attribute="kw"/>
+              <RegExpr String="`\w+" attribute="c"/>
+              <RegExpr String="[[:upper:]]\w*" attribute="t"/>
+              <RegExpr String="[[:lower:]]\w*" attribute="fn"/>
+          </context>
+      </contexts>
+        <itemDatas>
+          <itemData name="kw" defStyleNum="dsKeyword"/>
+          <itemData name="t" defStyleNum="dsDataType"/>
+          <itemData name="fn" defStyleNum="dsFunction"/>
+          <itemData name="c" defStyleNum="dsConstant"/>
+      </itemDatas>
+  </highlighting>
+    <general>
+        <keywords casesensitive="1"/>
+        <comment name="singleLine" start="#"/>
+    </general>
+</language>

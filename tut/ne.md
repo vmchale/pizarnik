@@ -15,7 +15,7 @@ foldr : [ a b -- b ] b List(a) -- b
            & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
 ```
 
-``` pizanik
+``` pizarnik
 type Unit = {`unit};
 
 x : -- NE(Unit)
@@ -25,7 +25,7 @@ z : -- Unit
   := [ [nip] `unit x foldr ]
 ```
 
-This is allowed because `foldr` accepts a `List(a)`, i.e. ``{`nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases would handle an argument of type ``NE(a) = { List(a) `cons }``.
+This is allowed because `foldr` accepts a `List(a)`, i.e. ``{`nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases should handle an argument of type ``NE(a) = { List(a) `cons }``.
 
 Non-empty lists enforce the same safety as in Haskell:
 
@@ -34,17 +34,23 @@ head : NE(a) -- a
      := [ { `cons⁻¹ nip } ]
 ```
 
-    y : -- Unit
-      := [ x head ]
+```pizarnik
+y : -- Unit
+  := [ x head ]
+```
 
 is admissible, but
 
-    w : -- Unit
-      := [ `nil head ]
+```pizarnik
+w : -- Unit
+  := [ `nil head ]
+```
 
 will fail:
 
-    20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’
+```
+20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’
+```
 
 # Superiority
 
