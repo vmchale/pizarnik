@@ -197,6 +197,10 @@ uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+uu _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
+uu _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
+uu _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
+uu _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
 uu _ s t0@(TT _ tt₀) (TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
                                  | otherwise = throwError$UF t0 t1
@@ -244,6 +248,8 @@ su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
 su _ s (Ρ _ n σ) t@TT{} = pure (t, nv n σ t s)
 su _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
 su _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
+su _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
+su _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
 su c s (Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n0 (σ0<>σ1<>ς) t1

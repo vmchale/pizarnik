@@ -9,10 +9,11 @@ import           Data.Bifunctor                   (first)
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
 import qualified Data.Map                         as M
+import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
-import           Data.Tree                        (Tree (Node))
+import           Data.Tree                        (Tree (Node, rootLabel))
 import           Dbg
 import           L
 import           Parse                            (pAtoms)
@@ -35,7 +36,15 @@ data X = X !AlexUserState (S AlexPosn) [Tree (F (TS AlexPosn), Ar)]
 
 type Repl = InputT (StateT X IO)
 
-names = pure ["dip", "dup", "swap"]
+names :: Monad m => StateT X m [String]
+names = do
+    -- X (_,t,_,_) _ c <- get
+    -- pure $ map T.unpack (M.keys t)
+    X (_,_,n,_) _ c <- get
+    let u=concatMap (IM.keys . snd . rootLabel) c
+    pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) u)
+
+lg=lift.gets
 
 sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty)
 
@@ -66,8 +75,8 @@ loop = do
     inp <- getInputLine " "
     case words <$> inp of
         Just (":ty":e) -> printT (unwords e) *> loop
-        Just [":alex"] -> (po.pNs =<< lift (gets (\(X (_,n,_,_) _ _) -> n))) *> loop
-        Just [":dbg"]  -> (liftIO . uncurry dbgR =<< lift (gets (\(X l _ m) -> (l,m)))) *> loop
+        Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
+        Just [":dbg"]  -> (liftIO . uncurry dbgR =<< lg (\(X l _ m) -> (l,m))) *> loop
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
