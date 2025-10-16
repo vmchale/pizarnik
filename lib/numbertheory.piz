@@ -2,6 +2,7 @@
 
 %-
 
+# FIXME: % is not remainder but "interger divide" (!)
 gcd : Int Int -- Int
     := [ dup 0 = { True⁻¹ drop & False⁻¹ dup [%] dip swap gcd } ]
 
