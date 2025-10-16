@@ -10,6 +10,7 @@ moddeps.svg: $(HS_SRC)
 
 clean:
 	make -C tex
+	make -C tut
 	rm -rf dist-newstyle *.prof tags tags.mtime moddeps.svg
 
 install:
