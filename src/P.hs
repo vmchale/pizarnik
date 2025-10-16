@@ -10,6 +10,7 @@ import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
+import qualified Data.IntSet                      as IS
 import           Data.Tree                        (Tree (..))
 import           E
 import           L
@@ -44,22 +45,23 @@ rMs :: [FilePath] -- ^ Include dirs
     -> RIO ([U], IM.IntMap (M AlexPosn AlexPosn))
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
-    (u,t,i,mn) <- get
+    st <- get
     let s=tsort ims
-    -- FIXME M.Map T.Text Int of aliases of names root modules should be final state
-    (u',ex',m) <- go ms u undefined IM.empty s
-    put (apply ex' (u',t,i,mn)) $> (rs,m)
+    (st',m) <- go (IS.fromList [ unU r | r <- rs ]) ms st IM.empty s
+    put st' $> (rs,m)
   where
-    go _ u exϵ _ [] = pure (u, exϵ, IM.empty)
-    go ms u _ mex (n@(MN _ (U i)):mns) = do
+    go _ _ st _ [] = pure (st, IM.empty)
+    go rs ms (u,t,ii,m) mex (n@(MN _ (U i)):mns) = do
         exc <- exs n deps
         (u',exϵ,md) <- lift $ except $ first RE $ rM u exc mp
-        second (IM.insert i md) <$> go ms u' exϵ (IM.insert i exϵ mex) mns
+        let st' = (if i `IS.member` rs then apply exϵ else id) (u',t,ii,m)
+        second (IM.insert i md) <$> go rs ms st' (IM.insert i exϵ mex) mns
       where
         mp@(M is _)=m'lookup i ms; deps=(`mnlookup` mex)<$>is
 
+    -- TODO: is `IM.compose` should keep things not in ex' maybe? or in another root module's ex'
     apply :: Ex -> AlexUserState -> AlexUserState
-    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn) -> (u, fmap (ex' IM.!) t, i `IM.compose` ex',mn)
+    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn) -> (u, fmap (\x -> IM.findWithDefault x x ex') t, i `IM.compose` ex',mn)
 
 mnlookup (MN _ (U i)) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")

@@ -4,17 +4,20 @@ import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, put, runStateT)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets, put, runStateT)
 import           Data.Bifunctor                   (first)
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
+import qualified Data.Map                         as M
+import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
 import           Data.Tree                        (Tree (Node))
+import           Dbg
 import           L
-import           P
 import           Parse                            (pAtoms)
-import           Prettyprinter                    (Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart)
+import           Pr
+import           Prettyprinter                    (Doc, Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart, vsep)
 import           Prettyprinter.Render.Text        (renderIO)
 import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
@@ -28,13 +31,10 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) (Tree (F (TS AlexPosn), Ar))
+data X = X !AlexUserState (S AlexPosn) [Tree (F (TS AlexPosn), Ar)]
 
 type Repl = InputT (StateT X IO)
 
-alexSt (u,t,i,_) = (u,t,i,IM.empty)
-
--- TODO: loaded identifiers, modules...
 names = pure ["dip", "dup", "swap"]
 
 sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty)
@@ -45,8 +45,8 @@ runRepl fp x = do
     liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
         Right (ctx,st) -> do
-            let t=fmap (first lm) ctx
-            flip evalStateT (X (alexSt st) [] t) $
+            let t=map (fmap (first lm)) ctx
+            flip evalStateT (X st [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
     c (":", "")    = pure (":", strC ["ty"])
@@ -57,32 +57,40 @@ runRepl fp x = do
 
 strC = map simpleCompletion
 
+pNs :: Pretty a => M.Map T.Text a -> Doc ann
+pNs = vsep.map pB.M.toList
+
 loop :: Repl ()
 loop = do
     inp <- getInputLine " "
     case words <$> inp of
         Just (":ty":e) -> printT (unwords e) *> loop
+        Just [":alex"] -> (po.pNs =<< lift (gets (\(X (_,n,_,_) _ _) -> n))) *> loop
+        Just [":dbg"]  -> (liftIO . dbgR =<< lift (gets (\(X _ _ m) -> m))) *> loop
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
 printT :: String -> Repl ()
 printT src = do
-    (X l _ (Node (t,ar) _)) <- lift get
+    (X l _ c) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
-            let tyctx = Ext (aLs<$>t) IM.empty ar
+            let tyctx = naïve c
             case tAS i tyctx [] at of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
 
+naïve :: [Tree (F (TS AlexPosn), Ar)] -> Ext AlexPosn
+naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
+
 printA :: String -> Repl ()
 printA src = do
-    (X l s c@(Node (t,ar) _)) <- lift get
+    (X l s c) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
-            let tyctx = Ext (aLs<$>t) IM.empty ar
+            let tyctx = naïve c
             case tAS i tyctx s at of
                 Right ((TS (_:_:_) _,_),_) -> po"not enough arguments on the stack."
                 Right ((_,a),i') -> do
