@@ -1,0 +1,16 @@
+@i prelude/fn
+
+%-
+
+type Either a b = { a `left ⊕ b `right };
+
+# TODO: conjugation? (dip...)
+
+mapLeft1 : [ a -- c ] b `right -- b `right
+         := [ `right⁻¹ nip `right ]
+
+mapLeft0 : [ a -- c ] a `left -- c `left
+         := [ `left⁻¹ swap $ `left ]
+
+mapLeft : [ a -- c ] Either(a,b) -- Either(c,b)
+        := [ { `left⁻¹ swap $ `left & `right⁻¹ nip `right } ]
