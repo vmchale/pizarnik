@@ -1,4 +1,4 @@
-module Dbg ( dT, dFmt, dbgR
+module Dbg ( dT, dFmt, db
            , adbg
            , module P
            ) where
@@ -19,8 +19,8 @@ import           Prettyprinter.Render.Text (putDoc, renderIO)
 import           S
 import           System.IO                 (stdout)
 
-dbgR :: AlexUserState -> [Tree (F (TS AlexPosn), b)] -> IO ()
-dbgR (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+db :: AlexUserState -> [Tree (F (TS AlexPosn), b)] -> IO ()
+db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
   where
     pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
     pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList

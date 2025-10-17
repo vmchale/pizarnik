@@ -76,7 +76,7 @@ loop = do
     case words <$> inp of
         Just (":ty":e) -> printT (unwords e) *> loop
         Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
-        Just [":dbg"]  -> (liftIO . uncurry dbgR =<< lg (\(X l _ m) -> (l,m))) *> loop
+        Just [":dbg"]  -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
