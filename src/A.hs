@@ -7,12 +7,11 @@ module A ( A (..)
          , D (..)
          , M (..)
          , SL (..), ASeq
-         , faseq, taseq
+         , taseq
          , unA
-         , aT
          , am
          , tTS
-         , pSeq
+         , pASeq
          ) where
 
 import           Control.Monad.Trans.State.Strict (State, evalState, get, modify, put)
