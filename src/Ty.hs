@@ -617,66 +617,44 @@ ta b s (Pat _ as)      = do
     (t, s1) <- dU (π b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
-ai :: [T a] -> TM a [(Nm a, [T a])]
-ai ts | Just (tsϵ, TT _ n) <- unsnoc ts = pure [(n, tsϵ)]
-      | Just (tsϵ, Σ l as) <- unsnoc ts = pure $ second (++tsϵ) <$> Nm.toList l as
-      | otherwise = throwError (PM ts)
-
--- gather by prefix, e.g.
---
---     `t⁻¹ `t⁻¹ `t
---   & `t⁻¹ `f⁻¹ `f
---   & `f⁻¹ `t⁻¹ `f
---
---   into
---     `t⁻¹ { `t⁻¹ `t & `f⁻¹  `f }
---   & `f⁻¹ `t⁻¹ `f
-
--- `t `t -- `t
--- `t `f -- `f
--- `f `t -- `f
---
--- pinch `t together
---
--- `t -- `t
--- `f -- `f
-
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 tally :: [([Nm a], b)] -> Nm.NmMap [b]
 tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.augment g n | n <- ns] z) Nm.empty
 
--- rewrite
---
---   a a
--- & a b
---
--- to
---
--- a {a & b}
---
--- "pick leftmost to consolidate"
--- `e⁻¹ `e⁻¹ `e & `e⁻¹ `a⁻¹ `a & ...
--- `e `e -- `e
--- `e `a -- `a`
-
 ψ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
 ψ a tss = do
-    n <- minimum <$> traverse g sr
-    ϝ <- traverse (p n) sr
-    pure $ tally (zip ϝ tss)
-    where sr=map (reverse.tlefts) tss
+    n <- minimum <$> traverse g sl
+    forks <- traverse (p n) sl
+    h <- traverse (l n) sl
+    let tss' = zipWith TS (map reverse h) (map trights tss)
+    pure (tally (zip forks tss'))
+    where sl=map (reverse.tlefts) tss
+
+    -- counts, punches hole, picks out "pivot name" all separately...
+    -- probably should map this one or two traversals...
+
+          l :: Int -> [T a] -> TM a [T a]
+          l 1 (_:ts)           = pure ts
+          l n (t@Σ{}:ts)       = (t:) <$> l (n-1) ts
+          l n (t@(TT _ tt):ts) = do {k <- lT a tt; (t:).(take k ts++) <$> l (n-1) ts}
+          l n (t:ts)           = (t:) <$> l n ts
 
           p :: Int -> [T a] -> TM a [Nm a]
-          p n = fmap cs.(!*n) where cs (TT _ nm) = [nm]
-                                    cs (Σ x σ)   = Nm.keys σ x
+          p n ts = cs =<< (ts!*n) where cs = \case
+                                            TT _ nm -> pure [nm]
+                                            Σ x σ -> pure (Nm.keys σ x)
+                                            _ -> throwError (PM ts)
+
 
           (t:_) !* 1          = pure t
-          (TP{}:ts) !* n      = ts!*(n-1)
           (Σ{}:ts) !* n       = ts!*(n-1)
-          ((TT _ tt):ts) !* n = do {k <- lT a tt; ts!*(n-k-1)}
+          ((TT _ tt):ts) !* n = do {k <- lT a tt; drop k ts !* (n-1)}
+          (TP{}:ts) !* n      = ts!*n
           (QT{}:ts) !* n      = ts!*n
+          (Ρ{}:ts) !* n       = ts!*n
+          (TV{}:ts) !* n      = ts!*n
 
           g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
           g (Σ{}:ts)       = (1+) <$> g ts
@@ -688,17 +666,17 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (TP{}:ts)      = g ts
           g (QT{}:ts)      = g ts
 
+r_ :: Nm.NmMap [TS a] -> TM a (Nm.NmMap (TS a))
+r_ = traverse (\case [t] -> pure t; [] -> error"should handle this..."; ts -> error"nyi.")
+
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     tψ <- ψ rr (zt ls' rs')
-    -- (left-types aka negatives do not generalize but "fork specifically")
-    -- contravariance like function types w.r.t. subtyping... (polarity)
-    -- al <- traceShow tψ $ traverse ai ls'
-    al <- traverse ai ls'
-    (σ,ul) <- an (concat al)
+    al <- r_ tψ
+    (σ,ul) <- an (Nm.toList (tLs (head ls)) (fmap tlefts al)) -- FIXME: head partial
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
     pure (l'++[σ] --: r', s'')
@@ -717,7 +695,7 @@ dU c s tss = do
         -- traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
         -- pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
 
-        an :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
+        an :: [(Nm a, TSeq a)] -> TM a (T a, [[T a]])
         an as = do
             (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT rr nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
             pure (Σ l (Nm.fromList (zip nms tls)), tas)
