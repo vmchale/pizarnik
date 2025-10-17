@@ -92,15 +92,6 @@ frv l (Nm t (U i) x) = do
 fr, frs :: Nm a -> RM x (Nm a)
 fr=frv bvl; frs=frv bsl
 
-fra :: Ex -> [Int] -> RM a [(Int,Int)]
-fra b i = do
-    s <- get
-    let ex'=ex s; t=btt ex'; (i',i_) = g (t<>btt b) i
-        u=max_ s; u'=u+length i'; m=zip i' [u..u']
-    put (s { max_ = u', ex = set bal (IM.fromList m<>t) ex' }) $> m<>i_
-  where g _ []     = ([], [])
-        g e (n:ii) = (case IM.lookup n e of {Just iϵ -> second ((n,iϵ):); Nothing -> first (n:)}) (g e ii)
-
 frd :: Lens Ex Bd -> Ex -> Nm a -> RM a (Nm a)
 frd l b n@(Nm t (U i) x) | i `IM.member` view l b = throwError (D n)
                          | otherwise = do {st <- get; let exϵ=ex st; bl=view l exϵ in if i `IM.member` bl then throwError (D n) else let j=max_ st+1 in put (st { max_ = j, ex=set l (IM.insert i j bl) exϵ }) $> Nm t (U j) x}
@@ -144,8 +135,18 @@ rkeys b = nmMapKeys (\i -> IM.findWithDefault i i b)
 
 fkeys :: Ex -> NmMap (TSeq a) -> RM a (NmMap (TSeq a))
 fkeys b m@(NmMap x _) = do
-    e <- fra b (IM.keys x)
-    pure $ rkeys (IM.fromList e) m
+    e <- fra (IM.keys x)
+    pure $ rkeys e m
+  where
+    fra :: [Int] -> RM a (IM.IntMap Int)
+    fra i = do
+        s <- get
+        let ex'=ex s; t=btt ex'; (i',i_) = g (t<>btt b) i
+            u=max_ s; u'=u+length i'; im=IM.fromDistinctAscList (zip i' [u..u'])
+        put (s { max_ = u', ex = set bal (im<>t) ex' }) $> im<>IM.fromList i_
+      where g _ []     = ([], [])
+            g e (n:ii) = (case IM.lookup n e of {Just iϵ -> second ((n,iϵ):); Nothing -> first (n:)}) (g e ii)
+
 
 nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
 
