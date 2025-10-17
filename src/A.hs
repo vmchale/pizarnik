@@ -7,6 +7,7 @@ module A ( A (..)
          , D (..)
          , M (..)
          , SL (..), ASeq
+         , (--:)
          , taseq
          , unA
          , am
@@ -27,6 +28,7 @@ import           Prettyprinter                    (Doc, Pretty (..), align, brac
                                                    space, tupled, (<+>))
 
 infixl 9 <:>
+infixr 0 --:
 
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
@@ -120,6 +122,9 @@ instance Pretty Prim where pretty Int="Int"; pretty String="String"
 
 data TS a = TS { tlefts, trights :: TSeq a }
 type TSeq a = [T a]
+
+-- TODO: :-- at data level
+(--:) = TS
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 

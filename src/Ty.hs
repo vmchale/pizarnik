@@ -223,7 +223,7 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     -- contravariant
     (l',s₀) <- susc c s l1 l0
     (r',s₁) <- susc c s₀ r0 r1
-    pure (QT x (TS l' r'), s₁)
+    pure (QT x (l' --: r'), s₁)
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- sus c s a0 a1
     pure (roll th a',s')
@@ -531,13 +531,13 @@ tD1 b (F _ n ts as) = do
     pure (F ts (n$>ts) ts as'')
 
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> TM a (TS a, Subst a)
-sseq _ l s []     = do {a <- fsv l "A"; pure (TS [a] [a], s)}
+sseq _ l s []     = do {a <- fsv l "A"; pure ([a] --: [a], s)}
 sseq b l s (a:as) = do
     (tϵ, s0) <- sseq b l s as
     cat b s0 (aL a) tϵ
 
 tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
-tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL (TS [a] [a]) [], s)}
+tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
@@ -562,7 +562,7 @@ splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 cat :: Nt a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
 cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
-    pure (TS l0 r1, s')
+    pure (l0 --: r1, s')
 
   -- check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 
@@ -575,27 +575,27 @@ erv l n = Ρ l <$> fr l n <*> pure Nm.empty
 
 exps :: a -> TS a -> TM a (TS a)
 exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t
-exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (TS (ᴀ:l) (ᴀ:r))}
+exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (ᴀ:l --: ᴀ:r)}
 
 tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-tae _ s (B l Dip)  = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "C"; pure (B (TS [a, b, QT l (TS [a] [c])] [c,b]) Dip, s)}
-tae _ s (B l Doll) = do {a <- fsv l "A"; b <- fsv l "B"; pure (B (TS [a, QT l (TS [a] [b])] [b]) Doll, s)}
+tae _ s (B l Dip)  = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "C"; pure (B ([a, b, QT l ([a] --: [c])] --: [c,b]) Dip, s)}
+tae _ s (B l Doll) = do {a <- fsv l "A"; b <- fsv l "B"; pure (B ([a, QT l ([a] --: [b])] --: [b]) Doll, s)}
 tae b s a = do
     (a',s') <- ta b s a
     let t=aL a'
     t' <- exps (aL a) t
     pure (a' {aL = t'}, s')
 
-ib l = B (TS [TP l Int, TP l Int] [TP l Int])
-rel l = B (TS [TP l Int, TP l Int] [ʙ l])
+ib l = B ([TP l Int, TP l Int] --: [TP l Int])
+rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
-ta _ s (L l lit@I{})   = pure (L (TS [] [TP l Int]) lit, s)
-ta _ s (L l lit@Str{}) = pure (L (TS [] [TP l String]) lit, s)
+ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
+ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l String]) lit, s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
-ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B (TS [n] []) Un, s)}
-ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B (TS [n] [n,n]) Dup, s)}
-ta _ s (B l Swap)      = do {a <- ftv l "a"; b <- ftv l "b"; pure (B (TS [a,b] [b,a]) Swap, s)}
+ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
+ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
+ta _ s (B l Swap)      = do {a <- ftv l "a"; b <- ftv l "b"; pure (B ([a,b] --: [b,a]) Swap, s)}
 ta _ s (B l Plus)      = pure (ib l Plus, s)
 ta _ s (B l Minus)     = pure (ib l Minus, s)
 ta _ s (B l Mul)       = pure (ib l Mul, s)
@@ -603,8 +603,8 @@ ta _ s (B l Div)       = pure (ib l Div, s)
 ta _ s (B l Eq)        = pure (rel l Eq, s)
 ta _ s (B l Gt)        = pure (rel l Gt, s)
 ta _ s (B l Lt)        = pure (rel l Lt, s)
-ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q (TS [] [QT l (aLs as')]) as', s')}
-ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (TS r l) a', s')}
+ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q ([] --: [QT l (aLs as')]) as', s')}
+ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (r--:l) a', s')}
 ta b s (C l tt)        = do
     p <- lT (arit b) tt
     -- TODO: pad beginning not-inverse constructors with a₀ etc. not ρ₀?
@@ -701,7 +701,7 @@ dU c s tss = do
     (σ,ul) <- an (concat al)
     (l',s') <- urs s ul; (r',s'') <- frs s' rs'
     -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
-    pure (TS (l'++[σ]) r', s'')
+    pure (l'++[σ] --: r', s'')
   where ls=map tlefts tss; rs=map trights tss
         rm=maximum (length<$>map trights tss)
         rr=ars c
@@ -714,8 +714,8 @@ dU c s tss = do
         urs sϵ [t]    = pure (t, sϵ)
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
-        traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
-        pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
+        -- traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
+        -- pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
 
         an :: [(Nm a, [T a])] -> TM a (T a, [[T a]])
         an as = do
