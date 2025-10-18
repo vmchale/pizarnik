@@ -22,6 +22,7 @@ main = defaultMain $
                         , "test/examples/ifte.piz"
                         , "test/examples/pat.piz"
                         , "test/data/beta.piz"
+                        , "test/data/these.piz"
                         , "test/examples/exp.piz"
                         , "test/examples/pat2.piz"
                         ] ]
