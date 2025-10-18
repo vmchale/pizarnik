@@ -7,6 +7,7 @@ module Nm.Map ( NmMap (..)
               , singleton
               , empty
               , intersectionWith
+              , symmetricDifference
               , augment
               , isSubmapOf
               , fromList
@@ -57,6 +58,9 @@ isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
 
 intersectionWith :: (a -> b -> c) -> NmMap a -> NmMap b -> NmMap c
 intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0 x1) (IM.intersection c0 c1)
+
+symmetricDifference :: NmMap a -> NmMap a -> NmMap a
+symmetricDifference (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.symmetricDifference x0 x1) (IM.symmetricDifference c0 c1)
 
 augment :: (Maybe b -> b) -> Nm a -> NmMap b -> NmMap b
 augment g (Nm t (U u) _) (NmMap x c) = NmMap (IM.alter (Just . g) u x) (IM.insert u t c)
