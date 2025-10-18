@@ -12,6 +12,7 @@ module Nm.Map ( NmMap (..)
               , fromList
               , nmlist
               , toList
+              , fromDistinctAscList
               ) where
 
 import           Control.Arrow  ((&&&))
@@ -76,3 +77,6 @@ fromList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], cont
 
 keys :: NmMap a -> b -> [Nm b]
 keys (NmMap _ c) l = map (\(u,t) -> Nm t (U u) l) (IM.toList c)
+
+fromDistinctAscList :: [(Nm a, b)] -> NmMap b
+fromDistinctAscList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }

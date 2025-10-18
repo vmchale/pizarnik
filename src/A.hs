@@ -148,7 +148,7 @@ instance PT (T a) where
 instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
 
 ʙ :: a -> T a
-ʙ x = Σ x (Nm.fromList [(true x, []), (false x, [])])
+ʙ x = Σ x (Nm.fromDistinctAscList [(true x, []), (false x, [])])
 
 unA :: T a -> Maybe (T a, [T a])
 unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing

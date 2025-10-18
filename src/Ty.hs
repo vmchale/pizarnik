@@ -15,7 +15,7 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
-import           Data.List                        (foldl', unsnoc)
+import           Data.List                        (foldl')
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           F
@@ -650,6 +650,8 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 
           (t:_) !* 1          = pure t
           (Σ{}:ts) !* n       = ts!*(n-1)
+          (TC{}:ts) !* n      = ts!*(n-1)
+          (TA{}:ts) !* n      = ts!*(n-1)
           ((TT _ tt):ts) !* n = do {k <- lT a tt; drop k ts !* (n-1)}
           (TP{}:ts) !* n      = ts!*n
           (QT{}:ts) !* n      = ts!*n
@@ -666,8 +668,15 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (TP{}:ts)      = g ts
           g (QT{}:ts)      = g ts
 
-r_ :: Nm.NmMap [TS a] -> TM a (Nm.NmMap (TS a))
-r_ = traverse (\case [t] -> pure t; [] -> error"should handle this..."; ts -> error"nyi.")
+r_ :: a -> Nt a -> Subst a -> Nm.NmMap [TS a] -> TM a ([(Nm a, TS a)], Subst a)
+r_ l c s tψ = srs s t
+  where
+    t=Nm.toList l tψ
+
+    srs sϵ []            = pure ([], sϵ)
+    srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
+    srs sϵ ((n, []):_)   = error"nyi"
+    srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ ts; first ((n,tϵ):) <$> srs s' a}
 
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
@@ -675,11 +684,10 @@ dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     tψ <- ψ rr (zt ls' rs')
-    al <- r_ tψ
-    (σ,ul) <- an (Nm.toList (tLs (head ls)) (fmap tlefts al)) -- FIXME: head partial
-    (l',s') <- urs s ul; (r',s'') <- frs s' rs'
-    -- pure $ let t=TS (l'++[σ]) (r') in traceShow (traceΦ tss t) (t, s'')
-    pure (l'++[σ] --: r', s'')
+    (al,s') <- r_ (tLs$head ls) c s tψ
+    (σ,ul) <- an (map (second tlefts) al)
+    (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
+    pure (l'++[σ] --: r', s''')
   where ls=map tlefts tss; rs=map trights tss
         rm=maximum (length<$>map trights tss)
         rr=ars c
@@ -692,13 +700,10 @@ dU c s tss = do
         urs sϵ [t]    = pure (t, sϵ)
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
-        -- traceΦ ts σ = vsep (pa<$>ts) <#> "-" <#> pretty σ <> hardline
-        -- pa (TS l r) | Just (a, t@TT{}) <- unsnoc l = pretty t <+> ":" <+> pretty (TS a r)
-
         an :: [(Nm a, TSeq a)] -> TM a (T a, [[T a]])
         an as = do
             (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT rr nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
-            pure (Σ l (Nm.fromList (zip nms tls)), tas)
+            pure (Σ l (Nm.fromDistinctAscList (zip nms tls)), tas)
           where l=loc (fst$head as); nms=map fst as
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)

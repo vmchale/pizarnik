@@ -10,9 +10,11 @@ main = defaultMain $
         -- TODO: error line no.?
       ( tErr [] "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
       : tErr ["."] "test/data/permeable.piz" "20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
-      : tErr [""] "test/data/badBool.piz" "6:23: failed to unify ‘{True}’ with ‘{False}’"
+      : tErr [""] "test/data/badBool.piz" "5:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
+      : tErr [""] "test/data/badBool2.piz" "5:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
       : [ tI fp | fp <- [ "lib/list.piz"
                         , "lib/either.piz"
+                        , "lib/these.piz"
                         , "prelude/ord.piz"
                         , "prelude/bool.piz"
                         , "test/examples/mutual.piz"
