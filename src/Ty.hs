@@ -668,23 +668,13 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (TP{}:ts)      = g ts
           g (QT{}:ts)      = g ts
 
-r_ :: a -> Nt a -> Subst a -> Nm.NmMap [TS a] -> TM a ([(Nm a, TS a)], Subst a)
-r_ l c s tψ = srs s t
-  where
-    t=Nm.toList l tψ
-
-    srs sϵ []            = pure ([], sϵ)
-    srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
-    srs sϵ ((n, []):_)   = error"nyi"
-    srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ ts; first ((n,tϵ):) <$> srs s' a}
-
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
 dU c s tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     tψ <- ψ rr (zt ls' rs')
-    (al,s') <- r_ (tLs$head ls) c s tψ
+    (al,s') <- srs s (Nm.toList (tLs$head ls) tψ)
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
@@ -693,6 +683,12 @@ dU c s tss = do
         rr=ars c
 
         tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
+
+        srs sϵ []            = pure ([], sϵ)
+        srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
+        srs sϵ ((n, []):_)   = error"nyi"
+        -- TODO: step without tuck/etc.
+        srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ ts; first ((n,tϵ):) <$> srs s' a}
 
         frs sϵ [t]    = pure (t, sϵ)
         frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
