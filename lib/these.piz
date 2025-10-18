@@ -1,0 +1,14 @@
+@i prelude/fn
+
+%-
+
+type These a b = { a `this ⊕ b `that ⊕ a b `these };
+
+# mapThis : [a -- b] a `this -- b `this
+        # := [ { `this⁻¹ swap $ `this } ]
+
+mapThis : [a -- b] These(a,c) -- These(b,c)
+        := [ { `this⁻¹ swap $ `this
+             & `that⁻¹ nip `that
+             & `these⁻¹ [swap $] dip `these }
+           ]
