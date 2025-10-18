@@ -8,10 +8,11 @@ main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
         -- TODO: error line no.?
-      ( tErr [] "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
-      : tErr ["."] "test/data/permeable.piz" "20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
-      : tErr [""] "test/data/badBool.piz" "5:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
-      : tErr [""] "test/data/badBool2.piz" "5:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
+      ( tENo "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
+      : tE "test/data/permeable.piz" "20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
+      : tE "test/data/badList.piz" "5:17: {List(a) b `cons ⊕ `nil} ⊀ {ρ₁ ρ₂ `cons}"
+      : tENo "test/data/badBool.piz" "5:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
+      : tENo "test/data/badBool2.piz" "5:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
       : [ tI fp | fp <- [ "lib/list.piz"
                         , "lib/either.piz"
                         , "lib/these.piz"
@@ -30,6 +31,7 @@ main = defaultMain $
                         ] ]
       ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz" ] ])
     where tI = tFile ["."]; tNo = tFile []
+          tE = tErr ["."]; tENo = tErr []
 
 tErr :: [FilePath] -> FilePath -> String -> TestTree
 tErr incls fp expected = testCase fp $
