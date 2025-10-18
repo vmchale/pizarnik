@@ -202,7 +202,8 @@ uu _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (UF te t)
 uu _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
 uu _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (UF te t)
 uu _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
-uu _ s t0@(TT _ tt₀) (TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
+uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
+                                   | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
                                  | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
@@ -211,10 +212,14 @@ uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
                                      | eqKeys σ0 σ1 = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
-uu _ s t0@(TP _ p0) (TP _ p1) | p0==p1 = pure (t0,s)
+uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
+                                 | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
 uu _ _ t0@TP{} t1 = throwError$UF t0 t1
 uu _ _ t0 t1@TP{} = throwError$UF t0 t1
+uu _ _ t0@QT{} t1 = throwError$UF t0 t1
+uu _ _ t0 t1@QT{} = throwError$UF t0 t1
+uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
 
 uus=sv uu;usc=ctx'ize uus
 
@@ -265,16 +270,14 @@ su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
 su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
+                               -- TODO: should we enforce TT have arity 0 here?
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
                               | otherwise = cf t0 t1
-su _ _ t0@TT{} t1@TP{} = cf t0 t1
-su _ _ t0@TT{} t1@QT{} = cf t0 t1
-su _ _ t0@TP{} t1@TT{} = cf t0 t1
-su _ _ t0@TP{} t1@QT{} = cf t0 t1
-su _ _ t0@QT{} t1@TT{} = cf t0 t1
-su _ _ t0@QT{} t1@TP{} = cf t0 t1
-su _ _ t0@Σ{} t1@QT{} = cf t0 t1
-su _ _ t0@QT{} t1@Σ{} = cf t0 t1
+su _ _ t0@(Σ _ σ) t1@(TT _ n) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
+                              | otherwise = cf t0 t1
+su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
+su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
+su _ _ t0@TT{} t1 = cf t0 t1; su _ _ t0 t1@TT{} = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
 
 uσ u c s l σ0 σ1 =
@@ -633,6 +636,7 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 ψ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
 ψ a tss = do
     n <- minimum <$> traverse g sl
+    -- FIXME: give a nice error if no constructor depth (n=0)
     forks <- traverse (p n) sl
     h <- traverse (l n) sl
     let tss' = zipWith TS (map reverse h) (map trights tss)
