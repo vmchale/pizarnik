@@ -41,7 +41,11 @@ foldr : [ a b -- b ] b List(a) -- b
            & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
 ```
 
-The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists, enforced by static typing.
+The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we tried to write `head : List(a) -- a`:
+
+```
+5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
+```
 
 # Or-Patterns
 

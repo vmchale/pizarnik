@@ -9,3 +9,9 @@ mapThis : [a -- b] These(a,c) -- These(b,c)
              & `that⁻¹ nip `that
              & `these⁻¹ [swap $] dip `these }
            ]
+
+bimap : [a -- b] [c -- d] These(a,b) -- These(c,d)
+      := [ { `this⁻¹ nip swap $ `this
+           & `that⁻¹ nip2 swap $ `that
+           & `these⁻¹ [rotl] dip [$] dip2 rot [swap $] dip swap `these
+           } ]

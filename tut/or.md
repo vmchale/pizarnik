@@ -21,7 +21,9 @@ gt : Ord -- Bool
     := [ { { `lt⁻¹ & `eq⁻¹ } False & `gt⁻¹ True } ]
 ```
 
-``{`lt⁻¹ & `eq⁻¹}`` has type ``{`lt ⊕ `eq} --``. The use of `&` to juxtapose pattern match arms is intended to recall $(G \oplus H)^\bot = G^\bot \invamp H^\bot$ from linear logic.
+``{`lt⁻¹ & `eq⁻¹}`` has type ``{`lt ⊕ `eq} --``. The use of `&` to juxtapose pattern match arms is intended to recall $(G \oplus H)^\bot = G^\bot \& H^\bot$ from linear logic.
+
+This makes sense---a `&` ("with")
 
 ```pizarnik
 lte : { `lt ⊕ `eq } --
@@ -29,7 +31,11 @@ lte : { `lt ⊕ `eq } --
 
 gte : { `eq ⊕ `gt } --
     := [ { `eq⁻¹ & `gt⁻¹ } ]
+```
 
+We could have defined `gt` with the above, viz.
+
+```pizarnik
 gt : Ord -- Bool
    := [ { lte False & `gt⁻¹ True } ]
 ```
