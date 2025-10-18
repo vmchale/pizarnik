@@ -32,14 +32,14 @@ infixr 0 --:
 
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
-       | Swap | Eq | Gt | Lt
-       | Doll
+       | Rem | Eq | Gt | Lt
+       | Swap  | Doll
 
 instance Pretty B where
     pretty Dip = "dip"; pretty Dup = "dup"; pretty Un = "_"
     pretty Plus = "+"; pretty Minus = "-"; pretty Mul = "*"; pretty Div = "%"
-    pretty Swap = "swap"; pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"
-    pretty Doll = "$"
+    pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"; pretty Rem = "rem"
+    pretty Swap = "swap"; pretty Doll = "$"
 
 data L = I !Integer | R !Double | Str !T.Text
 

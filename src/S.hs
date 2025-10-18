@@ -57,6 +57,7 @@ _ ≺ _                   = False
 ι c (B _ Minus) as         = i2 c (-) as
 ι c (B _ Mul) as           = i2 c (*) as
 ι c (B _ Div) as           = i2 c quot as
+ι c (B _ Rem) as           = i2 c rem as
 ι c (B _ Eq) as            = ib c (==) as
 ι c (B _ Gt) as            = ib c (>) as
 ι c (B _ Lt) as            = ib c (<) as

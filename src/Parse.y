@@ -69,6 +69,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     dip { TokB $$ L.Dip }
     dup { TokB $$ L.Dup }
     swap { TokB $$ L.Swap }
+    rem { TokB $$ L.Rem }
     doll { TokB $$ L.Doll }
 
     name { TokN _ $$ }
@@ -127,8 +128,9 @@ A :: { A AlexPosn }
   | dup { B $1 A.Dup } | und { B $1 Un }
   | plus { B $1 Plus } | minus { B $1 Minus }
   | mul { B $1 A.Mul } | idiv { B $1 A.Div }
-  | eq { B $1 A.Eq } | doll { B $1 A.Doll }
-  | gt { B $1 A.Gt } | lt { B $1 A.Lt }
+  | eq { B $1 A.Eq }  | gt { B $1 A.Gt }
+  | lt { B $1 A.Lt } | rem { B $1 A.Rem }
+  | doll { B $1 A.Doll }
   | name { V (Nm.loc $1) $1 }
   | tag inv { Inv (Nm.loc $1) (C (Nm.loc $1) $1) }
   | tag { C (Nm.loc $1) $1 }
