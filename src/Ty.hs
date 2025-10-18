@@ -273,6 +273,8 @@ su _ _ t0@TP{} t1@TT{} = cf t0 t1
 su _ _ t0@TP{} t1@QT{} = cf t0 t1
 su _ _ t0@QT{} t1@TT{} = cf t0 t1
 su _ _ t0@QT{} t1@TP{} = cf t0 t1
+su _ _ t0@Σ{} t1@QT{} = cf t0 t1
+su _ _ t0@QT{} t1@Σ{} = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
 
 uσ u c s l σ0 σ1 =
