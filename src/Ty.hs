@@ -210,6 +210,10 @@ uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
 uu _ s t0@(TP _ p0) (TP _ p1) | p0==p1 = pure (t0,s)
 uu _ _ t0@TP{} t1 = throwError$UF t0 t1
 uu _ _ t0 t1@TP{} = throwError$UF t0 t1
+uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
+uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
+                                     | n1 `occρ` σ0 = throwError$O t1 t0
+                                     | eqKeys σ0 σ1 = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
 
 uus=sv uu;usc=ctx'ize uus
 
@@ -504,10 +508,6 @@ tMM b (M is ds) = M is <$> tD b ds
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
--- `e `a mult
--- `a mult
---
--- evaluator pinches stack vars off pattern match...
 tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
 tAS u b s a = fmap π₁₃ $ runTM u $ do
     (t0,s0) <- sseq n (aLs a) mempty (reverse s)
@@ -542,8 +542,6 @@ tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
     (t, s2) <- cat (π b) s1 (aL a') tϵ
-    -- tϵ' <- s2@*tϵ; t' <- s2@*t
-    -- pure $ traceShow (traceCat a' as' (aL a') tϵ' t') (SL t (a':as'), s2)
     pure (SL t (a':as'), s2)
 
 traceCat :: A b -> [A b] -> TS a -> TS a -> TS a -> Doc ann
