@@ -21,6 +21,7 @@ main = defaultMain $
                         , "test/examples/maybe.piz"
                         , "test/examples/ifte.piz"
                         , "test/examples/pat.piz"
+                        , "lib/numbertheory.piz"
                         , "test/data/beta.piz"
                         , "test/data/these.piz"
                         , "test/examples/exp.piz"
