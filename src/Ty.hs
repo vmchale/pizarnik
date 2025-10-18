@@ -190,30 +190,31 @@ occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 -- TODO: occurs check at substitution function
-nv n σ t | Nm.null σ = iTV n t
+nv s n σ t e | Nm.null σ = pure (t, iTV n t s)
+             | otherwise = throwError e
 
 uu :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
 uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-uu _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
-uu _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
-uu _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
-uu _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
+uu _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (UF te t)
+uu _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
+uu _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (UF te t)
+uu _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
 uu _ s t0@(TT _ tt₀) (TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
                                  | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
                                 | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
                                 | otherwise = throwError$UF t0 t1
-uu _ s t0@(TP _ p0) (TP _ p1) | p0==p1 = pure (t0,s)
-uu _ _ t0@TP{} t1 = throwError$UF t0 t1
-uu _ _ t0 t1@TP{} = throwError$UF t0 t1
-uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
                                      | eqKeys σ0 σ1 = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
+uu _ s t0@(TP _ p0) (TP _ p1) | p0==p1 = pure (t0,s)
+uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
+uu _ _ t0@TP{} t1 = throwError$UF t0 t1
+uu _ _ t0 t1@TP{} = throwError$UF t0 t1
 
 uus=sv uu;usc=ctx'ize uus
 
@@ -245,15 +246,15 @@ su c s (Σ x σ0) t@(Ρ _ n σ1) = do
     pure (n',g s')
 su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
-        -- FIXME propagate back?
+        -- don't propagate back?
         Nothing -> do {(n',g) <- nρ n (Nm.insert tt [] σ); pure (n',g s)}
         Just [] -> pure (t1, s)
         Just _  -> sf t0 t1
-su _ s (Ρ _ n σ) t@TT{} = pure (t, nv n σ t s)
-su _ s t@QT{} (Ρ _ n σ) = pure (t, nv n σ t s)
-su _ s (Ρ _ n σ) t@QT{} = pure (t, nv n σ t s)
-su _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
-su _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
+su _ s te@(Ρ _ n σ) t@TT{} = nv s n σ t (CF te t)
+su _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (CF t te)
+su _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (CF te t)
+su _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (CF te t)
+su _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (CF t te)
 su c s (Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n0 (σ0<>σ1<>ς) t1
@@ -346,8 +347,10 @@ nρ n@(Nm t _ l) σ = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- ρc n (σ<>as<>ς) t
     pure (n', g s')
-φ _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
-φ _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
+φ _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (ΦF t te)
+φ _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (ΦF te t)
+φ _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (ΦF t te)
+φ _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (ΦF te t)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just [] -> pure (t1,s)
