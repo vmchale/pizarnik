@@ -342,6 +342,10 @@ nρ n@(Nm t _ l) σ = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- ρc n (σ<>as<>ς) t
     pure (n', g s')
+φ c s (Ρ x n σ) t@(Σ _ as) = do
+    (ς, s') <- φσ c s x σ as
+    (n',g) <- ρc n (σ<>as<>ς) t
+    pure (n', g s')
 φ _ s t@TP{} (Ρ _ n σ) = pure (t, nv n σ t s)
 φ _ s (Ρ _ n σ) t@TP{} = pure (t, nv n σ t s)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
