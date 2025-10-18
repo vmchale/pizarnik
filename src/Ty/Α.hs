@@ -1,4 +1,4 @@
-module Ty.Clone ( cloneSig ) where
+module Ty.Α ( cloneSig ) where
 
 import           A
 import           Control.Monad.Trans.State.Strict (State, gets, modify, runState)
