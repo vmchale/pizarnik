@@ -6,7 +6,7 @@ endif
 
 syntax match pizarnikComment "\v#.*$" contains=@Spell
 syntax keyword pizarnikKeyword type
-syntax keyword pizarnikBuiltin dup dip swap
+syntax keyword pizarnikBuiltin dup dip
 syntax keyword pizarnikType Int Bool String
 syntax keyword pizarnikVal True False
 syntax match pizarnikName "\v[a-z][a-zA-Z0-9]*"
