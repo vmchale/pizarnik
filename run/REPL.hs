@@ -14,18 +14,16 @@ import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
 import           Data.Tree                        (Tree (Node, rootLabel))
-import           Dbg
 import           L
+import           P
 import           Parse                            (pAtoms)
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), defaultLayoutOptions, hardline, layoutSmart, vsep)
-import           Prettyprinter.Render.Text        (renderIO)
+import           Prettyprinter                    (Doc, Pretty (pretty), hardline, vsep)
 import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
                                                    simpleCompletion)
 import           System.Directory                 (getHomeDirectory)
 import           System.Info                      (os)
-import           System.IO                        (stdout)
 import           Ty
 
 repl :: [FilePath] -> IO ()
@@ -113,7 +111,7 @@ stackpp=po.stack
 
 pE :: Pretty a => a -> Repl ()
 pE = po.pretty
-po = liftIO . renderIO stdout . layoutSmart defaultLayoutOptions . (<>hardline)
+po = liftIO.rDoc.(<>hardline)
 
 bytesl = encodeUtf8 . TL.pack
 

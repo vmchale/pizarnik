@@ -1,4 +1,4 @@
-module Dbg ( dT, dFmt, db
+module Dbg ( dT, dFmt
            , adbg
            , module P
            ) where
@@ -8,22 +8,11 @@ import           Control.Exception         (throwIO)
 import           Control.Monad             ((<=<))
 import qualified Data.ByteString.Lazy      as BSL
 import           Data.Foldable             (traverse_)
-import qualified Data.IntMap               as IM
-import           Data.Tree                 (Tree)
-import           L
 import           P
 import           Parse
 import           Pr
-import           Prettyprinter             (Doc, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
-import           Prettyprinter.Render.Text (putDoc, renderIO)
-import           S
-import           System.IO                 (stdout)
-
-db :: AlexUserState -> [Tree (F (TS AlexPosn), b)] -> IO ()
-db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
-  where
-    pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
-    pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList
+import           Prettyprinter             (pretty)
+import           Prettyprinter.Render.Text (putDoc)
 
 adbg :: [FilePath] -> [FilePath] -> IO ()
 adbg incls fp = do
@@ -38,6 +27,4 @@ dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pA)
 dT :: [FilePath] -> [FilePath] -> IO ()
 dT incls fps = do
     res <- rRepl $ rMs incls fps
-    either throwIO (putDoc.pBound.snd) res
-
-rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
+    either throwIO (rDoc.pBound.snd) res

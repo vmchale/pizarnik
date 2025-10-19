@@ -1,4 +1,4 @@
-module P ( fmt, rMs, tMs, rRepl ) where
+module P ( fmt, rMs, tMs, rRepl, db, rDoc ) where
 
 import           A
 import           Control.Monad                    (foldM)
@@ -8,6 +8,7 @@ import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, 
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put)
 import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
+import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -17,8 +18,10 @@ import           L
 import           M
 import           Nm
 import           Parse
-import           Prettyprinter                    (SimpleDocStream, defaultLayoutOptions, layoutSmart, pretty)
+import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
+import           Prettyprinter.Render.Text        (renderIO)
 import           R
+import           System.IO                        (stdout)
 import           TS
 import           Ty
 
@@ -26,6 +29,14 @@ type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
 
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
+
+db :: AlexUserState -> [Tree (IM.IntMap (ASeq (TS AlexPosn)), b)] -> IO ()
+db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+  where
+    pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
+    pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList
+
+rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
 tMs incls fp = do
