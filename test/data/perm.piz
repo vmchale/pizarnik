@@ -8,9 +8,3 @@ rotl : a b c -- c b a
 
 rotr : a b c -- c a b
     := [ (132) ]
-
-# FIXME: current scheme doesn't handle e.g.
-# a b c d -- b c a d
-# aka [rot] dip ?
-# seems backwards...
-# (234) leaves initial a in place...

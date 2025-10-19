@@ -607,8 +607,8 @@ ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l String]) lit, s)
 ta _ s (L l (S p)) = do
     ns <- traverse (\_ -> ftv l "a") (UA.indices p)
-    let ns' = A.array (UA.bounds p) (zip (UA.elems p) ns)
-    pure (L (ns --: A.elems ns') (S p), s)
+    let ns' = A.array (UA.bounds p) (zip (reverse $ UA.elems p) ns)
+    pure (L (ns --: reverse (A.elems ns')) (S p), s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
