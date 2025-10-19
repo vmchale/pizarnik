@@ -1,10 +1,10 @@
 @i prelude/fn
-@i lib/these
+@i lib/either
 
 %-
 
 # TODO: make work with Either? could be fun...
-mapThisThat : [a -- b] { a `this ⊕ c `that } -- { b `this ⊕ c `that }
-            := [ { `this⁻¹ swap $ `this
-                 & `that⁻¹ nip `that }
-               ]
+mapLeftRight : [a -- b] { a `left ⊕ c `right } -- { b `left ⊕ c `right }
+             := [ { `left⁻¹ swap $ `left
+                  & `right⁻¹ nip `right }
+                ]
