@@ -68,7 +68,7 @@ tokens :-
 
     <postImp> {
 
-        $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s)) }
+        $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s) (iperm s)) }
 
         "+"                     { sym Add }
         "-"                     { sym Sub }
@@ -124,6 +124,9 @@ tokens :-
 
 mkText :: BSL.ByteString -> T.Text
 mkText = decodeUtf8 . BSL.toStrict
+
+iperm :: BSL.ByteString -> [Word]
+iperm = map (fromIntegral.(subtract 48)).BSL.unpack
 
 readDigits :: BS.ByteString -> Integer
 readDigits = ASCII.foldl' (\seed x -> 10 * seed + f x) 0
@@ -208,7 +211,7 @@ instance Pretty B where
     pretty Swap = "swap"; pretty Rem = "rem"
 
 data Tok = EOF { loc :: AlexPosn }
-         | TokI { loc :: AlexPosn, int :: Integer }
+         | TokI { loc :: AlexPosn, int :: Integer, digits :: [Word] }
          | TokS { loc :: AlexPosn, tokSym :: !Sym }
          | TokN { loc :: AlexPosn, name :: !(Nm AlexPosn) }
          | TokB { loc :: AlexPosn, tokB :: !B }
@@ -220,7 +223,7 @@ data Tok = EOF { loc :: AlexPosn }
 
 instance Pretty Tok where
     pretty EOF{}        = "(eof)"
-    pretty (TokI _ i)   = pretty i
+    pretty (TokI _ i _) = pretty i
     pretty (TokS _ s)   = pretty s
     pretty (TokN _ n)   = "identifier" <+> sq n
     pretty (TokMN _ m)  = "module" <+> sq m

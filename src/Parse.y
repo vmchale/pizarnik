@@ -64,7 +64,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     div { TokS $$ L.Div }
     idiv { TokS $$ L.IDiv }
 
-    ilit { $$@(TokI _ _) }
+    ilit { $$@(TokI _ _ _) }
 
     stringTy { TokB $$ L.String }
     intTy { TokB $$ L.Int }
@@ -141,7 +141,7 @@ A :: { A AlexPosn }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
   | braces(sepBy(many(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
-  | lparen sepBy(ilit,comma) rparen { L $1 (S $ iperm (map (fromIntegral.int) $2)) }
+  | lparen ilit rparen { L $1 (S $ iperm (digits $2)) }
 
 ASeq :: { ASeq AlexPosn }
      : many(A) {% fmap SL (lift get_pos) <*> pure (reverse $1) }
@@ -172,8 +172,8 @@ iperm n@(i:_) = STArray.runSTUArray $ do
     z n arr $> arr
   where
     z :: [Word] -> STArray.STUArray s Word Word -> ST s ()
-    z [j] arr = do {STArray.writeArray arr i j}
-    z (k:js@(j:_)) arr = do {STArray.writeArray arr j k; z js arr}
+    z [j] arr = do {STArray.writeArray arr j i}
+    z (k:js@(j:_)) arr = do {STArray.writeArray arr k j; z js arr}
 
 roll :: T a -> [T a] -> T a
 roll t []      = t
