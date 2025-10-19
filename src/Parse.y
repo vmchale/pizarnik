@@ -72,7 +72,6 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 
     dip { TokB $$ L.Dip }
     dup { TokB $$ L.Dup }
-    swap { TokB $$ L.Swap }
     rem { TokB $$ L.Rem }
     doll { TokB $$ L.Doll }
 
@@ -131,7 +130,7 @@ Cyc :: { (AlexPosn, [Word]) }
     : lparen ilit rparen { ($1, digits $2) }
 
 A :: { A AlexPosn }
-  : dip { B $1 A.Dip } | swap { B $1 A.Swap }
+  : dip { B $1 A.Dip }
   | dup { B $1 A.Dup } | und { B $1 Un }
   | plus { B $1 Plus } | minus { B $1 Minus }
   | mul { B $1 A.Mul } | idiv { B $1 A.Div }

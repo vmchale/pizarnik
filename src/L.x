@@ -100,7 +100,6 @@ tokens :-
 
         dip                     { builtin Dip }
         dup                     { builtin Dup }
-        swap                    { builtin Swap }
         rem                     { builtin Rem }
         "$"                     { builtin Doll }
 
@@ -202,13 +201,13 @@ data Kw = I | Ty
 
 instance Pretty Kw where pretty I="@i"; pretty Ty="type"
 
-data B = Dup | Dip | Swap | Rem
-       | Doll | Int | Bool | String
+data B = Dup | Dip | Doll | Rem
+       | Int | Bool | String
 
 instance Pretty B where
     pretty Dup = "dup"; pretty Dip = "dip"; pretty Doll = "$"
     pretty Int = "Int"; pretty Bool = "Bool"; pretty String = "String"
-    pretty Swap = "swap"; pretty Rem = "rem"
+    pretty Rem = "rem"
 
 data Tok = EOF { loc :: AlexPosn }
          | TokI { loc :: AlexPosn, int :: Integer, digits :: [Word] }

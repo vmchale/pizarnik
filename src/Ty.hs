@@ -612,7 +612,6 @@ ta _ s (L l (S p)) = do
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
-ta _ s (B l Swap)      = do {a <- ftv l "a"; b <- ftv l "b"; pure (B ([a,b] --: [b,a]) Swap, s)}
 ta _ s (B l Plus)      = pure (ib l Plus, s)
 ta _ s (B l Minus)     = pure (ib l Minus, s)
 ta _ s (B l Mul)       = pure (ib l Mul, s)

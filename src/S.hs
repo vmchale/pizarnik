@@ -54,7 +54,6 @@ g :: UA.UArray Word Word -> [x] -> [x]
 g p s = undefined
 
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
-ι _ (B _ Swap) (a0:a1:as)  = a1:a0:as
 ι _ (B _ Dup) (a:as)       = a:a:as
 ι _ (B _ Un) (_:as)        = as
 ι c (B _ Plus) as          = i2 c (+) as

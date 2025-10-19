@@ -35,13 +35,13 @@ infixr 0 --:
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
        | Rem | Eq | Gt | Lt
-       | Swap  | Doll
+       | Doll
 
 instance Pretty B where
     pretty Dip = "dip"; pretty Dup = "dup"; pretty Un = "_"
     pretty Plus = "+"; pretty Minus = "-"; pretty Mul = "*"; pretty Div = "%"
     pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"; pretty Rem = "rem"
-    pretty Swap = "swap"; pretty Doll = "$"
+    pretty Doll = "$"
 
 data L = I !Integer | R !Double | Str !T.Text | S !(UA.UArray Word Word)
 
