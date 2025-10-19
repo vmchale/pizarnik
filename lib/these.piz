@@ -7,11 +7,11 @@ type These a b = { a `this ⊕ b `that ⊕ a b `these };
 mapThis : [a -- b] These(a,c) -- These(b,c)
         := [ { `this⁻¹ swap $ `this
              & `that⁻¹ nip `that
-             & `these⁻¹ [swap $] dip `these }
+             & `these⁻¹ (23) [$] dip `these }
            ]
 
 bimap : [a -- b] [c -- d] These(a,b) -- These(c,d)
       := [ { `this⁻¹ nip swap $ `this
            & `that⁻¹ nip2 swap $ `that
-           & `these⁻¹ [rotl] dip [$] dip2 (13) [$] dip swap `these
+           & `these⁻¹ (42) [$] dip2 (13) [$] dip swap `these
            } ]
