@@ -2,7 +2,7 @@
 % V. E. McHale
 % 19 Oct. 2025
 
-`dip`, `drop`, `dup`, and `swap` are sufficient to perform any manipulations,
+`dip`, `drop`, `dup`, and `swap` are sufficient to perform any manipulation,
 but permutation literals (using cycle notation) may be more agreeable.
 
 Consider:
