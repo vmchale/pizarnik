@@ -1,17 +1,17 @@
 @i prelude/fn
+@i lib/either
 
 %-
 
-type These a b = { a `this ⊕ b `that ⊕ a b `these };
+type Both a b = Either(a,b) ∪ { a b `both };
 
-mapThis : [a -- b] These(a,c) -- These(b,c)
-        := [ { `this⁻¹ swap $ `this
-             & `that⁻¹ nip `that
-             & `these⁻¹ (23) [$] dip `these }
-           ]
+map1 : [a -- b] Both(a,c) -- Both(b,c)
+     := [ { mapLeft
+          & `both⁻¹ [swap $] dip `both }
+        ]
 
-bimap : [a -- b] [c -- d] These(a,b) -- These(c,d)
-      := [ { `this⁻¹ nip swap $ `this
-           & `that⁻¹ nip2 swap $ `that
-           & `these⁻¹ (42) [$] dip2 (13) [$] dip swap `these
+bimap : [a -- b] [c -- d] Both(a,b) -- Both(c,d)
+      := [ { `left⁻¹ nip swap $ `left
+           & `right⁻¹ nip2 swap $ `right
+           & `both⁻¹ [rotl] dip [$] dip2 rot [swap $] dip swap `both
            } ]

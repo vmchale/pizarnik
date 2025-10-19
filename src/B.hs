@@ -1,9 +1,11 @@
 module B ( Cs, BE, β ) where
 
 import           A
+import           Control.Monad (foldM)
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Nm
+import qualified Nm.Map        as Nm
 import           Prettyprinter (Pretty (pretty), (<+>))
 
 type Cs a=IM.IntMap ([Nm a], T a); type Β a=IM.IntMap (T a)
@@ -12,11 +14,17 @@ newtype BE a = TCA (Nm a)
 
 instance Pretty a => Pretty (BE a) where pretty (TCA n) = pretty (loc n) <> ":" <+> "Type constructor not fully applied"
 
+-- TODO: UU expand?
+--
+-- say we have Either(a,b) ∪ { a b `both }
+-- to substitute a <- int; b <- int (say)
+-- replace Either(a,b) with { a `left ⊕ b `right }
+-- (which requires context-specific a,b?)
 β :: Cs a -> Nm a -> [T a] -> Either (BE a) (T a)
 β c n bs = let (vs,t) = lC n c in ($>loc n) <$> bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
 
 lC :: Nm a -> Cs a -> ([Nm a], T a)
-lC (Nm _ (U i) _) = IM.findWithDefault (error "Internal error. Type synonym not in scope?") i
+lC (Nm _ (U i) _) = IM.findWithDefault (error"Internal error. Type synonym not in scope?") i
 
 bS :: Β a -> T a -> Either (BE a) (T a)
 bS st (TV _ n@(Nm _ (U j) _)) =
@@ -29,3 +37,9 @@ bS st t@(TA x t0 t1) | Just{} <- unA t = pure t -- TODO: bS on arguments...?
 bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
 bS st (QT x sig) = QT x <$> tTS (bS st) sig
+bS st (UU x ts) = Σ x <$> foldMapM f ts
+  where
+    f (TT _ tt) = pure (Nm.singleton tt [])
+    f (Σ _ σ)   = pure σ
+
+foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty

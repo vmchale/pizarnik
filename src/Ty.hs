@@ -485,6 +485,7 @@ lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
+-- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
 
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
@@ -643,8 +644,8 @@ pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 tally :: [([Nm a], b)] -> Nm.NmMap [b]
 tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.augment g n | n <- ns] z) Nm.empty
 
-ψ :: Ar -> [TS a] -> TM a (Nm.NmMap [TS a])
-ψ a tss = do
+ψ :: Nt a -> [TS a] -> TM a (Nm.NmMap [TS a])
+ψ c tss = do
     n <- minimum <$> traverse g sl
     -- FIXME: give a nice error if no constructor depth (n=0)
     forks <- traverse (p n) sl
@@ -655,6 +656,8 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 
     -- counts, punches hole, picks out "pivot name" all separately...
     -- probably should map this one or two traversals...
+    --
+    -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹ ??
 
           l :: Int -> [T a] -> TM a [T a]
           l 1 (_:ts)           = pure ts
@@ -666,6 +669,7 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           p n ts = cs =<< (ts!*n) where cs = \case
                                             TT _ nm -> pure [nm]
                                             Σ x σ -> pure (Nm.keys σ x)
+                                            t | Just{} <- unA t -> error (show t)
                                             _ -> throwError (PM ts)
 
           (t:_) !* 1          = pure t
@@ -688,18 +692,25 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (TP{}:ts)      = g ts
           g (QT{}:ts)      = g ts
 
+          a = ars c
+
+uz :: [TS a] -> ([TSeq a], [TSeq a])
+uz = foldr (\(TS l r) ~(ls,rs) -> (l:ls, r:rs)) ([], [])
+
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
 dU c s x tss = do
-    ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
+    ls <- traverse (βs c) l0; rs <- traverse (βs c) r0
+    -- TODO: padding should be entwined with un-picking the
+    let rm=maximum (length<$>rs)
+    ρ <- zipWithM pad (tLs<$>l0) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
-    tψ <- ψ rr (zt ls' rs')
-    (al,s') <- srs s (Nm.toList x tψ)
+    tψ <- ψ c (zt ls' rs')
+    (al,s') <- traceShow (ls',rs',tψ) $ srs s (Nm.toList x tψ)
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where ls=map tlefts tss; rs=map trights tss
-        rm=maximum (length<$>map trights tss)
+  where (l0,r0) = uz tss
         rr=ars c
 
         tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
@@ -720,6 +731,11 @@ dU c s x tss = do
             (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT rr nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
             pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
           where nms=map fst as
+
+βs :: Nt a -> TSeq a -> TM a (TSeq a)
+βs c = traverse q where
+    q t | Just{} <- unA t = βc (tβ c) t
+    q t = pure t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)

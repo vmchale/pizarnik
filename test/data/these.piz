@@ -1,10 +1,10 @@
 @i prelude/fn
-@i lib/either
+@i lib/both
 
 %-
 
-# TODO: make work with Either? could be fun...
-mapLeftRight : [a -- b] { a `left ⊕ c `right } -- { b `left ⊕ c `right }
-             := [ { `left⁻¹ swap $ `left
-                  & `right⁻¹ nip `right }
-                ]
+map1_ : [a -- b] Both(a,c) -- Both(b,c)
+        := [ { `left⁻¹ swap $ `left
+             & `right⁻¹ nip `right
+             & `both⁻¹ (23) [$] dip `both }
+           ]

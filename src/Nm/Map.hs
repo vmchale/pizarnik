@@ -28,6 +28,7 @@ data NmMap a = NmMap { xx :: !(IM.IntMap a), context :: IM.IntMap T.Text }
 
 instance Eq a => Eq (NmMap a) where (==) = (==) `on` xx
 
+instance Monoid (NmMap a) where mempty = NmMap IM.empty IM.empty
 instance Semigroup (NmMap a) where (<>) (NmMap x0 c0) (NmMap x1 c1) = NmMap (x0<>x1) (c0<>c1)
 
 instance Functor NmMap where fmap f (NmMap x c) = NmMap (f<$>x) c
