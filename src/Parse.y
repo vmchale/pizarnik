@@ -10,8 +10,12 @@ import A
 import Control.Arrow ((&&&))
 import Control.Exception (Exception)
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.ST (ST)
 import Control.Monad.Trans.Class (lift)
+import qualified Data.Array.Unboxed as UA
+import qualified Data.Array.ST as STArray
 import qualified Data.ByteString.Lazy as BSL
+import Data.Functor (($>))
 import qualified Data.IntMap as IM
 import qualified Data.Text as T
 import L
@@ -137,6 +141,7 @@ A :: { A AlexPosn }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
   | braces(sepBy(many(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
+  | lparen sepBy(ilit,comma) rparen { L $1 (S $ iperm (map (fromIntegral.int) $2)) }
 
 ASeq :: { ASeq AlexPosn }
      : many(A) {% fmap SL (lift get_pos) <*> pure (reverse $1) }
@@ -157,6 +162,18 @@ locArms :: [(Nm a, TSeq a)] -> a
 locArms = Nm.loc . fst . head
 
 mkΣ = Nm.fromList
+
+-- TODO: allow digits e.g. (12) (145) etc.
+-- multiple cycles...
+
+iperm :: [Word] -> UA.UArray Word Word
+iperm n@(i:_) = STArray.runSTUArray $ do
+    arr <- STArray.newListArray (1,maximum n) [1..]
+    z n arr $> arr
+  where
+    z :: [Word] -> STArray.STUArray s Word Word -> ST s ()
+    z [j] arr = do {STArray.writeArray arr i j}
+    z (k:js@(j:_)) arr = do {STArray.writeArray arr j k; z js arr}
 
 roll :: T a -> [T a] -> T a
 roll t []      = t
