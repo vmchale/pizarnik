@@ -121,6 +121,7 @@ iFn :: Nm a -> TS b -> TM b ()
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
 
 cA :: T a -> TM b ()
+cA (UU _ ts) = traverse_ cA ts
 cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
   where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
                   | otherwise = error "tag in sum with different arity"
@@ -492,7 +493,6 @@ mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
--- FIXME: check consistency of arities somewhere
 lT :: Ar -> Nm a -> TM a Int
 lT ex n@(Nm _ (U u) _) = do
     ar <- gets (arit.lo)
