@@ -452,7 +452,8 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                              | otherwise = sf t0 t1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
-lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+lt _ t0@(TV _ n0) t1@(TV _ n1) | n0==n1 = pure mempty
+                               -- | otherwise = sf t0 t1
 lt _ t0 t1@(TV _ n) = c1 n t0 t1
 lt _ t0@(TV _ n) t1 = c1 n t1 t0
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
@@ -469,7 +470,7 @@ lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
                                | otherwise = do {(_,g) <- nρ n (σ0<>σ1); g<$>mσ lt c σ0 σ1}
 lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
--- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t)
+-- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t) TODO?
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
                                    -- TODO: should we allow ρ to expand? we handle it exactly different on line 426
@@ -491,6 +492,8 @@ mTS c = mtsc c mempty
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
+-- on right we should disallow a = b? at that point there should be canonical substitutions...
+-- (right now we have (123) match against a b c -- c a b by b<-a c<- a)
 mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
 
 liftClone :: TS a -> TM a (TS a)

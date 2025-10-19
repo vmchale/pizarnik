@@ -1,3 +1,14 @@
+```
+ :ty (13) dup (24)
+'A a b c -- 'A d b c a
+```
+uh-oh
+
+```
+ :ty swap dup swap
+'A a b -- 'A b a c
+```
+
 cabal run pc -- repl lib/maybe.piz prelude/fn.piz
 <TAB>
 dip       dup       swap      `just     `nothing
