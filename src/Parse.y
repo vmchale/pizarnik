@@ -127,6 +127,9 @@ T :: { T AlexPosn }
   | braces(sepBy(Arm,oplus)) { uncurry Σ (σparsed (snd $1)) }
   | T un T { UU $2 [$1,$3] }
 
+Cyc :: { (AlexPosn, [Word]) }
+    : lparen ilit rparen { ($1, digits $2) }
+
 A :: { A AlexPosn }
   : dip { B $1 A.Dip } | swap { B $1 A.Swap }
   | dup { B $1 A.Dup } | und { B $1 Un }
@@ -141,7 +144,7 @@ A :: { A AlexPosn }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
   | braces(sepBy(many(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
-  | lparen ilit rparen { L $1 (S $ iperm (digits $2)) }
+  | some(Cyc) { L (fst $ head $1) (S $ iperm (map snd $1)) }
 
 ASeq :: { ASeq AlexPosn }
      : many(A) {% fmap SL (lift get_pos) <*> pure (reverse $1) }
@@ -163,17 +166,15 @@ locArms = Nm.loc . fst . head
 
 mkΣ = Nm.fromList
 
--- TODO: allow digits e.g. (12) (145) etc.
--- multiple cycles...
-
-iperm :: [Word] -> UA.UArray Word Word
-iperm n@(i:_) = STArray.runSTUArray $ do
-    arr <- STArray.newListArray (1,maximum n) [1..]
-    z n arr $> arr
+iperm :: [[Word]] -> UA.UArray Word Word
+iperm cs = STArray.runSTUArray $ do
+    arr <- STArray.newListArray (1,maximum (concat cs)) [1..]
+    traverse (zy arr) cs $> arr
   where
-    z :: [Word] -> STArray.STUArray s Word Word -> ST s ()
-    z [j] arr = do {STArray.writeArray arr j i}
-    z (k:js@(j:_)) arr = do {STArray.writeArray arr k j; z js arr}
+    zy arr n@(i:_) = g arr n where
+        g :: STArray.STUArray s Word Word -> [Word] -> ST s ()
+        g arr [j] = STArray.writeArray arr j i
+        g arr (k:js@(j:_)) = STArray.writeArray arr k j *> g arr js
 
 roll :: T a -> [T a] -> T a
 roll t []      = t
