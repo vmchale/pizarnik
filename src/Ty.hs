@@ -23,7 +23,7 @@ import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, vsep, (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
 import           Ty.Α
 
 infixl 7 \-
@@ -213,6 +213,7 @@ uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
                                      | eqKeys σ0 σ1 = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
+                                     -- TODO: Ρ, Σ case above only requires one be a submap... perhaps this is too strict?
 uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
                                  | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
@@ -241,7 +242,7 @@ su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, 
 su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
 su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
-    -- FIXME propagate back?
+    -- TODO propagate back?
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n (σ0<>σ1<>ς) t0
     pure (n',g s')
