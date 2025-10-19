@@ -26,3 +26,18 @@ be defined like so:
 swap : a b -- b a
      := [ (12) ]
 ```
+
+For shuffle words involving `dup`, permutation literals may make an implementation easier to
+conceive.
+
+```pizarnik
+pick : a b c -- a b c a
+     := [ [[dup] dip] dip rot ]
+```
+
+vs.
+
+```pizarnik
+pick : a b c -- a b c a
+     := [ (13) dup (24) ]
+```
