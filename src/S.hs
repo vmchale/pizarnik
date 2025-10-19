@@ -1,15 +1,16 @@
 module S ( Ctx, F, S, lm, r, stack ) where
 
 import           A
-import           Data.Functor  (($>))
-import qualified Data.IntMap   as IM
-import           Data.List     (find)
-import           Data.Tree     (Tree (Node))
+import qualified Data.Array.Unboxed as UA
+import           Data.Functor       (($>))
+import qualified Data.IntMap        as IM
+import           Data.List          (find)
+import           Data.Tree          (Tree (Node))
 import           F
 import           Nm
-import qualified Nm.Map        as Nm
+import qualified Nm.Map             as Nm
 import           Pr
-import           Prettyprinter (Doc, pretty)
+import           Prettyprinter      (Doc, pretty)
 
 type S a = [A (TS a)]
 
@@ -49,6 +50,9 @@ _ ≺ _                   = False
     g t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
 
+g :: UA.UArray Word Word -> [x] -> [x]
+g p s = undefined
+
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
 ι _ (B _ Swap) (a0:a1:as)  = a1:a0:as
 ι _ (B _ Dup) (a:as)       = a:a:as
@@ -63,6 +67,7 @@ _ ≺ _                   = False
 ι c (B _ Lt) as            = ib c (<) as
 ι c (B _ Doll) (Q _ a:as)  = r c (aas a) as
 ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
+ι _ (L _ (S p)) a          = g p (reverse a)
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
 ι _ a@C{} as               = a:as
