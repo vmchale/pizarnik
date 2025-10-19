@@ -17,6 +17,7 @@ module A ( A (..)
 
 import           Control.Monad.Trans.State.Strict (State, evalState, get, modify, put)
 import qualified Data.Array.Unboxed               as UA
+import           Data.Bits                        (Bits (shiftL, (.&.), (.|.)))
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.Set                         as S
@@ -46,6 +47,23 @@ data L = I !Integer | R !Double | Str !T.Text | S !(UA.UArray Word Word)
 
 instance Pretty L where
     pretty (I i) = pretty i; pretty (R x) = pretty x; pretty (Str s) = dquotes (pretty s)
+    pretty (S p) = foldMap (\case [_] -> ""; cyc -> parens (foldMap pretty cyc)) (gc 0 1)
+      where
+        (1,n) = UA.bounds p
+
+        gc v j =
+            case step j of
+                Nothing -> []
+                Just j' -> let (v',cyc) = orb v j' in cyc:gc v' j'
+          where
+            step :: Word -> Maybe Word
+            step i | i==n = Nothing
+                   | v .&. (1 `shiftL` fromIntegral i) /= 0 = step (i+1)
+                   | otherwise = Just i
+
+        orb :: Word -> Word -> (Word, [Word])
+        orb v j | v .&. (1 `shiftL` fromIntegral j) /= 0 = (v, [])
+                | otherwise = let k=p UA.! j; (r, c) = orb (v .|. (1 `shiftL` fromIntegral j)) k in (r, j:c)
 
 data RR = RR !Char !Char
 data W = W (RR->T.Text) (RR->RR)
