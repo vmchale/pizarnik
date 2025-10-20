@@ -145,6 +145,9 @@ type TSeq a = [T a]
 -- TODO: :-- at data level
 (--:) = TS
 
+instance Functor TS where
+    fmap f (TS l r) = TS (map (fmap f) l) (map (fmap f) r)
+
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
 data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
@@ -153,6 +156,15 @@ data T a = TV { tL :: a, tvar :: Nm a } | TP { tL :: a, primty :: Prim }
          | TA { tL :: a, tA0, tA1 :: T a } | TC { tL :: a, tCon :: Nm a }
          | Ρ { tL :: a, tvar :: Nm a, tΡ :: NmMap (TSeq a) }
          | UU { tL :: a, uts :: [T a] }
+
+instance Functor T where
+    fmap f (TT x n) = TT (f x) (f<$>n); fmap f (TV x n) = TV (f x) (f<$>n)
+    fmap f (SV x n) = SV (f x) (f<$>n); fmap f (TC x n) = TC (f x) (f<$>n)
+    fmap f (TP x l) = TP (f x) l
+    fmap f (Σ x σ)   = Σ (f x) (map (fmap f)<$>σ)
+    fmap f (Ρ x n σ) = Ρ (f x) (f<$>n) (map (fmap f)<$>σ)
+    fmap f (TA x t₀ t₁) = TA (f x) (f<$>t₀) (f<$>t₁)
+    fmap f (QT x ts)    = QT (f x) (fmap f ts)
 
 instance PT (T a) where
     pp t@TP{} = pure t; pp t@TT{} = pure t
