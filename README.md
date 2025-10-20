@@ -62,6 +62,27 @@ gt : Ord -- Bool
    := [ { { `lt⁻¹ & `eq⁻¹ } False & `gt⁻¹ True } ]
 ```
 
+# Exhaustiveness Checking
+
+Pattern-match exhaustiveness checking falls out for free:
+
+```
+x : -- List(Unit)
+  := [ `nil ]
+
+w : -- Unit
+  := [ x head ]
+```
+
+will fail, viz.
+
+```
+23:8: ‘{`nil ⊕
+       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’
+```
+
+<!-- related to extensibility + atomicity of each _arm_ rather than tying each clause to the sum type decl... (constructors have arity buuut independent from the other sum typeys -->
+
 # Solving the Expression Problem
 
 See [Blume, Acar, and Chae](https://dl.acm.org/doi/10.1145/1159803.1159836).
