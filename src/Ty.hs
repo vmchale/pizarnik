@@ -453,9 +453,9 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ t0@(TV _ n0) t1@(TV _ n1) | n0==n1 = pure mempty
-                               -- | otherwise = sf t0 t1
 lt _ t0 t1@(TV _ n) = c1 n t0 t1
-lt _ t0@(TV _ n) t1 = c1 n t1 t0
+lt _ t0@(TV _ n) t1@(Ρ _ _ σ) | Nm.null σ = c1 n t1 t0
+lt _ t0@TV{} t1 = sf t0 t1
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
