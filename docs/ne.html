@@ -270,16 +270,21 @@ imagine how a pattern match that handles both the `<code>nil</code> and
 <div class="sourceCode" id="cb3"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> : <span class="dt">NE</span>(<span class="fu">a</span>) -- <span class="fu">a</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`cons</span>⁻¹ <span class="fu">nip</span> } ]</span></code></pre></div>
+<p>Had we tried to write <code>head : List(a) -- a</code>:</p>
 <div class="sourceCode" id="cb4"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">y</span> : -- <span class="dt">Unit</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  := [ <span class="fu">x</span> <span class="fu">head</span> ]</span></code></pre></div>
-<p>is admissible, but</p>
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>5:17: {<span class="cn">`nil</span> ⊕ <span class="dt">List</span>(<span class="fu">a</span>) <span class="fu">b</span> <span class="cn">`cons</span>} ⊀ {<span class="fu">ρ₁</span> <span class="fu">ρ₂</span> <span class="cn">`cons</span>}</span></code></pre></div>
+<p>Moreover, pattern-match exhaustiveness is enforced for non-empty
+lists, viz.</p>
 <div class="sourceCode" id="cb5"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">x</span> : -- <span class="dt">List</span>(<span class="dt">Unit</span>)</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  := [ <span class="cn">`nil</span> ]</span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">w</span> : -- <span class="dt">Unit</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  := [ <span class="fu">x</span> <span class="fu">head</span> ]</span></code></pre></div>
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">y</span> : -- <span class="dt">Unit</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  := [ <span class="fu">x</span> <span class="fu">head</span> ]</span></code></pre></div>
+<p>is admissible, but</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">x</span> : -- <span class="dt">List</span>(<span class="dt">Unit</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  := [ <span class="cn">`nil</span> ]</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">w</span> : -- <span class="dt">Unit</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  := [ <span class="fu">x</span> <span class="fu">head</span> ]</span></code></pre></div>
 <p>will fail:</p>
 <pre><code>23:8: ‘{`nil ⊕
        List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’</code></pre>
