@@ -16,5 +16,8 @@ y : -- Unit
 z : -- Unit
   := [ [nip] `unit x foldr ]
 
+x_ : -- List(Unit)
+   := [ `nil ]
+
 w : -- Unit
-  := [ `nil head ]
+  := [ x_ head ]

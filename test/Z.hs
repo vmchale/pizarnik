@@ -8,10 +8,10 @@ main :: IO ()
 main = defaultMain $
     testGroup "unit tests"
         -- TODO: error line no.?
-      ( tENo "test/data/pmfail.piz" "3:20: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
+      ( tENo "test/data/pmfail.piz" "5:12: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
       : tENo "test/data/badPerm.piz" "?"
-      : tE "test/data/permeable.piz" "20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’"
-      : tE "test/data/badList.piz" "5:17: {List(a) b `cons ⊕ `nil} ⊀ {ρ₁ ρ₂ `cons}"
+      : tE "test/data/permeable.piz" "23:8: ‘{`nil ⊕\n       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’"
+      : tE "test/data/badList.piz" "6:14: {List(a) b `cons ⊕ `nil} ⊀ {ρ₁ ρ₂ `cons}"
       : tENo "test/data/badBool.piz" "5:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
       : tENo "test/data/badBool2.piz" "5:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
       : [ tI fp | fp <- [ "lib/list.piz"

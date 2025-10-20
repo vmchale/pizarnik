@@ -108,7 +108,7 @@ sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
-tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
+tCtx c t | Just (n,s) <- tun t = ($>tL t) <$> β c n s | otherwise = Right t
 
 -- Hutton §16.6
 tun :: T a -> Maybe (Nm a, [T a])
@@ -509,7 +509,7 @@ lT ex n@(Nm _ (U u) _) = do
             Nothing -> throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
-lA es n@(Nm _ (U i) _) = do
+lA es n@(Nm _ (U i) l) = ($>l) <$> do
     b <- gets (fns.lo)
     case IM.lookup i b of
         Just ts -> liftClone ts
