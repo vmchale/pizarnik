@@ -23,7 +23,9 @@ gt : Ord -- Bool
 
 ``{`lt⁻¹ & `eq⁻¹}`` has type ``{`lt ⊕ `eq} --``. The use of `&` to juxtapose pattern match arms is intended to recall $(G \oplus H)^\bot = G^\bot \& H^\bot$ from linear logic.
 
-This makes sense---a `&` ("with")
+This makes sense---a `&` ("with") juxtaposes two pattern-match arms (inverse constructors) to form a function accepting a sum type as argument.
+<!-- A sum type gives us two choices for how to produce a return value
+de Morgan ^ linear logic -->
 
 ```pizarnik
 lte : { `lt ⊕ `eq } --

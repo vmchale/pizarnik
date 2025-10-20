@@ -1,5 +1,5 @@
 % Non-Empty Lists
-% 15 Oct. 2025
+% 20 Oct. 2025
 % V. E. McHale
 
 In Pizarnik, we can define functions on lists and they will work on
