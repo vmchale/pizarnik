@@ -1,3 +1,4 @@
+.PHONY: clean install docs
 MAKEFLAGS += --no-builtin-rules -j
 .DELETE_ON_ERROR:
 
@@ -18,6 +19,9 @@ install:
 
 fmt:
 	fd '\.(cpphs|hs)$$' $$(ja -F'\s*:\s*' '{%/hs-source-dirs/}{`2}' -i pizarnik.cabal) -x stylish-haskell -i
+
+docs:
+	make -C tut
 
 fix: $(HS_SRC)
 	fd '\.(cpphs|hs|x|y|hsc)$$' $$(ja -F'\s*:\s*' '{%/hs-source-dirs/}{`2}' -i pizarnik.cabal) -x ja "{%/^\s*infix(r|l)?\s+\d+/}{sprintf '- fixity: %s' \`0}}" -i
