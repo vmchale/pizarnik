@@ -34,6 +34,14 @@ head : NE(a) -- a
      := [ { `cons⁻¹ nip } ]
 ```
 
+Had we tried to write `head : List(a) -- a`:
+
+```pizarnik
+5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
+```
+
+Moreover, pattern-match exhaustiveness is enforced for non-empty lists, viz.
+
 ```pizarnik
 y : -- Unit
   := [ x head ]
@@ -42,27 +50,29 @@ y : -- Unit
 is admissible, but
 
 ```pizarnik
+x : -- List(Unit)
+  := [ `nil ]
+
 w : -- Unit
-  := [ `nil head ]
+  := [ x head ]
 ```
 
 will fail:
 
 ```
-20:8: ‘{`nil}’ is not an acceptable argument, expected ‘{List(a) b `cons}’
+23:8: ‘{`nil ⊕
+       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’
 ```
 
 # Superiority
 
-Doing the above in Haskell (for instance) is more fraught. We can define
+Doing the above in Haskell (for instance) is more fickle. We can define
 `foldr` to apply to both lists and non-empty lists using a typeclass,
-but we still need to write the implementation twice. Moreover, the
-globality of typeclasses
+but we still need to write the implementation twice. And typeclass
+instance scoping is
+[fraught](https://blog.ezyang.com/2014/07/type-classes-confluence-coherence-global-uniqueness/).
 
-<!-- extensible cases are superior to typeclasses in the same way row polymorphism is superior to typeclasses -->
+Extensible cases avoid this, in a way dual to row polymorphism—where it works,
+it is strictly preferable.
 
-<!-- https://blog.ezyang.com/2014/07/type-classes-confluence-coherence-global-uniqueness/ -->
-<!-- https://pchiusano.github.io/2018-02-13/typeclasses.html "open"
-discovery/containers... -->
-<!-- The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists, enforced by static typing. -->
-<!-- no subtyping relation except checking applicability? -->
+<!-- https://pchiusano.github.io/2018-02-13/typeclasses.html "open" discovery/containers... -->
