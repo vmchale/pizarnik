@@ -65,3 +65,7 @@ gt : Ord -- Bool
 # Solving the Expression Problem
 
 See [Blume, Acar, and Chae](https://dl.acm.org/doi/10.1145/1159803.1159836).
+
+# Doc
+  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
+  - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
