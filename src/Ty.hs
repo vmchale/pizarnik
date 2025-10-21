@@ -274,7 +274,7 @@ su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
 su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
-                               -- TODO: should we enforce TT have arity 0 here?
+                               -- TODO: should we check TT has arity 0 here?
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
                               | otherwise = cf t0 t1
 su _ _ t0@(Σ _ σ) t1@(TT _ n) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
@@ -492,6 +492,7 @@ mTS c = mtsc c mempty
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
+-- FIXME
 -- on right we should disallow a = b? at that point there should be canonical substitutions...
 -- (right now we have (123) match against a b c -- c a b by b<-a c<- a)
 mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
@@ -633,7 +634,6 @@ ta b s (C l tt)        = do
 ta b s (Pat _ as)      = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    -- TODO: maybe "pick off" negatives here
     (t, s1) <- dU (π b) s0 sigs
     pure (Pat t (SL t as'), s1)
 
