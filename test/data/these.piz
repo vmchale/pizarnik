@@ -1,4 +1,5 @@
 @i prelude/fn
+@i lib/either
 @i lib/both
 
 %-

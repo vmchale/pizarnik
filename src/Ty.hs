@@ -706,7 +706,7 @@ dU c s x tss = do
     ρ <- zipWithM pad (tLs<$>l0) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     tψ <- ψ c (zt ls' rs')
-    (al,s') <- traceShow (ls',rs',tψ) $ srs s (Nm.toList x tψ)
+    (al,s') <- srs s (Nm.toList x tψ)
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')

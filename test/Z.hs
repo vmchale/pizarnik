@@ -16,7 +16,7 @@ main = defaultMain $
       : tENo "test/data/badBool2.piz" "5:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
       : [ tI fp | fp <- [ "lib/list.piz"
                         , "lib/either.piz"
-                        , "lib/these.piz"
+                        , "lib/both.piz"
                         , "prelude/ord.piz"
                         , "prelude/bool.piz"
                         , "test/examples/mutual.piz"
