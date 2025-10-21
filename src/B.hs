@@ -4,7 +4,6 @@ import           A
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Nm
-import qualified Nm.Map        as Nm
 import           Prettyprinter (Pretty (pretty), (<+>))
 
 type Cs a=IM.IntMap ([Nm a], T a); type Β a=IM.IntMap (T a)
