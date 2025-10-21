@@ -1,7 +1,6 @@
 module B ( Cs, BE, β ) where
 
 import           A
-import           Control.Monad (foldM)
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Nm
@@ -32,14 +31,9 @@ bS st (TV _ n@(Nm _ (U j) _)) =
         Nothing -> Left $ TCA n
         Just t  -> Right t
 -- avoid TCA errors not by user when substituting
-bS st t@(TA x t0 t1) | Just{} <- unA t = pure t -- TODO: bS on arguments...?
+bS st t@(TA x t0 t1) | Just{} <- unA t = pure t -- avoid over-expanding infinite (e.g. List(a))
                      | otherwise = TA x <$> bS st t0 <*> bS st t1
 bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
 bS st (QT x sig) = QT x <$> tTS (bS st) sig
-bS st (UU x ts) = Σ x <$> foldMapM f ts
-  where
-    f (TT _ tt) = pure (Nm.singleton tt [])
-    f (Σ _ σ)   = pure σ
-
-foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
+bS st (UU x ts) = UU x <$> traverse (bS st) ts

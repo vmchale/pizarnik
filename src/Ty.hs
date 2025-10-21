@@ -6,7 +6,7 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (when, zipWithM, (<=<))
+import           Control.Monad                    (foldM, when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
@@ -478,12 +478,21 @@ lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
+lt c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; lt c t0' t1}
+lt c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; lt c t0 t1'}
 lt _ t0@TP{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TP{} = sf t0 t1
 lt _ t0@TP{} t1@TT{} = sf t0 t1; lt _ t0@TT{} t1@TP{} = sf t0 t1
 lt _ t0@TT{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TT{} = sf t0 t1
 lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
+
+uU :: Cs a -> T a -> TM a (T a)
+uU c tu@(UU x ts) = Σ x <$> foldMapM f ts where
+    f (TT _ n) = pure (Nm.singleton n [])
+    f (Σ _ σ)  = pure σ
+    f t        | Just (n,ts) <- tun t = f =<< βc c t
+uU _ t         = pure t
 
 -- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
@@ -748,6 +757,8 @@ onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 (@<>) = foldMap
 
 ie=error"internal error."
+
+foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
 
 eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
 eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1

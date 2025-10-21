@@ -165,6 +165,7 @@ instance Functor T where
     fmap f (Ρ x n σ) = Ρ (f x) (f<$>n) (map (fmap f)<$>σ)
     fmap f (TA x t₀ t₁) = TA (f x) (f<$>t₀) (f<$>t₁)
     fmap f (QT x ts)    = QT (f x) (fmap f ts)
+    fmap f (UU x ts)    = UU (f x) (map (fmap f) ts)
 
 instance PT (T a) where
     pp t@TP{} = pure t; pp t@TT{} = pure t
