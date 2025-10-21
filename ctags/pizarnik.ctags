@@ -1,0 +1,4 @@
+--langdef=PIZARNIK
+--langmap=PIZARNIK:.piz
+--regex-pizarnik=/\s*([[:lower:]][[:alpha:]]*)\s*:/\1/f,function/
+--regex-pizarnik=/type\s*([[:upper:]][[:alnum:]]+) *([[:lower:]] +)*=/\1/t,type/

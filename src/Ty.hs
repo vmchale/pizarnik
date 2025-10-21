@@ -48,6 +48,7 @@ data TE a = BE (BE a) | O (T a) (T a)
           | LE (TSeq a) (TSeq a)
           | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a) | UF (T a) (T a)
           | AM (Nm a) | IS (Nm a)
+          | Bare (T a)
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
@@ -64,6 +65,7 @@ instance Pretty a => Pretty (TE a) where
     pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
     pretty (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
     pretty (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
+    pretty (Bare t)     = tc t$"Bare union:" <+> sq t
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
@@ -460,6 +462,7 @@ lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
+-- TODO: this would fail for TC like type H=Int (0-ary type synonyms)
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     | occρ n σ1 = throwError$O t0 t1
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
@@ -488,11 +491,16 @@ lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 uU :: Cs a -> T a -> TM a (T a)
-uU c tu@(UU x ts) = Σ x <$> foldMapM f ts where
-    f (TT _ n) = pure (Nm.singleton n [])
-    f (Σ _ σ)  = pure σ
-    f t        | Just (n,ts) <- tun t = f =<< βc c t
-uU _ t         = pure t
+uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
+    f (TT _ n)  = pure (Nm.singleton n [])
+    f (Σ _ σ)   = pure σ
+    f t         | Just{} <- unA t = f =<< βc c t
+    f (UU _ ts) = foldMapM f ts
+    -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
+    f SV{}      = ie
+    f Ρ{}       = ie
+    f TP{}      = throwError$Bare te
+    f QT{}      = throwError$Bare te
 
 -- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
