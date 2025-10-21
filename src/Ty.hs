@@ -108,7 +108,7 @@ sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 tCtx :: Cs a -> T a -> Either (BE a) (T a)
-tCtx c t | Just (n,s) <- tun t = ($>tL t) <$> β c n s | otherwise = Right t
+tCtx c t | Just (n,s) <- tun t = β c n s | otherwise = Right t
 
 -- Hutton §16.6
 tun :: T a -> Maybe (Nm a, [T a])

@@ -1,6 +1,7 @@
 module B ( Cs, BE, β ) where
 
 import           A
+import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Nm
 import           Prettyprinter (Pretty (pretty), (<+>))
@@ -12,7 +13,7 @@ newtype BE a = TCA (Nm a)
 instance Pretty a => Pretty (BE a) where pretty (TCA n) = pretty (loc n) <> ":" <+> "Type constructor not fully applied"
 
 β :: Cs a -> Nm a -> [T a] -> Either (BE a) (T a)
-β c n bs = let (vs,t) = lC n c in bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
+β c n bs = let (vs,t) = lC n c in ($>loc n) <$> bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
 
 lC :: Nm a -> Cs a -> ([Nm a], T a)
 lC (Nm _ (U i) _) = IM.findWithDefault (error "Internal error. Type synonym not in scope?") i
