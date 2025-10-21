@@ -631,10 +631,10 @@ ta b s (C l tt)        = do
     -- TODO: pad beginning not-inverse constructors with a₀ etc. not ρ₀?
     ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
-ta b s (Pat _ as)      = do
+ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
     sigs <- traverse (peekS s0.aLs) as'
-    (t, s1) <- dU (π b) s0 sigs
+    (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 
 pad :: a -> Int -> TM a (TSeq a)
@@ -668,7 +668,6 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
                                             Σ x σ -> pure (Nm.keys σ x)
                                             _ -> throwError (PM ts)
 
-
           (t:_) !* 1          = pure t
           (Σ{}:ts) !* n       = ts!*(n-1)
           (TC{}:ts) !* n      = ts!*(n-1)
@@ -690,12 +689,12 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (QT{}:ts)      = g ts
 
 {-# SCC dU #-}
-dU :: Nt a -> Subst a -> [TS a] -> TM a (TS a, Subst a)
-dU c s tss = do
+dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
+dU c s x tss = do
     ρ <- zipWithM pad (tLs<$>ls) [ rm-length r | r <- rs ]
     let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
     tψ <- ψ rr (zt ls' rs')
-    (al,s') <- srs s (Nm.toList (tLs$head ls) tψ)
+    (al,s') <- srs s (Nm.toList x tψ)
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
@@ -709,7 +708,7 @@ dU c s tss = do
         srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
         srs sϵ ((n, []):_)   = error"nyi"
         -- TODO: step without tuck/etc.
-        srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ ts; first ((n,tϵ):) <$> srs s' a}
+        srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ (loc n) ts; first ((n,tϵ):) <$> srs s' a}
 
         frs sϵ [t]    = pure (t, sϵ)
         frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
@@ -717,11 +716,10 @@ dU c s tss = do
         urs sϵ [t]    = pure (t, sϵ)
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
-        an :: [(Nm a, TSeq a)] -> TM a (T a, [[T a]])
         an as = do
             (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lT rr nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
-            pure (Σ l (Nm.fromDistinctAscList (zip nms tls)), tas)
-          where l=loc (fst$head as); nms=map fst as
+            pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
+          where nms=map fst as
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
