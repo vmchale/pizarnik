@@ -10,7 +10,6 @@ import           Control.Monad                    (foldM, when, zipWithM, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
-import qualified Data.Array                       as A
 import qualified Data.Array.Unboxed               as UA
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
@@ -629,8 +628,7 @@ ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l String]) lit, s)
 ta _ s (L l (S p)) = do
     ns <- traverse (\_ -> ftv l "a") (UA.indices p)
-    let ns' = A.array (UA.bounds p) (zip (reverse $ UA.elems p) ns)
-    pure (L (ns --: reverse (A.elems ns')) (S p), s)
+    pure (L (ns --: reverse (p `gp` reverse ns)) (S p), s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}

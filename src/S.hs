@@ -1,7 +1,6 @@
 module S ( Ctx, F, S, lm, r, stack ) where
 
 import           A
-import qualified Data.Array         as A
 import qualified Data.Array.Unboxed as UA
 import           Data.Functor       (($>))
 import qualified Data.IntMap        as IM
@@ -51,9 +50,6 @@ _ ≺ _                   = False
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
 
-g :: UA.UArray Word Word -> [a] -> [a]
-g p xs = A.elems (A.array (UA.bounds p) (zip (UA.elems p) xs))
-
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
 ι _ (B _ Dup) (a:as)       = a:a:as
 ι _ (B _ Un) (_:as)        = as
@@ -67,7 +63,7 @@ g p xs = A.elems (A.array (UA.bounds p) (zip (UA.elems p) xs))
 ι c (B _ Lt) as            = ib c (<) as
 ι c (B _ Doll) (Q _ a:as)  = r c (aas a) as
 ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
-ι _ (L _ (S p)) a          = let (1,n) = UA.bounds p; (x,a_)=splitAt (fromIntegral n) a in g p x++a_
+ι _ (L _ (S p)) a          = let (1,n) = UA.bounds p; (x,a_)=splitAt (fromIntegral n) a in gp p x++a_
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
 ι _ a@C{} as               = a:as
