@@ -5,7 +5,7 @@ evocative syntax for pattern-matching.
 
 <!-- % https://homepages.inf.ed.ac.uk/wadler/papers/dual-revolutions/dual-revolutions.pdf gets it backwards? "from A & B one may extract A or B but not both... our take is "one path is taken"... resources not so much -->
 
-# Pattern-Match Arms as Functions
+# First-Class Pattern-Match Arms
 
 Extensible cases are atoms, and typeable.
 
@@ -41,7 +41,7 @@ foldr : [ a b -- b ] b List(a) -- b
            & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
 ```
 
-The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we tried to write `head : List(a) -- a`:
+The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we written `head : List(a) -- a`:
 
 ```
 5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
@@ -87,7 +87,13 @@ will fail, viz.
 
 See [Blume, Acar, and Chae](https://dl.acm.org/doi/10.1145/1159803.1159836).
 
-# Doc
-  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
+# Writing
+
+## Examples
+
   - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
-  - [Pattern-Match as Inverse](https://vmchale.github.io/pizarnik/inv.html)
+
+## Theory
+
+  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
+  - [Pattern-Matching as Inverse](https://vmchale.github.io/pizarnik/inv.html)
