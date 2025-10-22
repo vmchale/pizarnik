@@ -36,15 +36,13 @@ type Repl = InputT (StateT X IO)
 
 names :: Monad m => StateT X m [String]
 names = do
-    -- X (_,t,_,_) _ c <- get
-    -- pure $ map T.unpack (M.keys t)
-    X (_,_,n,_) _ c <- get
+    X (_,_,n,_,_) _ c <- get
     let u=concatMap (IM.keys . snd . rootLabel) c
     pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) u)
 
 lg=lift.gets
 
-sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty)
+sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty,0)
 
 runRepl :: [FilePath] -> Repl a -> IO a
 runRepl fp x = do
@@ -73,7 +71,7 @@ loop = do
     inp <- getInputLine " "
     case words <$> inp of
         Just (":ty":e) -> printT (unwords e) *> loop
-        Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
+        Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_,_) _ _) -> n)) *> loop
         Just [":dbg"]  -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
@@ -83,7 +81,7 @@ printT src = do
     (X l _ c) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
-        Right ((i,_,_,_),at) -> do
+        Right ((i,_,_,_,0),at) -> do
             let tyctx = naïve c
             case tAS i tyctx [] at of
                 Right ((_, SL a _),_) -> pE a
@@ -97,13 +95,13 @@ printA src = do
     (X l s c) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
-        Right ((i,ii,ti,m),at) -> do
+        Right ((i,ii,ti,m,0),at) -> do
             let tyctx = naïve c
             case tAS i tyctx s at of
                 Right ((TS (_:_:_) _,_),_) -> po"not enough arguments on the stack."
                 Right ((_,a),i') -> do
                     let s' = r c (aas a) s
-                    lift $ put (X (i',ii,ti,m) s' c)
+                    lift $ put (X (i',ii,ti,m,0) s' c)
                     stackpp s'
                 Left err -> pE err
 

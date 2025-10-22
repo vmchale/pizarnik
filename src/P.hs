@@ -31,7 +31,7 @@ fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
 db :: AlexUserState -> [Tree (IM.IntMap (ASeq (TS AlexPosn)), b)] -> IO ()
-db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+db (_,_,n,_,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
   where
     pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
     pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList
@@ -41,7 +41,7 @@ rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
 tMs incls fp = do
     (i,c) <- rMs incls fp
-    (u,_,_,_) <- get
+    (u,_,_,_,_) <- get
     let r = [ c IM.! unU n | n <- i ]
     let tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
     lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) r) u)
@@ -62,16 +62,16 @@ rMs incls fp = do
     put st' $> (rs,m)
   where
     go _ _ st _ [] = pure (st, IM.empty)
-    go rs ms (u,t,ii,m) mex (n@(MN _ (U i)):mns) = do
+    go rs ms (u,t,ii,m,l) mex (n@(MN _ (U i)):mns) = do
         exc <- exs n deps
         (u',exϵ,md) <- lift $ except $ first RE $ rM u exc mp
-        let st' = (if i `IS.member` rs then apply exϵ else id) (u',t,ii,m)
+        let st' = (if i `IS.member` rs then apply exϵ else id) (u',t,ii,m,l)
         second (IM.insert i md) <$> go rs ms st' (IM.insert i exϵ mex) mns
       where
         mp@(M is _)=m'lookup i ms; deps=(`mnlookup` mex)<$>is
 
     apply :: Ex -> AlexUserState -> AlexUserState
-    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn) -> (u, fmap (\x -> IM.findWithDefault x x ex') t, i `fw` ex',mn)
+    apply (Ex ii0 _ ii1) = let ex'=ii0<>ii1 in \(u,t,i,mn,l) -> (u, fmap (\x -> IM.findWithDefault x x ex') t, i `fw` ex',mn,l)
       where
         -- FIXME: performance...
         fw m a = IM.mapKeys (\k -> IM.findWithDefault k k a) m
@@ -80,7 +80,7 @@ mnlookup (MN _ (U i)) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")
 
 rRepl :: RIO a -> IO (Either (E AlexPosn) a)
-rRepl = runExceptT.flip evalStateT (0,mempty,mempty,mempty)
+rRepl = runExceptT.flip evalStateT (0,mempty,mempty,mempty,0)
 
 exs :: MN -> [Ex] -> RIO Ex
 exs n = foldM mx (Ex IM.empty IM.empty IM.empty)
