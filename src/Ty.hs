@@ -20,6 +20,7 @@ import           Data.List                        (foldl')
 import qualified Data.Text                        as T
 import           Data.Typeable                    (Typeable)
 import           F
+import           G
 import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet

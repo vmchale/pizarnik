@@ -7,6 +7,7 @@ import qualified Data.IntMap        as IM
 import           Data.List          (find)
 import           Data.Tree          (Tree (Node))
 import           F
+import           G
 import           Nm
 import qualified Nm.Map             as Nm
 import           Pr

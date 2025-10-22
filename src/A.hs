@@ -8,7 +8,6 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , (--:)
-         , gp
          , taseq
          , unA
          , am
@@ -254,8 +253,5 @@ pSeq = hsep.map p0
 
 pASeq :: ASeq a -> Doc ann
 pASeq = hsep.map pretty.aas
-
-gp :: UA.UArray Word Word -> [a] -> [a]
-gp p xs = A.elems (A.array (UA.bounds p) (zip (UA.elems p) xs))
 
 instance Show (A a) where show=show.pretty
