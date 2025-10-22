@@ -662,7 +662,7 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 ψ :: Nt a -> [TS a] -> TM a (Nm.NmMap [TS a])
 ψ c tss = do
     n <- minimum <$> traverse g sl
-    -- FIXME: give a nice error if no constructor depth (n=0)
+    when (n==0) $ throwError (PM (head$map tlefts tss))
     forks <- traverse (p n) sl
     h <- traverse (l n) sl
     let tss' = zipWith TS (map reverse h) (map trights tss)
@@ -732,7 +732,7 @@ dU c s x tss = do
 
         srs sϵ []            = pure ([], sϵ)
         srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
-        srs sϵ ((n, []):_)   = error"nyi"
+        srs _  ((_, []):_)   = ie
         -- TODO: step without tuck/etc.
         srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ (loc n) ts; first ((n,tϵ):) <$> srs s' a}
 
