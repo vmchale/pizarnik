@@ -11,7 +11,7 @@
              , withAlexSt
              , nMIdent
              -- * Lexer states
-             , atoms
+             , postImp
              , get_pos
              ) where
 
@@ -28,7 +28,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Nm
 import Pr (sq)
-import Prettyprinter (Pretty (..), (<+>), parens)
+import Prettyprinter (Pretty (..), (<+>))
 
 }
 
@@ -54,54 +54,21 @@ tokens :-
     <0>    {
 
         "@i"                    { kw I }
-        "%-"                    { sym IT `andBegin` decl }
+        "%-"                    { sym IT `andBegin` postImp }
 
         @modname                { tok (\p s -> TokMN p <$> aus (nMIdent (mkText s))) }
 
     }
 
-    <0,decl,atoms,perm> {
+    <0,postImp> {
 
         $white+                 ;
         "#".*                   ;
     }
 
-    <decl> {
+    <postImp> {
 
-        :                       { sym Colon }
-        "["                     { sym LBracket }
-        "]"                     { sym RBracket }
-        "("                     { sym LParen }
-        ")"                     { sym RParen }
-        ";"                     { sym Semicolon }
-        =                       { sym Eq }
-        ","                     { sym Comma }
-        "--"                    { sym Sig }
-        ⊕                       { sym DSum }
-        ∪                       { sym Up }
-
-        type                    { kw Ty }
-        Int                     { builtin Int }
-        Bool                    { builtin Bool }
-        String                  { builtin String }
-
-        :=                      { sym DefEq `andBegin` atoms }
-        ≔                       { sym DefEq `andBegin` atoms }
-
-        @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
-        '@tyname                { tok (\p s -> TokSV p <$> nIdent p (mkText s)) }
-
-    }
-
-    <perm> {
-        $digit+                 { tok (\p s -> alex $ TokG p (iperm s)) }
-        ")"                     { sym RParen `andBegin` atoms }
-    }
-
-    <atoms> {
-        $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s)) }
-
-        "("                     { sym LParen `andBegin` perm }
+        $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s) (iperm s)) }
 
         "+"                     { sym Add }
         "-"                     { sym Sub }
@@ -109,30 +76,47 @@ tokens :-
         "/"                     { sym Div }
         "%"                     { sym IDiv }
 
-        "["                     { (\(p,_,_,_) _ -> aus $ \(u,n,i,m,l) -> ((u,n,i,m,l+1), TokS p LBracket)) }
-        "]"                     { (\(p,_,_,_) _ -> unf $> TokS p RBracket) }
+        :                       { sym Colon }
+        "["                     { sym LBracket }
+        "]"                     { sym RBracket }
+        "("                     { sym LParen }
+        ")"                     { sym RParen }
+        ";"                     { sym Semicolon }
+        ","                     { sym Comma }
+        "{"                     { sym LBrace }
+        "}"                     { sym RBrace }
         &                       { sym Amp }
+        :=                      { sym DefEq }
+        ≔                       { sym DefEq }
+        "--"                    { sym Sig }
+        ⊕                       { sym DSum }
+        ∪                       { sym Up }
         ⁻¹                      { sym PInv }
         =                       { sym Eq }
         _                       { sym Under }
         "<"                     { sym Lt }
         ">"                     { sym Gt }
+        -- 𝟙
 
         dip                     { builtin Dip }
         dup                     { builtin Dup }
         rem                     { builtin Rem }
         "$"                     { builtin Doll }
-    }
 
-    <decl,atoms> {
-        "{"                     { sym LBrace }
-        "}"                     { sym RBrace }
+        type                    { kw Ty }
+
+        Int                     { builtin Int }
+        Bool                    { builtin Bool }
+        String                  { builtin String }
 
         True                    { tok (\p _ -> alex $ TokT p (true p)) }
         False                   { tok (\p _ -> alex $ TokT p (false p)) }
 
         @name                   { tok (\p s -> TokN p <$> nIdent p (mkText s)) }
+        @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
+        '@tyname                { tok (\p s -> TokSV p <$> nIdent p (mkText s)) }
         "`"@tag                 { tok (\p s -> TokT p <$> nIdent p (mkText s)) }
+
     }
 
 {
@@ -161,10 +145,10 @@ sym = constructor TokS
 builtin = constructor TokB
 kw = constructor TokKw
 
-type AlexUserState = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn), IM.IntMap MN, Int)
+type AlexUserState = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn), IM.IntMap MN)
 
 alexInitUserState :: AlexUserState
-alexInitUserState = (0, mempty, mempty, mempty, 0)
+alexInitUserState = (0, mempty, mempty, mempty)
 
 aus :: (AlexUserState -> (AlexUserState, a)) -> Alex a
 aus f = Alex (Right . mapu f)
@@ -177,19 +161,19 @@ get_pos :: Alex AlexPosn
 get_pos = gets_alex alex_pos
 
 nMIdent :: T.Text -> AlexUserState -> (AlexUserState, MN)
-nMIdent t = \st@(max', ns, us, ums, l) ->
+nMIdent t = \st@(max', ns, us, ums) ->
     case M.lookup t ns of
         Just i -> (st, MN d (U i))
         Nothing -> let i=max'+1; nM=MN d (U i)
-                   in ((i, M.insert t i ns, us, IM.insert i nM ums, l), nM)
+                   in ((i, M.insert t i ns, us, IM.insert i nM ums), nM)
     where d = NE.fromList (T.splitOn "/" t)
 
 nIdent :: AlexPosn -> T.Text -> Alex (Nm AlexPosn)
-nIdent pos t = aus $ \pre@(max', ns, us, ums, l) ->
+nIdent pos t = aus $ \pre@(max', ns, us, ums) ->
     case M.lookup t ns of
         Just i  -> (pre, Nm t (U i) pos)
         Nothing -> let i = max'+1; nNm = Nm t (U i) pos
-                   in ((i, M.insert t i ns, IM.insert i nNm us, ums, l), nNm)
+                   in ((i, M.insert t i ns, IM.insert i nNm us, ums), nNm)
 
 alexEOF = EOF <$> get_pos
 
@@ -226,8 +210,7 @@ instance Pretty B where
     pretty Rem = "rem"
 
 data Tok = EOF { loc :: AlexPosn }
-         | TokI { loc :: AlexPosn, int :: Integer }
-         | TokG { loc :: AlexPosn, tokp :: [Int] }
+         | TokI { loc :: AlexPosn, int :: Integer, digits :: [Int] }
          | TokS { loc :: AlexPosn, tokSym :: !Sym }
          | TokN { loc :: AlexPosn, name :: !(Nm AlexPosn) }
          | TokB { loc :: AlexPosn, tokB :: !B }
@@ -239,9 +222,8 @@ data Tok = EOF { loc :: AlexPosn }
 
 instance Pretty Tok where
     pretty EOF{}        = "(eof)"
-    pretty (TokI _ i)   = pretty i
+    pretty (TokI _ i _) = pretty i
     pretty (TokS _ s)   = pretty s
-    pretty (TokG _ s)   = parens (foldMap pretty s)
     pretty (TokN _ n)   = "identifier" <+> sq n
     pretty (TokMN _ m)  = "module" <+> sq m
     pretty (TokTN _ tn) = pretty tn
@@ -249,13 +231,6 @@ instance Pretty Tok where
     pretty (TokB _ b)   = "builtin" <+> sq b
     pretty (TokT _ t)   = pretty t
     pretty (TokKw _ k)  = "keyword" <+> sq k
-
-unf :: Alex ()
-unf = Alex $ \st ->
-    let (u,n,i,m,l)=alex_ust st
-        st'=if l==1 then st { alex_ust = (u,n,i,m,0), alex_scd = decl } else st { alex_ust = (u,n,i,m,l-1), alex_scd = atoms }
-    in
-        Right (st', ())
 
 withAlexSt :: BSL.ByteString -> Int -> AlexUserState -> Alex a -> Either String (AlexUserState, a)
 withAlexSt inp scd ust (Alex f) = first alex_ust <$> f
