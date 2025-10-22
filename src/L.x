@@ -124,7 +124,7 @@ tokens :-
 mkText :: BSL.ByteString -> T.Text
 mkText = decodeUtf8 . BSL.toStrict
 
-iperm :: BSL.ByteString -> [Word]
+iperm :: BSL.ByteString -> [Int]
 iperm = map (fromIntegral.(subtract 48)).BSL.unpack
 
 readDigits :: BS.ByteString -> Integer
@@ -231,6 +231,13 @@ instance Pretty Tok where
     pretty (TokB _ b)   = "builtin" <+> sq b
     pretty (TokT _ t)   = pretty t
     pretty (TokKw _ k)  = "keyword" <+> sq k
+
+unf :: Alex ()
+unf = Alex $ \st -> 
+    let (u,n,i,m,l)=alex_ust st
+        st'=if l==1 then st { alex_ust = (u,n,i,m,0), alex_scd = decl } else st { alex_ust = (u,n,i,m,l-1), alex_scd = atoms }
+    in
+        Right (st', ())
 
 withAlexSt :: BSL.ByteString -> Int -> AlexUserState -> Alex a -> Either String (AlexUserState, a)
 withAlexSt inp scd ust (Alex f) = first alex_ust <$> f

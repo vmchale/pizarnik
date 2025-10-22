@@ -43,7 +43,7 @@ instance Pretty B where
     pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"; pretty Rem = "rem"
     pretty Doll = "$"
 
-data L = I !Integer | R !Double | Str !T.Text | S !(UA.UArray Word Word)
+data L = I !Integer | R !Double | Str !T.Text | S !Sn
 
 instance Pretty L where
     pretty (I i) = pretty i; pretty (R x) = pretty x; pretty (Str s) = dquotes (pretty s)

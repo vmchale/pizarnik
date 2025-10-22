@@ -18,6 +18,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Functor (($>))
 import qualified Data.IntMap as IM
 import qualified Data.Text as T
+import G (Sn)
 import L
 import Nm hiding (loc)
 import qualified Nm
@@ -165,13 +166,13 @@ locArms = Nm.loc . fst . head
 
 mkΣ = Nm.fromList
 
-iperm :: [[Word]] -> UA.UArray Word Word
+iperm :: [[Int]] -> Sn
 iperm cs = STArray.runSTUArray $ do
     arr <- STArray.newListArray (1,maximum (concat cs)) [1..]
     traverse (zy arr) cs $> arr
   where
     zy arr n@(i:_) = g arr n where
-        g :: STArray.STUArray s Word Word -> [Word] -> ST s ()
+        g :: STArray.STUArray s Int Int -> [Int] -> ST s ()
         g arr [j] = STArray.writeArray arr j i
         g arr (k:js@(j:_)) = STArray.writeArray arr k j *> g arr js
 
