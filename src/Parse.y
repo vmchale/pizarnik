@@ -38,7 +38,6 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 
 %token
 
-    imp { TokS $$ IT }
     colon { TokS $$ Colon }
     sig { TokS $$ Sig }
     defEq { TokS $$ DefEq }
@@ -154,8 +153,7 @@ D :: { D AlexPosn AlexPosn }
   | type tyname many(name) eq T semicolon { TD $1 $2 (reverse $3) $5 }
 
 M :: { M AlexPosn AlexPosn }
-  : many(seq(i,modname)) imp many(D) { M (reverse $1) (reverse $3) }
-  | many(D) { M [] (reverse $1) }
+  : many(seq(i,modname)) many(D) { M (reverse $1) (reverse $2) }
 
 {
 
@@ -197,7 +195,7 @@ instance Exception ParseE
 type Parse = ExceptT ParseE Alex
 
 pM = runParseSt parseM 0
-pAtoms = runParseSt parseASeq postImp
+pAtoms = runParseSt parseASeq 0
 
 pA = pM alexInitUserState
 

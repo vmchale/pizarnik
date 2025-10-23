@@ -1,5 +1,3 @@
-%-
-
 and : Bool Bool -- Bool
     := [ { True⁻¹ True⁻¹ True
          & False⁻¹ {True⁻¹ & False⁻¹} False

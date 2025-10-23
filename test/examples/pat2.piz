@@ -1,8 +1,6 @@
 @i prelude/fn
 @i lib/maybe
 
-%-
-
 something : Bool Maybe(a) -- Bool
           := [{`just⁻¹ drop True⁻¹ True &
                `nothing⁻¹ False⁻¹ False &

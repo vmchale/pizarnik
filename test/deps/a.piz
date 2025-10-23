@@ -1,4 +1,2 @@
-%-
-
 square : Int -- Int
        := [ dup * ]

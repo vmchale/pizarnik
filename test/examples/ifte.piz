@@ -1,7 +1,5 @@
 @i prelude/fn
 
-%-
-
 type B = {`t ⊕ `f};
 
 if : a b `t -- a

@@ -1,5 +1,3 @@
-%-
-
 type Maybe a = { a `just ⊕ `nil };
 
 fromJust : Maybe(a) -- a

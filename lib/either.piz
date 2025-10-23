@@ -1,7 +1,5 @@
 @i prelude/fn
 
-%-
-
 type Either a b = { a `left ⊕ b `right };
 
 # TODO: conjugation? (dip...)

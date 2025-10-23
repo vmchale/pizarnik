@@ -1,7 +1,5 @@
 @i prelude/fn
 @i lib/list
 
-%-
-
 unsafeHead : List(a) -- a
            := [ { `cons⁻¹ nip } ]

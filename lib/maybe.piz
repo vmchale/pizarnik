@@ -1,7 +1,5 @@
 @i prelude/fn
 
-%-
-
 type Maybe a = { a `just ⊕ `nothing };
 
 isJust : Maybe(a) -- Bool

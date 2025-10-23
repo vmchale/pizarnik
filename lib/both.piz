@@ -1,8 +1,6 @@
 @i prelude/fn
 @i lib/either
 
-%-
-
 type Both a b = Either(a,b) ∪ { a b `both };
 
 map1 : [a -- b] Both(a,c) -- Both(b,c)

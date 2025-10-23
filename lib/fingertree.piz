@@ -1,5 +1,3 @@
-%-
-
 type BinaryFinger v a = { v a `leaf ⊕ v BinaryFinger(v,a) BinaryFinger(v,a) `branch }
 
 # https://apfelmus.nfshost.com/articles/monoid-fingertree.html

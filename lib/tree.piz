@@ -1,7 +1,5 @@
 @i prelude/fn
 
-%-
-
 type Tree a = { a `leaf ⊕ Tree(a) Tree(a) a `node };
 
 depth : Tree(a) -- Int

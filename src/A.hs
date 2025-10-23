@@ -188,7 +188,7 @@ instance Pretty (M a b) where
     pretty (M [] ds) = pDs ds
     pretty (M ms ds) = concatWith (<#>) (pI<$>ms) <##> pDs ds
 
-pDs ds = "%-" <##> concatWith (<##>) (pretty<$>ds) <> hardline
+pDs ds = concatWith (<##>) (pretty<$>ds) <> hardline
 pI n = "@i" <+> pretty n
 
 instance P0 (TS a) where

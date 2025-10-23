@@ -27,8 +27,6 @@ choice : a a B -- a
 ```
 @i prelude/fn
 
-%-
-
 type List a = { `nil ⊕ List(a) a `cons };
 
 type NE a = { List(a) a `cons };
@@ -53,8 +51,6 @@ The same `foldr` works on nonempty lists and lists and `head` only works on none
 
 ```
 @i prelude/fn
-
-%-
 
 type Ord = {`lt ⊕ `eq ⊕ `gt};
 

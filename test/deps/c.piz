@@ -1,7 +1,5 @@
 @i b
 
-%-
-
 square : Int -- Int
        := [dup *]
 

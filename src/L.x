@@ -11,7 +11,6 @@
              , withAlexSt
              , nMIdent
              -- * Lexer states
-             , postImp
              , get_pos
              ) where
 
@@ -51,22 +50,19 @@ $follow_char = [$latin $digit \_\-]
 
 tokens :-
 
-    <0>    {
-
-        "@i"                    { kw I }
-        "%-"                    { sym IT `andBegin` postImp }
-
-        @modname                { tok (\p s -> TokMN p <$> aus (nMIdent (mkText s))) }
-
-    }
-
-    <0,postImp> {
+    <0,imp> {
 
         $white+                 ;
         "#".*                   ;
     }
 
-    <postImp> {
+    <imp> {
+        @modname                { tok (\p s -> TokMN p <$> aus (nMIdent (mkText s))) `andBegin` 0 }
+    }
+
+    <0> {
+
+        "@i"                    { kw I `andBegin` imp }
 
         $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s) (iperm s)) }
 
@@ -184,8 +180,8 @@ data Sym = Add | Sub | Mul | Div | IDiv
          | Colon | LBracket | RBracket
          | DefEq | Sig | DSum | Up | PInv
          | Amp | Semicolon | LBrace | RBrace
-         | Eq | IT | LParen | RParen
-         | Comma | Under | Gt | Lt
+         | Eq | Gt | Lt | Comma | Under
+         | LParen | RParen
 
 instance Pretty Sym where
     pretty Add = "+"; pretty Sub = "-"; pretty Mul = "*"; pretty Div = "/"
@@ -193,7 +189,7 @@ instance Pretty Sym where
     pretty DefEq = ":="; pretty Sig = "--"; pretty DSum = "⊕"; pretty Up = "∪"
     pretty PInv = "⁻¹"; pretty Amp = "&"; pretty Semicolon = ";"
     pretty LBrace = "{"; pretty RBrace = "}"; pretty Eq = "="
-    pretty IT = "%-"; pretty LParen = "("; pretty RParen = ")"
+    pretty LParen = "("; pretty RParen = ")"
     pretty Comma = ","; pretty Under = "_"; pretty Gt = ">"
     pretty Lt = "<"; pretty IDiv = "%"
 

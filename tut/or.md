@@ -9,8 +9,6 @@ Begin by defining `Ord`:
 ```pizarnik
 @i prelude/fn
 
-%-
-
 type Ord = {`lt ⊕ `eq ⊕ `gt};
 ```
 
