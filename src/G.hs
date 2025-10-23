@@ -2,16 +2,12 @@ module G ( Sn, setIx, indices, gn, gp, gc, sn ) where
 
 import qualified Data.Array as A
 import           Data.Bits  (Bits (complement, setBit, shiftL, shiftR, testBit, (.&.), (.|.)))
+import           Data.List  (foldl')
 
 type Sn=Int
 
 sn :: Int -> Sn
-sn n = let p = n `shiftL` 40 in thread [ initIx i | i <- [1..n] ] p
-  where
-    thread = foldr (.) id
-
-    initIx :: Int -> Sn -> Sn
-    initIx ix x = x .|. ix `shiftL` (ix*4)
+sn n = foldl' (\seed ix -> seed .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
 
 indices :: Sn -> [Int]
 indices x = [1..gn x]
