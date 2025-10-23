@@ -269,7 +269,7 @@
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Pair</span> <span class="fu">a</span> <span class="fu">b</span> = { <span class="fu">a</span> <span class="fu">b</span> <span class="cn">`pair</span> };</span></code></pre></div>
 <p>Then `<code>pair</code> has type</p>
 <div class="sourceCode" id="cb2"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pair</span> : <span class="fu">a</span> <span class="fu">b</span> -- <span class="dt">Pair</span>(<span class="fu">a</span>,<span class="fu">b</span>)</span></code></pre></div>
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cn">`pair</span> : <span class="fu">a</span> <span class="fu">b</span> -- <span class="dt">Pair</span>(<span class="fu">a</span>,<span class="fu">b</span>)</span></code></pre></div>
 <p>Given atoms of types <code>a</code>, <code>b</code> on the stack, it
 will leave an atom of type <code>Pair(a,b)</code> in their place. The
 inverse `<code>pair⁻¹</code> should then take an atom of type

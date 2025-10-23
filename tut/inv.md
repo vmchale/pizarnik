@@ -11,7 +11,7 @@ type Pair a b = { a b `pair };
 Then ```pair `` has type
 
 ```pizarnik
-pair : a b -- Pair(a,b)
+`pair : a b -- Pair(a,b)
 ```
 
 Given atoms of types `a`, `b` on the stack, it will leave an atom of type
