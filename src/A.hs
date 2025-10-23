@@ -16,7 +16,6 @@ module A ( A (..)
          ) where
 
 import           Control.Monad.Trans.State.Strict (State, evalState, get, modify, put)
-import qualified Data.Array.Unboxed               as UA
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.Set                         as S
