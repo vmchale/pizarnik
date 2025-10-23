@@ -42,7 +42,8 @@ This is inspired by linear logic's $(G \oplus H)^\bot = G^\bot \& H^\bot$—to
 invert a sum type, one supplies an inverse (pattern match clause) for each
 summand. This is precisely the De Morgan laws. We have two choices to return a
 value of type `Maybe(a)`, and, dually, to accept a value of type `Maybe(a)` as
-argument, we must write two pattern-match clauses.
+argument, we must write two pattern-match clauses. This is hardly a
+stretch—that $\&$ is the type of a pattern match was pointed out by @munchmaccagnoni2009.
 
 In fact, pattern match exhaustiveness checking falls out for free in this
 scheme. Had we written

@@ -269,7 +269,7 @@
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Pair</span> <span class="fu">a</span> <span class="fu">b</span> = { <span class="fu">a</span> <span class="fu">b</span> <span class="cn">`pair</span> };</span></code></pre></div>
 <p>Then `<code>pair</code> has type</p>
 <div class="sourceCode" id="cb2"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">pair</span> : <span class="fu">a</span> <span class="fu">b</span> -- <span class="dt">Pair</span>(<span class="fu">a</span>,<span class="fu">b</span>)</span></code></pre></div>
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="cn">`pair</span> : <span class="fu">a</span> <span class="fu">b</span> -- <span class="dt">Pair</span>(<span class="fu">a</span>,<span class="fu">b</span>)</span></code></pre></div>
 <p>Given atoms of types <code>a</code>, <code>b</code> on the stack, it
 will leave an atom of type <code>Pair(a,b)</code> in their place. The
 inverse `<code>pair⁻¹</code> should then take an atom of type
@@ -297,7 +297,10 @@ supplies an inverse (pattern match clause) for each summand. This is
 precisely the De Morgan laws. We have two choices to return a value of
 type <code>Maybe(a)</code>, and, dually, to accept a value of type
 <code>Maybe(a)</code> as argument, we must write two pattern-match
-clauses.</p>
+clauses. This is hardly a stretch—that <span
+class="math inline">\(\&amp;\)</span> is the type of a pattern match was
+pointed out by <span class="citation"
+data-cites="munchmaccagnoni2009">Munch-Maccagnoni (2009)</span>.</p>
 <p>In fact, pattern match exhaustiveness checking falls out for free in
 this scheme. Had we written</p>
 <div class="sourceCode" id="cb5"><pre
@@ -314,6 +317,11 @@ role="list">
 Ehrenberg, Daniel. 2009. <span>“Pattern Matching in Concatenative
 Programming Languages.”</span> <a
 href="http://micsymposium.org/mics_2009_proceedings/mics2009_submission_72.pdf">http://micsymposium.org/mics_2009_proceedings/mics2009_submission_72.pdf</a>.
+</div>
+<div id="ref-munchmaccagnoni2009" class="csl-entry" role="listitem">
+Munch-Maccagnoni, Guillaume. 2009. <span>“Focalisation and Classical
+Realisability.”</span> In <em>Computer Science Logic</em>, edited by
+Erich Grädel and Reinhard Kahle. Springer Berlin Heidelberg.
 </div>
 </div>
 </body>
