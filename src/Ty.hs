@@ -492,15 +492,15 @@ lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 uU :: Cs a -> T a -> TM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
-    f (TT _ n)  = pure (Nm.singleton n [])
-    f (Σ _ σ)   = pure σ
-    f t         | Just{} <- unA t = f =<< βc c t
-    f (UU _ ts) = foldMapM f ts
+    f (TT _ n)   = pure (Nm.singleton n [])
+    f (Σ _ σ)    = pure σ
+    f t          | Just{} <- unA t = f =<< βc c t
+    f (UU _ ts_) = foldMapM f ts_
     -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
-    f SV{}      = ie
-    f Ρ{}       = ie
-    f TP{}      = throwError$Bare te
-    f QT{}      = throwError$Bare te
+    f SV{}       = ie
+    f Ρ{}        = ie
+    f TP{}       = throwError$Bare te
+    f QT{}       = throwError$Bare te
 
 -- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
