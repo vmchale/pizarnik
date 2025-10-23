@@ -163,15 +163,13 @@ mkΣ = Nm.fromList
 
 iperm :: [[Int]] -> Sn
 iperm cs =
-    let
-        xn=sn (maximum (concat cs))
+    let xn=sn (maximum (concat cs))
     in thread (map zy cs) xn
   where
-    -- TODO: track which left unset so we can init to self
     zy n@(i:_) x = g n x where
         g :: [Int] -> Sn -> Sn
-        g [j] x = setIx j i x
-        g (k:js@(j:_)) x = g js (setIx k j x) -- initIx (g js x) k j
+        g [j] = setIx j i
+        g (k:js@(j:_)) = g js.setIx k j
 
     thread=foldr (.) id
 
