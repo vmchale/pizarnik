@@ -25,7 +25,7 @@ import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
 import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
-import           Ty.Α
+import           Ty.A
 
 infixl 7 \-
 infixr 6 @>

@@ -56,7 +56,7 @@ library
         Nm.Set
         R
         TS
-        Ty.Α
+        Ty.A
 
     other-extensions:
         DeriveFunctor
