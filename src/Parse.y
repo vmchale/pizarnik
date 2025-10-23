@@ -166,7 +166,7 @@ iperm cs =
     let xn=sn (maximum (concat cs))
     in thread (map zy cs) xn
   where
-    zy n@(i:_) x = g n x where
+    zy n@(i:_) = g n where
         g :: [Int] -> Sn -> Sn
         g [j] = setIx j i
         g (k:js@(j:_)) = g js.setIx k j
