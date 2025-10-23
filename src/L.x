@@ -64,7 +64,7 @@ tokens :-
 
         "@i"                    { kw I `andBegin` imp }
 
-        $digit+                 { tok (\p s -> alex $ TokI p (readDigits $ BSL.toStrict s) (iperm s)) }
+        $digit+                 { tok (\p s -> alex $ TokI p (readDigits s) (iperm s)) }
 
         "+"                     { sym Add }
         "-"                     { sym Sub }
@@ -123,12 +123,8 @@ mkText = decodeUtf8 . BSL.toStrict
 iperm :: BSL.ByteString -> [Int]
 iperm = map (fromIntegral.(subtract 48)).BSL.unpack
 
-readDigits :: BS.ByteString -> Integer
-readDigits = ASCII.foldl' (\seed x -> 10 * seed + f x) 0
-    where f '0' = 0; f '1' = 1; f '2' = 2; f '3' = 3;
-          f '4' = 4; f '5' = 5; f '6' = 6; f '7' = 7;
-          f '8' = 8; f '9' = 9
-          f c   = error (c:" is not a valid digit!")
+readDigits :: BSL.ByteString -> Integer
+readDigits = BSL.foldl' (\seed x -> 10*seed + fromIntegral (x-48)) 0
 
 alex :: a -> Alex a
 alex = pure
