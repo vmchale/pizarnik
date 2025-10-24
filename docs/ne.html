@@ -235,7 +235,26 @@
     code span.va { color: #19177c; } /* Variable */
     code span.vs { color: #4070a0; } /* VerbatimString */
     code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-  </style>
+    /* CSS for citations */
+    div.csl-bib-body { }
+    div.csl-entry {
+      clear: both;
+    }
+    .hanging-indent div.csl-entry {
+      margin-left:2em;
+      text-indent:-2em;
+    }
+    div.csl-left-margin {
+      min-width:2em;
+      float:left;
+    }
+    div.csl-right-inline {
+      margin-left:2em;
+      padding-left:1em;
+    }
+    div.csl-indent {
+      margin-left: 2em;
+    }  </style>
 </head>
 <body>
 <header id="title-block-header">
@@ -294,8 +313,20 @@ define <code>foldr</code> to apply to both lists and non-empty lists
 using a typeclass, but we still need to write the implementation twice.
 And typeclass instance scoping is <a
 href="https://blog.ezyang.com/2014/07/type-classes-confluence-coherence-global-uniqueness/">fraught</a>.</p>
-<p>Extensible cases avoid this, in a way dual to row polymorphism—where
+<p>Extensible cases <span class="citation" data-cites="blume2006">(Blume
+et al. 2006)</span> avoid this, in a way dual to row polymorphism—where
 it works, it is strictly preferable.</p>
+<h1 id="references">References</h1>
 <!-- https://pchiusano.github.io/2018-02-13/typeclasses.html "open" discovery/containers... -->
+<div id="refs" class="references csl-bib-body hanging-indent"
+role="list">
+<div id="ref-blume2006" class="csl-entry" role="listitem">
+Blume, Matthias, Umut A. Acar, and Wonseok Chae. 2006. <span>“Extensible
+Programming with First-Class Cases.”</span> <em>Proceedings of the
+Eleventh ACM SIGPLAN International Conference on Functional
+Programming</em> (New York, NY, USA), ICFP ’06, 239–50. <a
+href="https://doi.org/10.1145/1159803.1159836">https://doi.org/10.1145/1159803.1159836</a>.
+</div>
+</div>
 </body>
 </html>
