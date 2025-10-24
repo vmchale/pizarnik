@@ -459,6 +459,9 @@ lt _ t0@(TV _ n) t1@(Ρ _ _ σ) | Nm.null σ = c1 n t1 t0
 lt _ t0@TV{} t1 = sf t0 t1
 lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
+lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
+lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
+-- TODO: pass cs<>c to lt directly and then use lΒ instead of βc
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
 -- TODO: this would fail for TC like type H=Int (0-ary type synonyms)
@@ -480,8 +483,8 @@ lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
-lt c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; lt c t0' t1}
-lt c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; lt c t0 t1'}
+lt c t0@UU{} t1 = do {t0' <- um (tβ c) t0; lt c t0' t1}
+lt c t0 t1@UU{} = do {t1' <- um (tβ c) t1; lt c t0 t1'}
 lt _ t0@TP{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TP{} = sf t0 t1
 lt _ t0@TP{} t1@TT{} = sf t0 t1; lt _ t0@TT{} t1@TP{} = sf t0 t1
 lt _ t0@TT{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TT{} = sf t0 t1
@@ -489,17 +492,27 @@ lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
-uU :: Cs a -> T a -> TM a (T a)
-uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
-    f (TT _ n)   = pure (Nm.singleton n [])
-    f (Σ _ σ)    = pure σ
-    f t          | Just{} <- unA t = f =<< βc c t
-    f (UU _ ts_) = foldMapM f ts_
-    -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
-    f SV{}       = ie
-    f Ρ{}        = ie
-    f TP{}       = throwError$Bare te
-    f QT{}       = throwError$Bare te
+um :: Cs a -> T a -> TM a (T a)
+um c t = do {c' <- gets (tds.lo); uU (c<>c') t}
+  where
+    uU :: Cs a -> T a -> TM a (T a)
+    uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
+        f (TT _ n)   = pure (Nm.singleton n [])
+        f (Σ _ σ)    = pure σ
+        f t          | Just{} <- unA t = f =<< lΒ c t
+        f (TC _ n)   = f (lC₁ c n)
+        f (UU _ ts_) = foldMapM f ts_
+        -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
+        f SV{}       = ie
+        f Ρ{}        = ie
+        f TP{}       = throwError$Bare te
+        f QT{}       = throwError$Bare te
+
+lC :: Cs a -> Nm a -> TM a (T a)
+lC c n = do {cs <- gets (tds.lo); pure$lC₁ (c<>cs) n}
+
+lC₁ :: Cs a -> Nm a -> T a
+lC₁ c (Nm _ (U i) _) | Just ([],t) <- IM.lookup i c = t
 
 -- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}

@@ -31,7 +31,7 @@ main = defaultMain $
                         , "test/examples/pat2.piz"
                         , "test/examples/klein.piz"
                         ] ]
-      ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz" ] ])
+      ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz", "test/examples/errorHierarchy.piz" ] ])
     where tI = tFile ["."]; tNo = tFile []
           tE = tErr ["."]; tENo = tErr []
 

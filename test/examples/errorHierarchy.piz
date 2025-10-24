@@ -1,0 +1,8 @@
+type Either a b = { a `left ⊕ b `right };
+
+type RewriteError = { `scope };
+
+type TypeError = RewriteError ∪ { `unificationFailed };
+
+tyE : -- Either(TypeError,b)
+    := [ `scope `left ]
