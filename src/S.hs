@@ -1,16 +1,16 @@
 module S ( Ctx, F, S, lm, r, stack ) where
 
 import           A
-import           Data.Functor       (($>))
-import qualified Data.IntMap        as IM
-import           Data.List          (find)
-import           Data.Tree          (Tree (Node))
+import           Data.Functor  (($>))
+import qualified Data.IntMap   as IM
+import           Data.List     (find)
+import           Data.Tree     (Tree (Node))
 import           F
 import           G
 import           Nm
-import qualified Nm.Map             as Nm
+import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter      (Doc, pretty)
+import           Prettyprinter (Doc, pretty)
 
 type S a = [A (TS a)]
 
