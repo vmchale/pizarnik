@@ -25,7 +25,7 @@ z : -- Unit
   := [ [nip] `unit x foldr ]
 ```
 
-`foldr` accepts a `List(a)`, i.e. ``{`nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases should handle an argument of type ``NE(a) = { List(a) `cons }``.
+`foldr` accepts a `List(a)`, i.e. ``{ `nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases should handle an argument of type ``NE(a) = { List(a) `cons }``.
 
 Non-empty lists enforce the same safety as in Haskell:
 

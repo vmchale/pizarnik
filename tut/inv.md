@@ -60,6 +60,7 @@ we would be confronted with
 ```
 
 <!-- first-class -->
+<!-- not precisely inverse but more orthogonal... -->
 <!-- constructors are associated with a particular arity but not a particular named type (structural pattern-match exhaustiveness checking) -->
 
 # References
