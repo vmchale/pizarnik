@@ -23,3 +23,28 @@ only completions for constructors!
  10 gcd
 not enough arguments on the stack.
 ```
+
+```
+ 1 False
+1
+False
+----
+ 1 False (12)
+1
+False
+False
+1
+----
+ (132)
+1:1: ‘Int’ is not an acceptable argument, expected ‘{False}’
+```
+
+```
+  1 2 3 [swap] dip
+2
+1
+3
+----
+ drop3
+not enough arguments on the stack.
+```
