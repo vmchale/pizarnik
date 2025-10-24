@@ -73,7 +73,7 @@ instance scoping is
 [fraught](https://blog.ezyang.com/2014/07/type-classes-confluence-coherence-global-uniqueness/).
 
 Extensible cases [@blume2006] avoid this, in a way dual to row polymorphism—where it works,
-it is strictly preferable.
+it is strictly preferable [@rho].
 
 # References
 
