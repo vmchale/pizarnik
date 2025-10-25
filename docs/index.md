@@ -1,8 +1,9 @@
 # Examples
 
-  - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
+  - [Non-Empty Lists](./ne.html)
 
 # Theory
 
-  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
-  - [Pattern-Matching as Inverse](https://vmchale.github.io/pizarnik/inv.html)
+  - [Permutations in Stack Programming](./perm.html)
+  - [Pattern-Matching as Inverse](./inv.html)
+  <!-- - [Or-Patterns](./or.html) -->

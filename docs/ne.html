@@ -271,7 +271,8 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">foldr</span> : [ <span class="fu">a</span> <span class="fu">b</span> -- <span class="fu">b</span> ] <span class="fu">b</span> <span class="dt">List</span>(<span class="fu">a</span>) -- <span class="fu">b</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      := [ { <span class="cn">`nil</span>⁻¹ <span class="fu">nip</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`cons</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>3 <span class="fu">rotl</span> [<span class="fu">rot</span> [<span class="fu">rot</span> $] <span class="bu">dip</span> <span class="fu">swap</span>] <span class="bu">dip</span> <span class="fu">foldr</span> } ]</span></code></pre></div>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`cons</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>3 (153)(24) [$] <span class="bu">dip</span>2 (23) <span class="fu">foldr</span> }</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>         ]</span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Unit</span> = {<span class="cn">`unit</span>};</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -281,7 +282,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><
 <span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="fu">z</span> : -- <span class="dt">Unit</span></span>
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  := [ [<span class="fu">nip</span>] <span class="cn">`unit</span> <span class="fu">x</span> <span class="fu">foldr</span> ]</span></code></pre></div>
 <p><code>foldr</code> accepts a <code>List(a)</code>,
-i.e. <code>{`nil ⊕ List(a) a `cons }</code> as an argument; we can
+i.e. <code>{ `nil ⊕ List(a) a `cons }</code> as an argument; we can
 imagine how a pattern match that handles both the `<code>nil</code> and
 <code>List(a) a `cons</code> cases should handle an argument of type
 <code>NE(a) = { List(a) `cons }</code>.</p>
@@ -315,7 +316,8 @@ And typeclass instance scoping is <a
 href="https://blog.ezyang.com/2014/07/type-classes-confluence-coherence-global-uniqueness/">fraught</a>.</p>
 <p>Extensible cases <span class="citation" data-cites="blume2006">(Blume
 et al. 2006)</span> avoid this, in a way dual to row polymorphism—where
-it works, it is strictly preferable.</p>
+it works, it is strictly preferable <span class="citation"
+data-cites="rho">(McKenna 2013)</span>.</p>
 <h1 id="references">References</h1>
 <!-- https://pchiusano.github.io/2018-02-13/typeclasses.html "open" discovery/containers... -->
 <div id="refs" class="references csl-bib-body hanging-indent"
@@ -326,6 +328,11 @@ Programming with First-Class Cases.”</span> <em>Proceedings of the
 Eleventh ACM SIGPLAN International Conference on Functional
 Programming</em> (New York, NY, USA), ICFP ’06, 239–50. <a
 href="https://doi.org/10.1145/1159803.1159836">https://doi.org/10.1145/1159803.1159836</a>.
+</div>
+<div id="ref-rho" class="csl-entry" role="listitem">
+McKenna, Brian. 2013. <em>Row Polymorphism Isn’t Subtyping</em>. <a
+href="https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping"
+class="uri">Https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping</a>.
 </div>
 </div>
 </body>

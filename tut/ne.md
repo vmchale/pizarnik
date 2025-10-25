@@ -12,7 +12,8 @@ type NE a = { List(a) a `cons };
 
 foldr : [ a b -- b ] b List(a) -- b
       := [ { `nil⁻¹ nip
-           & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
+           & `cons⁻¹ [dup] dip3 (153)(24) [$] dip2 (23) foldr }
+         ]
 ```
 
 ``` pizarnik
