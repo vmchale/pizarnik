@@ -416,6 +416,7 @@ mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 
+-- TODO: replace UU etc.
 ce c = traverse (lΒ c)
 
 ms :: (Nt a -> T a -> T a -> TM a (Subst a))
@@ -430,6 +431,7 @@ ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
 ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV n uws s) t0 res
+               -- FIXME: replace UU
     | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
     -- FIXME: make sure this doesn't loop indefinitely?
     | otherwise = throwError$LE t0e t1
@@ -508,9 +510,10 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
 
 -- for constant it is less likely to be "local" so maybe we can smooshmaps?
 lC :: Cs a -> Nm a -> TM a (T a)
-lC c (Nm _ (U i) _) =
+lC c n@(Nm _ (U i) l) =
     case IM.lookup i c of
-        Just ([],t) -> pure t
+        Just ([],t) -> pure (l<$t)
+        Nothing     -> throwError$IS n
 
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
 mTS c = mtsc c mempty
