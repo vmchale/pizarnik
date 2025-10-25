@@ -383,8 +383,8 @@ nρ n@(Nm t _ l) σ = do
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- φs c s a0 a1
     pure (roll th a',s')
-φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
-φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
+φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; φ c s t0' t1}
+φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
 φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
     (ς, s') <- φσ c s x σ0 σ1
     -- FIXME: propagates back too much?
@@ -416,7 +416,7 @@ mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 
-ce c = traverse (βc c)
+ce c = traverse (lΒ c)
 
 ms :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
@@ -512,17 +512,11 @@ lC c (Nm _ (U i) _) =
     case IM.lookup i c of
         Just ([],t) -> pure t
 
--- TODO: expand UU...
-βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
-
 mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
 mTS c = mtsc c mempty
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
--- FIXME
--- on right we should disallow a = b? at that point there should be canonical substitutions...
--- (right now we have (123) match against a b c -- c a b by b<-a c<- a)
 mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
 
 liftClone :: TS a -> TM a (TS a)
@@ -765,7 +759,7 @@ dU c s x tss = do
 
 βs :: Nt a -> TSeq a -> TM a (TSeq a)
 βs c = traverse q where
-    q t | Just{} <- unA t = βc (tβ c) t
+    q t | Just{} <- unA t = lΒ (tβ c) t
     q t = pure t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
