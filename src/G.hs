@@ -1,28 +1,32 @@
-module G ( Sn, setIx, indices, gn, gp, gc, sn ) where
+module G ( Sn, sn
+         , indices
+         , setIx
+         , gn, gp, gc
+         ) where
 
 import qualified Data.Array as A
 import           Data.Bits  (Bits (complement, setBit, shiftL, shiftR, testBit, (.&.), (.|.)))
 import           Data.List  (foldl')
 
-type Sn=Int
+newtype Sn=Sn Int
 
 sn :: Int -> Sn
-sn n = foldl' (\seed ix -> seed .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
+sn n = Sn$foldl' (\seed ix -> seed .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
 
 indices :: Sn -> [Int]
 indices x = [1..gn x]
 
 setIx :: Int -> Int -> Sn -> Sn
-setIx ix n x = x .&. complement (0xf `shiftL` (ix*4)) .|. n `shiftL` (ix*4)
+setIx ix n (Sn x) = Sn (x .&. complement (0xf `shiftL` (ix*4)) .|. n `shiftL` (ix*4))
 
 gn :: Sn -> Int
-gn n = n `shiftR` 40
+gn (Sn n) = n `shiftR` 40
 
 elems :: Sn -> [Int]
 elems p = [ p ! i | i <- [1..gn p] ]
 
 (!) :: Sn -> Int -> Int
-x!i = (x .&. 0xf `shiftL` (i*4)) `shiftR` (i*4)
+(Sn x) ! i = (x .&. 0xf `shiftL` (i*4)) `shiftR` (i*4)
 
 gc :: Sn -> [[Int]]
 gc p = step 0 1
