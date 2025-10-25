@@ -8,7 +8,7 @@ ne.html: ne.md ty.bib ../pandoc/pizarnik.xml
 	pandoc ne.md $(PANDOC_FLAGS) -o $@
 
 inv.html: inv.md ty.bib ../pandoc/pizarnik.xml
-	pandoc inv.md $(PANDOC_FLAGS) -o $@
+	pandoc inv.md --mathjax $(PANDOC_FLAGS) -o $@
 
 or.html: or.md ../pandoc/pizarnik.xml
 	pandoc or.md --mathjax $(PANDOC_FLAGS) -o $@
