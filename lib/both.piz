@@ -3,6 +3,10 @@
 
 type Both a b = Either(a,b) ∪ { a b `both };
 
+# idk if this is useful (or-pattern demonstration binding variables)
+left : { a `left ⊕ a b `both } -- a
+     := [ { `left⁻¹ & `both⁻¹ drop } ]
+
 map1 : [a -- b] Both(a,c) -- Both(b,c)
      := [ { mapLeft
           & `both⁻¹ [swap $] dip `both }
