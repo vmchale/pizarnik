@@ -81,7 +81,30 @@ will fail, viz.
 
 # Solving the Expression Problem
 
-See [Blume, Acar, and Chae](https://dl.acm.org/doi/10.1145/1159803.1159836).
+[Extensible cases](https://dl.acm.org/doi/10.1145/1159803.1159836) put forward
+by Blume, Acar, and Chae solve the expression problem:
+
+```pizarnik
+@i prelude/fn
+
+type Either a b = { a `left ⊕ b `right };
+
+mapLeft : [ a -- c ] Either(a,b) -- Either(c,b)
+        := [ { `left⁻¹ swap $ `left
+             & `right⁻¹ nip `right }
+           ]
+```
+
+```pizarnik
+@i lib/either
+
+type Both a b = Either(a,b) ∪ { a b `both };
+
+map1 : [a -- b] Both(a,c) -- Both(b,c)
+     := [ { mapLeft
+          & `both⁻¹ [swap $] dip `both }
+        ]
+```
 
 # Writing
 
