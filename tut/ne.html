@@ -264,15 +264,20 @@
 </header>
 <p>In Pizarnik, we can define functions on lists and they will work on
 non-empty lists.</p>
-<div class="sourceCode" id="cb1"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">List</span> <span class="fu">a</span> = { <span class="cn">`nil</span> ⊕ <span class="dt">List</span>(<span class="fu">a</span>) <span class="fu">a</span> <span class="cn">`cons</span> };</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">NE</span> <span class="fu">a</span> = { <span class="dt">List</span>(<span class="fu">a</span>) <span class="fu">a</span> <span class="cn">`cons</span> };</span>
+<div class="sourceCode" id="cb1" data-startFrom="3"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 2;"><span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">List</span> <span class="fu">a</span> = { <span class="cn">`nil</span> ⊕ <span class="dt">List</span>(<span class="fu">a</span>) <span class="fu">a</span> <span class="cn">`cons</span> };</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">foldr</span> : [ <span class="fu">a</span> <span class="fu">b</span> -- <span class="fu">b</span> ] <span class="fu">b</span> <span class="dt">List</span>(<span class="fu">a</span>) -- <span class="fu">b</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>      := [ { <span class="cn">`nil</span>⁻¹ <span class="fu">nip</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`cons</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>3 (153)(24) [$] <span class="bu">dip</span>2 (23) <span class="fu">foldr</span> }</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>         ]</span></code></pre></div>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">NE</span> <span class="fu">a</span> = { <span class="dt">List</span>(<span class="fu">a</span>) <span class="fu">a</span> <span class="cn">`cons</span> };</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> : <span class="dt">NE</span>(<span class="fu">a</span>) -- <span class="fu">a</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`cons</span>⁻¹ <span class="fu">nip</span> } ]</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">tail</span> : <span class="dt">NE</span>(<span class="fu">a</span>) -- <span class="dt">List</span>(<span class="fu">a</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a>    := [ { <span class="cn">`cons</span>⁻¹ _ } ]</span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">foldr</span> : [ <span class="fu">a</span> <span class="fu">b</span> -- <span class="fu">b</span> ] <span class="fu">b</span> <span class="dt">List</span>(<span class="fu">a</span>) -- <span class="fu">b</span></span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      := [ { <span class="cn">`nil</span>⁻¹ <span class="fu">nip</span></span>
+<span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`cons</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>3 (153)(24) [$] <span class="bu">dip</span>2 (23) <span class="fu">foldr</span> } ]</span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Unit</span> = {<span class="cn">`unit</span>};</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>

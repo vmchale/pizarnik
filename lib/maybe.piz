@@ -3,7 +3,9 @@
 type Maybe a = { a `just ⊕ `nothing };
 
 isJust : Maybe(a) -- Bool
-       := [ { `just⁻¹ _ True & `nothing⁻¹ False } ]
+       := [ { `just⁻¹ drop True
+            & `nothing⁻¹ False }
+          ]
 
 isNothing : Maybe(a) -- Bool
           := [ { `just⁻¹ _ False & `nothing⁻¹ True } ]

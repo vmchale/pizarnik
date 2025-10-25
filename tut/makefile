@@ -4,11 +4,11 @@ all: ne.html or.html perm.html inv.html
 
 PANDOC_FLAGS := -s --citeproc --bibliography ty.bib --syntax-definition=../pandoc/pizarnik.xml
 
-ne.html: ne.md ty.bib ../pandoc/pizarnik.xml
-	pandoc ne.md $(PANDOC_FLAGS) -o $@
+ne.html: ne.md ty.bib ../pandoc/pizarnik.xml ../lib/list.piz
+	pandoc ne.md --lua-filter=include-code-files.lua $(PANDOC_FLAGS) -o $@
 
-inv.html: inv.md ty.bib ../pandoc/pizarnik.xml
-	pandoc inv.md --mathjax $(PANDOC_FLAGS) -o $@
+inv.html: inv.md ty.bib ../pandoc/pizarnik.xml ../lib/maybe.piz
+	pandoc inv.md --lua-filter=include-code-files.lua --mathjax $(PANDOC_FLAGS) -o $@
 
 or.html: or.md ../pandoc/pizarnik.xml
 	pandoc or.md --mathjax $(PANDOC_FLAGS) -o $@

@@ -283,14 +283,13 @@ data-cites="ehrenberg2009">(Ehrenberg 2009)</span>. However, with
 pattern match arms as first-class (typed) atoms, we can implement
 <code>&amp;</code> which juxtaposes two inverse constructors to form a
 pattern match clause handling a sum type, viz.</p>
-<div class="sourceCode" id="cb4"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Maybe</span>(<span class="fu">a</span>) = { <span class="fu">a</span> <span class="cn">`just</span> ⊕ <span class="cn">`nothing</span> };</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">isJust</span> : <span class="dt">Maybe</span>(<span class="fu">a</span>) -- <span class="dt">Bool</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>       := [ { <span class="cn">`just</span>⁻¹ <span class="fu">drop</span> <span class="dt">True</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>            &amp; <span class="cn">`nothing</span>⁻¹ <span class="dt">False</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>            }</span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>          ]</span></code></pre></div>
+<div class="sourceCode" id="cb4" data-startFrom="3"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 2;"><span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Maybe</span> <span class="fu">a</span> = { <span class="fu">a</span> <span class="cn">`just</span> ⊕ <span class="cn">`nothing</span> };</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">isJust</span> : <span class="dt">Maybe</span>(<span class="fu">a</span>) -- <span class="dt">Bool</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>       := [ { <span class="cn">`just</span>⁻¹ <span class="fu">drop</span> <span class="dt">True</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>            &amp; <span class="cn">`nothing</span>⁻¹ <span class="dt">False</span> }</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>          ]</span></code></pre></div>
 <p>This is inspired by linear logic’s <span class="math inline">\((G
 \oplus H)^\bot = G^\bot \&amp; H^\bot\)</span>—to invert a sum type, one
 supplies an inverse (pattern match clause) for each summand. This is

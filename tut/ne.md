@@ -5,15 +5,7 @@
 In Pizarnik, we can define functions on lists and they will work on
 non-empty lists.
 
-``` pizarnik
-type List a = { `nil ⊕ List(a) a `cons };
-
-type NE a = { List(a) a `cons };
-
-foldr : [ a b -- b ] b List(a) -- b
-      := [ { `nil⁻¹ nip
-           & `cons⁻¹ [dup] dip3 (153)(24) [$] dip2 (23) foldr }
-         ]
+```{.pizarnik include="../lib/list.piz" startLine=3}
 ```
 
 ``` pizarnik

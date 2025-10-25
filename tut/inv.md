@@ -28,14 +28,7 @@ This is not new [@ehrenberg2009]. However, with pattern match arms as
 first-class (typed) atoms, we can implement `&` which juxtaposes two inverse
 constructors to form a pattern match clause handling a sum type, viz.
 
-```pizarnik
-type Maybe(a) = { a `just ⊕ `nothing };
-
-isJust : Maybe(a) -- Bool
-       := [ { `just⁻¹ drop True
-            & `nothing⁻¹ False
-            }
-          ]
+```{.pizarnik include="../lib/maybe.piz" startLine=3 endLine=8}
 ```
 
 This is inspired by linear logic's $(G \oplus H)^\bot = G^\bot \& H^\bot$—to

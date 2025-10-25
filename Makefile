@@ -22,6 +22,7 @@ fmt:
 
 docs:
 	make -C tut
+	make -C docs
 
 fix: $(HS_SRC)
 	@fd '\.(cpphs|hs|x|y|hsc)$$' $$(ja -F'\s*:\s*' '{%/hs-source-dirs/}{`2}' -i pizarnik.cabal) -x ja "{%/^\s*infix(r|l)?\s+\d+/}{sprintf '- fixity: %s' \`0}}" -i
