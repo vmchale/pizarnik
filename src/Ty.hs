@@ -414,24 +414,26 @@ rwAr ar = under (fmap reverse . g . reverse)
 
 mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 
+hasU = any (\case TC{} -> True; _-> False)
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 
 -- TODO: replace UU etc.
-ce c = traverse (lΒ c)
+ce c = traverse (lΒ c); ue c = traverse (uU c)
 
 ms :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    | hasC t0 = do {t0' <- ce (tβ c) t1; ms u c s t0' t1e}
+    | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
+    | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
     -- FIXME: eat based on constructor arity
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
 ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV n uws s) t0 res
-               -- FIXME: replace UU
+    | hasU t1 = do {t1' <- ue (tβ c) t1; ms u c s t0e t1'}
     | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
     -- FIXME: make sure this doesn't loop indefinitely?
     | otherwise = throwError$LE t0e t1
@@ -439,7 +441,8 @@ ms u c s t0e@(SV _ n:t0) t1
 ms u c s t0 t1e@(SV _ n:t1)
     | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
                in mc u c (iSV n uws s) res t1
-    | hasC t0 = do {t0' <- ce (tβ c) t1; ms u c s t0' t1e}
+    | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
+    | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
