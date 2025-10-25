@@ -12,12 +12,6 @@ newtype BE a = TCA (Nm a)
 
 instance Pretty a => Pretty (BE a) where pretty (TCA n) = pretty (loc n) <> ":" <+> "Type constructor not fully applied"
 
--- TODO: UU expand?
---
--- say we have Either(a,b) ∪ { a b `both }
--- to substitute a <- int; b <- int (say)
--- replace Either(a,b) with { a `left ⊕ b `right }
--- (which requires context-specific a,b?)
 β :: Cs a -> Nm a -> [T a] -> Either (BE a) (T a)
 β c n bs = let (vs,t) = lC n c in ($>loc n) <$> bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
 

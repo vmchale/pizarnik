@@ -37,6 +37,9 @@ type Ar = IM.IntMap Int
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
 
+aug :: Ext a -> TM a (Ext a)
+aug (Ext f c₀ r) = do {c₁ <- gets (tds.lo); pure (Ext f (c₁<>c₀) r)}
+
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
@@ -242,8 +245,8 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- sus c s a0 a1
     pure (roll th a',s')
-su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
-su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
+su c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
+su c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
 su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
     -- TODO propagate back?
     (ς,s') <- sσ c s x σ0 σ1
@@ -461,9 +464,8 @@ lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
--- TODO: pass cs<>c to lt directly and then use lΒ instead of βc
-lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
-lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
+lt c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; lt c t0' t1}
+lt c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     | occρ n σ1 = throwError$O t0 t1
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
@@ -495,7 +497,7 @@ uU :: Cs a -> T a -> TM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
     f (Σ _ σ)    = pure σ
-    f t          | Just{} <- unA t = f =<< βc c t
+    f t          | Just{} <- unA t = f =<< lΒ c t
     f (TC _ n)   = f =<< lC c n
     f (UU _ ts_) = foldMapM f ts_
     -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
@@ -504,13 +506,11 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f TP{}       = throwError$Bare te
     f QT{}       = throwError$Bare te
 
+-- for constant it is less likely to be "local" so maybe we can smooshmaps?
 lC :: Cs a -> Nm a -> TM a (T a)
-lC ex (Nm _ (U i) _) = do
-    cs <- gets (tds.lo)
-    case IM.lookup i cs of
+lC c (Nm _ (U i) _) =
+    case IM.lookup i c of
         Just ([],t) -> pure t
-        Nothing -> case IM.lookup i ex of
-            Just ([],t) -> pure t
 
 -- TODO: expand UU...
 βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
@@ -555,6 +555,7 @@ tMM b (M is ds) = M is <$> tD b ds
 tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
 tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
 
+-- TODO: we could just smoosh in Ext a into state monad here...
 tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
 tAS u b s a = fmap π₁₃ $ runTM u $ do
     (t0,s0) <- sseq n (aLs a) mempty (reverse s)
@@ -572,8 +573,9 @@ tD0 (TD _ n vs t) = iTD n vs t *> cA t
 tD1 :: Ext a -> D a a -> TM a (D a (TS a))
 tD1 _ (TD x n vs t)         = pure (TD x n vs t)
 tD1 b (F _ n ts as) = do
-    (as', s) <- tseq b mempty as
-    s' <- mtsc (π b) s (aLs as') ts
+    c <- aug b
+    (as', s) <- tseq c mempty as
+    s' <- mtsc (π c) s (aLs as') ts
     as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
