@@ -10,6 +10,7 @@ main = defaultMain $
         -- TODO: error line no.?
       ( tENo "test/data/pmfail.piz" "3:12: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
       : tENo "test/data/badPerm.piz" "?"
+      : tENo "test/examples/errorHierarchy.piz" "?"
       : tE "test/data/permeable.piz" "21:8: ‘{`nil ⊕\n       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’"
       : tE "test/data/badList.piz" "4:14: {List(a) b `cons ⊕ `nil} ⊀ {ρ₁ ρ₂ `cons}"
       : tENo "test/data/badBool.piz" "3:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
@@ -27,11 +28,12 @@ main = defaultMain $
                         , "test/data/beta.piz"
                         , "test/data/these.piz"
                         , "test/data/perm.piz"
+                        , "test/data/rec.piz"
                         , "test/examples/exp.piz"
                         , "test/examples/pat2.piz"
                         , "test/examples/klein.piz"
                         ] ]
-      ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz", "test/examples/errorHierarchy.piz" ] ])
+      ++ [ tNo fp | fp <- ["examples/vierergruppe.piz", "prelude/fn.piz" ] ])
     where tI = tFile ["."]; tNo = tFile []
           tE = tErr ["."]; tENo = tErr []
 

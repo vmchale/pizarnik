@@ -6,3 +6,9 @@ type TypeError = RewriteError ∪ { `unificationFailed };
 
 tyE : -- Either(TypeError,b)
     := [ `scope `left ]
+
+handleRewrite : Either(RewriteError,Int) -- Int
+              := [ { `left⁻¹ `scope⁻¹ 0 & `right⁻¹ } ]
+
+handleTypeError : Either(TypeError,Int) -- Int
+                := [ { `left⁻¹ `scope⁻¹ 0 & `right⁻¹ } ]
