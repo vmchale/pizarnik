@@ -325,7 +325,7 @@ sv u c s t0 t1@(SV _ sn1:t1d) =
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
-    first (t':) <$> sv u c s' ts0 ts1
+    first (t':) <$> ctx'ize (sv u) c s' ts0 ts1
 sv _ _ _ t0 [] = throwError$LE t0 []
 sv _ _ _ [] t1 = throwError$LE t1 []
 
