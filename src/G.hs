@@ -11,7 +11,7 @@ import           Data.List  (foldl')
 newtype Sn=Sn Int
 
 sn :: Int -> Sn
-sn n = Sn$foldl' (\seed ix -> seed .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
+sn n = Sn$foldl' (\acc ix -> acc .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
 
 indices :: Sn -> [Int]
 indices x = [1..gn x]
@@ -21,9 +21,6 @@ setIx ix n (Sn x) = Sn (x .&. complement (0xf `shiftL` (ix*4)) .|. n `shiftL` (i
 
 gn :: Sn -> Int
 gn (Sn n) = n `shiftR` 40
-
-elems :: Sn -> [Int]
-elems p = [ p ! i | i <- [1..gn p] ]
 
 (!) :: Sn -> Int -> Int
 (Sn x) ! i = (x .&. 0xf `shiftL` (i*4)) `shiftR` (i*4)
@@ -47,4 +44,4 @@ gc p = step 0 1
                 | otherwise = let k=p!j; (r, c) = orb (setBit v j) k in (r, j:c)
 
 gp :: Sn -> [a] -> [a]
-gp p xs = A.elems (A.array (1, gn p) (zip (elems p) xs))
+gp p xs = A.elems (A.array (1, gn p) (zip ((p!)<$>[1..]) xs))
