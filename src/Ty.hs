@@ -662,7 +662,8 @@ ta b s (C l tt)        = do
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
-    sigs <- traverse (peekS s0.aLs) as'
+    -- TODO: this allows bare (no stack var)...
+    sigs <- traverse (exps l <=< peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 
@@ -755,6 +756,7 @@ dU c s x tss = do
         frs sϵ [t]    = pure (t, sϵ)
         frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
 
+        -- FIXME: this is not catching everything w/ `just⁻¹ drop True⁻¹ True (for instance)
         urs sϵ [t]    = pure (t, sϵ)
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
