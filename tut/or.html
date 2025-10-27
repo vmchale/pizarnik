@@ -265,10 +265,8 @@
 <p class="date">18 Oct. 2025</p>
 </header>
 <p>Begin by defining <code>Ord</code>:</p>
-<div class="sourceCode" id="cb1"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>@<span class="fu">i</span> <span class="fu">prelude</span>/<span class="fu">fn</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Ord</span> = {<span class="cn">`lt</span> ⊕ <span class="cn">`eq</span> ⊕ <span class="cn">`gt</span>};</span></code></pre></div>
+<div class="sourceCode" id="cb1" data-startFrom="3"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 2;"><span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Ord</span> = {<span class="cn">`lt</span> ⊕ <span class="cn">`eq</span> ⊕ <span class="cn">`gt</span>};</span></code></pre></div>
 <p>Then we can write:</p>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gt</span> : <span class="dt">Ord</span> -- <span class="dt">Bool</span></span>
@@ -282,15 +280,14 @@ class="citation" data-cites="munchmaccagnoni2009">(Munch-Maccagnoni
 <p>This makes sense—a <code>&amp;</code> (“with”) juxtaposes two
 pattern-match arms (inverse constructors) to form a (typed) function
 accepting a sum type as argument.
-<!-- A sum type gives us two choices for how to produce a return value
-de Morgan ^ linear logic -->
+<!-- A sum type gives us two choices for how to produce a return value de Morgan ^ linear logic -->
 <!-- more about polarity than inverse? --></p>
-<div class="sourceCode" id="cb3"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>!<span class="fu">lte</span> : { <span class="cn">`lt</span> ⊕ <span class="cn">`eq</span> } --</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    := [ { <span class="cn">`lt</span>⁻¹ &amp; <span class="cn">`eq</span>⁻¹ } ]</span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">gte</span> : { <span class="cn">`eq</span> ⊕ <span class="cn">`gt</span> } --</span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    := [ { <span class="cn">`eq</span>⁻¹ &amp; <span class="cn">`gt</span>⁻¹ } ]</span></code></pre></div>
+<div class="sourceCode" id="cb3" data-startFrom="5"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 4;"><span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">lte</span> : { <span class="cn">`lt</span> ⊕ <span class="cn">`eq</span> } --</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    := [ { <span class="cn">`lt</span>⁻¹ &amp; <span class="cn">`eq</span>⁻¹ } ]</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="fu">gte</span> : { <span class="cn">`eq</span> ⊕ <span class="cn">`gt</span> } --</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    := [ { <span class="cn">`eq</span>⁻¹ &amp; <span class="cn">`gt</span>⁻¹ } ]</span></code></pre></div>
 <p>We could have defined <code>gt</code> with the above, viz.</p>
 <div class="sourceCode" id="cb4"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gt</span> : <span class="dt">Ord</span> -- <span class="dt">Bool</span></span>

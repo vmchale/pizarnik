@@ -6,4 +6,4 @@
 
   - [Permutations in Stack Programming](./perm.html)
   - [Pattern-Matching as Inverse](./inv.html)
-  <!-- - [Or-Patterns](./or.html) -->
+  - [Or-Patterns](./or.html)
