@@ -48,7 +48,7 @@ will fail:
        List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’
 ```
 
-# Superiority
+# Polarity and Analogy
 
 Doing the above in Haskell (for instance) is more fickle. We can define
 `foldr` to apply to both lists and non-empty lists using a typeclass,
