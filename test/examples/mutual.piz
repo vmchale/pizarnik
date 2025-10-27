@@ -1,5 +1,3 @@
-@i prelude/fn
-
 odd : Int -- Bool
     := [ dup 0 = { False⁻¹ 1 - even & True⁻¹ _ False } ]
 
