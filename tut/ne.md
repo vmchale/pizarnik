@@ -5,37 +5,28 @@
 In Pizarnik, we can define functions on lists and they will work on
 non-empty lists.
 
-```{.pizarnik include="../lib/list.piz" startLine=3}
+```{.pizarnik include="../lib/list.piz" startLine=3 endLine=10}
 ```
 
-``` pizarnik
-type Unit = {`unit};
-
-x : -- NE(Unit)
-  := [ `nil `unit `cons ]
-
-z : -- Unit
-  := [ [nip] `unit x foldr ]
+```{.pizarnik include="../test/data/permeable.piz" startLine=4 endLine=10}
 ```
 
-`foldr` accepts a `List(a)`, i.e. ``{ `nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases should handle an argument of type ``NE(a) = { List(a) `cons }``.
+`foldr` accepts a `List(a)`, i.e. ``{ `nil ⊕ List(a) a `cons }`` as an argument; we can imagine how a pattern match that handles both the ```nil`` and ``List(a) a `cons`` cases should handle an argument of type ``NE(a) = { List(a) `cons }``.
 
 Non-empty lists enforce the same safety as in Haskell:
 
-``` pizarnik
-head : NE(a) -- a
-     := [ { `cons⁻¹ nip } ]
+```{.pizarnik include="../lib/list.piz" startLine=11 endLine=12}
 ```
 
 Had we tried to write `head : List(a) -- a`:
 
-```pizarnik
+```
 5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
 ```
 
 Moreover, pattern-match exhaustiveness is enforced for non-empty lists, viz.
 
-```pizarnik
+```{.pizarnik include="../test/data/permeable.piz" startLine=12 endLine=13}
 y : -- Unit
   := [ x head ]
 ```

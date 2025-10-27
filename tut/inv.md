@@ -55,5 +55,8 @@ we would be confronted with
 <!-- first-class -->
 <!-- not precisely inverse but more orthogonal... -->
 <!-- constructors are associated with a particular arity but not a particular named type (structural pattern-match exhaustiveness checking) -->
+<!-- properly solved, expression problem is one of polarity, (sum types that are disjuncts demand disjunctive products?) not analogy -->
+<!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (or contravariantly) -->
+<!-- non-empty example kinda is analogy tho -->
 
 # References
