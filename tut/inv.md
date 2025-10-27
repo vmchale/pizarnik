@@ -22,7 +22,7 @@ type `Pair(a,b)` and leave two atoms of types `a`, `b` on the stack:
 `pair⁻¹ : Pair(a,b) -- a b
 ```
 
-<!-- Inverse exchanges left and right -->
+Inverse exchanges left and right.
 
 This is not new [@ehrenberg2009]. However, with pattern match arms as
 first-class (typed) atoms, we can implement `&` which juxtaposes two inverse
