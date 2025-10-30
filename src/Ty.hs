@@ -6,12 +6,12 @@ import           A
 import           B
 import           C
 import           Control.Exception                (Exception)
-import           Control.Monad                    (foldM, when, zipWithM, (<=<))
+import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
 import           Data.Bifunctor                   (first, second)
-import           Data.Foldable                    (traverse_)
+import           Data.Foldable                    (toList, traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -665,7 +665,7 @@ ta b s (C l tt)        = do
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
-    -- TODO: this allows bare (no stack var)...
+    -- TODO: this gets tucked away immediately
     sigs <- traverse (exps l <=< peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
@@ -726,23 +726,21 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
 
           a = ars c
 
-uz :: [TS a] -> ([TSeq a], [TSeq a])
-uz = foldr (\(TS l r) ~(ls,rs) -> (l:ls, r:rs)) ([], [])
-
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
 dU c s x tss = do
-    ls <- traverse (βs c) l0; rs <- traverse (βs c) r0
-    let rm=maximum (length<$>rs)
-    ρ <- zipWithM pad (tLs<$>l0) [ rm-length r | r <- rs ]
-    let ls'=zipWith tuck ρ ls; rs'=zipWith tuck ρ rs
-    tψ <- ψ c (zt ls' rs')
-    -- (al,s') <- traceShow tψ $ srs s (Nm.toList x tψ)
-    (al,s') <- srs s (Nm.toList x tψ)
+    tψ <- ψ c =<< traverse (βt (tβ c)) tss
+    let rϵ=fmap (map trights) tψ
+        rm=maximum (length<$>concat rϵ)
+    ρ <- traverse (traverse (pad x)) (fmap (map ((rm-).length)) rϵ)
+    let ψ' = Nm.intersectionWith (zipWith (\p (TS l r) -> TS (tuck p l) (tuck p r))) ρ tψ
+        rs'= concatMap (map trights) (toList ψ')
+    -- (al,s') <- traceShow ψ' $ srs s (Nm.toList x ψ')
+    (al,s') <- srs s (Nm.toList x ψ')
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where (l0,r0) = uz tss
+  where -- βlr=traverse (βs (tβ c))
         -- TODO: lT rr is constant, why not sum
         -- local <- gets (arit.lo)
         -- and pass (ars c<>local<>ars c)
@@ -768,9 +766,13 @@ dU c s x tss = do
             pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
           where nms=map fst as
 
-βs :: Nt a -> TSeq a -> TM a (TSeq a)
+βt :: Cs a -> TS a -> TM a (TS a)
+βt c (TS l r) = TS <$> βs c l <*> βs c r
+
+βs :: Cs a -> TSeq a -> TM a (TSeq a)
 βs c = traverse q where
-    q t | Just{} <- unA t = lΒ (tβ c) t
+    q t | Just{} <- unA t = lΒ c t
+    -- TODO: UU?
     q t = pure t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
@@ -789,5 +791,3 @@ foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
 
 eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
 eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
-
-zt=zipWith TS
