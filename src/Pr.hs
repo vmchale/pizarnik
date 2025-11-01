@@ -1,10 +1,10 @@
 module Pr ( pBound, pB
           , (<##>), (<#>)
-          , sq
+          , sq, sqs
           ) where
 
 import qualified Data.IntMap   as IM
-import           Prettyprinter (Doc, Pretty (pretty), hardline, vsep, (<+>))
+import           Prettyprinter (Doc, Pretty (pretty), hardline, hsep, vsep, (<+>))
 
 infixr 6 <#>
 infixr 6 <##>
@@ -19,4 +19,5 @@ pB (i,j) = pretty i <+> "→" <+> pretty j
 pBound :: Pretty b => IM.IntMap b -> Doc a
 pBound b = vsep (pB<$>IM.toList b)
 
+sqs x = "‘" <> hsep (pretty<$>x) <> "’"
 sq x = "‘" <> pretty x <> "’"

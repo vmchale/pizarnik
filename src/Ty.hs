@@ -45,7 +45,7 @@ data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
 instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromDistinctAscList [(-2,0),(-1,0)])
 
-data TE a = BE (BE a) | O (T a) (T a)
+data TE a = BE (BE a) | O (T a) (T a) | Os (Nm a) (TSeq a)
           | PM (TSeq a)
           | LE (TSeq a) (TSeq a)
           | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a) | UF (T a) (T a)
@@ -61,7 +61,8 @@ instance Pretty a => Pretty (TE a) where
     pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "unknown arity:" <+> sq n
     pretty (BE e)       = pretty e
     pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
-    pretty (O t₀ t₁)    = tc t₀$"occurs check failed: " <+> sq t₀ <> "," <+> sq t₁
+    pretty (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
+    pretty (Os n t)     = pretty (Nm.loc n) <> ":" <+> "occurs check failed:" <+> sq n <> "," <+> sqs t
     pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
     pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
     pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
@@ -178,6 +179,18 @@ peekS s (TS l r) = TS <$> peek s l <*> peek s r
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
 (@>) _ SV{} = error"Internal error: (@>) applied to stack variable "
+
+so :: T a -> IS.IntSet
+so (SV _ n)        = NmSet.singleton n
+so (TA _ t₀ t₁)    = so t₀<>so t₁
+so TP{}            = IS.empty
+so (UU _ ts )      = so@<>ts
+so (QT _ (TS l r)) = so@<>l <> so@<>r
+so TT{}            = IS.empty
+so TC{}            = IS.empty
+so (Σ _ a)         = foldMap (so@<>) a
+so (Ρ _ _ σ)       = foldMap (so@<>) σ
+so TV{}            = IS.empty
 
 occ :: T a -> IS.IntSet
 occ (TV _ n)        = NmSet.singleton n
@@ -303,15 +316,22 @@ sus=sv su;susc=ctx'ize sus; sσ = uσ susc
 
 type UC v a = Nt a -> Subst a -> v -> v -> TM a (v, Subst a)
 
+-- iSV₁ n₀ [SV _ n₁] | n₀==n₁ = id; iSV₁ n t = iSV n t
+
+si :: Nm a -> TSeq a -> TM a (Subst a -> Subst a)
+si n₀ [SV _ n₁] | n₀==n₁ = pure id
+si n t | n `NmSet.member` so@<>t = throwError (Os n t)
+       | otherwise = pure (iSV n t)
+
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
 sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
+              in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t1d res}
         _  -> let (uws, res) = splitFromLeft n0 t1
-              in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
+              in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
 sv u c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
     case compare n0 n1 of
