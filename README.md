@@ -36,7 +36,7 @@ head : NE(a) -- a
 
 foldr : [ a b -- b ] b List(a) -- b
       := [ { `nil⁻¹ nip
-           & `cons⁻¹ [dup] dip3 rotl [rot [rot $] dip swap] dip foldr } ]
+           & `cons⁻¹ [dup] dip3 (153)(24) [$] dip2 (23) foldr } ]
 ```
 
 The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we written `head : List(a) -- a`:
@@ -84,6 +84,10 @@ will fail, viz.
 [Extensible cases](https://dl.acm.org/doi/10.1145/1159803.1159836) put forward
 by Blume, Acar, and Chae solve the expression problem:
 
+<!-- properly solved, expression problem is one of polarity, (sum types that are disjuncts demand disjunctive products?) not analogy -->
+<!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (or contravariantly) -->
+
+
 ```pizarnik
 @i prelude/fn
 
@@ -116,3 +120,4 @@ map1 : [a -- b] Both(a,c) -- Both(b,c)
 
   - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
   - [Pattern-Matching as Inverse](https://vmchale.github.io/pizarnik/inv.html)
+  - [Or-Patterns](https://vmchale.github.io/pizarnik/or.html)
