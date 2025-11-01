@@ -422,6 +422,7 @@ nρ n@(Nm t _ l) σ = do
 φ _ _ t0@QT{} t1@TP{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
 φ _ _ SV{} _ = ie; φ _ _ _ SV{} = ie
+φ c s t0@QT{} t1@QT{} = uu c s t0 t1
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
