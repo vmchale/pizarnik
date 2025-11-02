@@ -28,6 +28,7 @@ Blume, Acar, and Chae present a functional language in which sum type variants (
 Blume, Acar, and Chae note that they solve the expression problem for functional languages.
 
 % http://lambda-the-ultimate.org/node/4394#comment-68007
+% http://lambda-the-ultimate.org/node/3338
 
 % more "natural"; don't have to change approach entirely/start out w/ right approach
 
@@ -38,9 +39,7 @@ Blume, Acar, and Chae note that they solve the expression problem for functional
 
 Nick Partridge gives an example of using prisms for error hierarchies in Haskell \cite{errorprisms}.
 
-This is dual to the lens kludge
-
-% https://blog.jle.im/entry/lenses-products-prisms-sums.html might be relevant
+This is dual \cite{jle} to the lens kludge
 
 \begin{verbatim}
 class HasInt a where
@@ -50,9 +49,8 @@ class HasInt a where
 which is known to be superseded by row types.
 
 Both entail the globality of typeclasses and depend on esoteric compiler extensions \cite{ghc}.
-%
 
-The Haskell solutions are more convoluted, but it is precisely this maladroitness that attests to the appetite for a solution to this problem.
+The Haskell solutions are more convoluted, but it is precisely this clumsiness that attests to the appetite for a solution to this problem.
 
 \bibliographystyle{plain}
 \bibliography{bib.bib}
