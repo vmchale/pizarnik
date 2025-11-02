@@ -18,7 +18,7 @@ Denote by $\prec$ the subsumption relation. A sum subsumes its constituents, i.e
 $$A \prec A \oplus B$$
 $$B \prec A \oplus B$$
 
-Subsumption is contravariant in the argument to a function type: $A -- B \prec A' -- B'$ iff $A' \prec A$ and $B' \prec B$; a function is more general if it accepts a wider type.
+Subsumption is contravariant in the argument to a function type: $A -- B \prec A' -- B'$ iff $A' \prec A$ and $B' \prec B$; a function is more general if it accepts values of a more general type as argument.
 
 \section{Judgments}
 
@@ -56,12 +56,7 @@ Note that stack variables are always leftmost, hence the inconvenient (from the 
 
 Tags in Pizarnik have an associated arity.
 
-\begin{mathpar}
-\inferrule
-{\Judge x_0 : A \tag \tseq\beta n \alpha_0 -- C_0 \\ x_1 : A B_1 -- C_1}
-{}
-\quad(\textsc{Pattern-Match})
-\end{mathpar}
+% \tag \tseq
 
 % The \textsc{Cut} rule only requires subsumption rather than equality.
 % POINTED
