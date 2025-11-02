@@ -131,7 +131,8 @@ cA :: T a -> TM b ()
 cA (UU _ ts) = traverse_ cA ts
 cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
   where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
-                  | otherwise = error "tag in sum with different arity"
+                  | otherwise = error"sum declaration includes tag with conflicting arity"
+                  -- FIXME: more precise naming errors
 cA _=pure ()
 
 iTD :: Nm a -> [Nm b] -> T b -> TM b ()
