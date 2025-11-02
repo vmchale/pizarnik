@@ -688,7 +688,7 @@ ta b s (C l tt)        = do
 ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
     -- TODO: this gets tucked away immediately
-    sigs <- traverse (exps l <=< peekS s0.aLs) as'
+    sigs <- traverse (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 
@@ -740,6 +740,7 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (Σ{}:ts)       = (1+) <$> g ts
           g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?
           g (TA{}:ts)      = (1+) <$> g ts
+          g []             = pure 0
           g [SV{}]         = pure 0
           g (Ρ{}:ts)       = g ts
           g (TV{}:ts)      = g ts
@@ -753,8 +754,8 @@ dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
 dU c s x tss = do
     tψ <- ψ c =<< traverse (βt (tβ c)) tss
     let rϵ=fmap (map trights) tψ
-        rm=maximum (length<$>concat rϵ)
-    ρ <- traverse (traverse (pad x.(rm-).length)) rϵ
+        rm=maximum (l<$>concat rϵ)
+    ρ <- traverse (traverse (pad x.(rm-).l)) rϵ
     let ψ' = Nm.intersectionWith (zipWith (\p (TS l r) -> TS (tuck p l) (tuck p r))) ρ tψ
         rs'= concatMap (map trights) ψ'
     -- (al,s') <- traceShow ψ' $ srs s (Nm.toList x ψ')
@@ -762,13 +763,14 @@ dU c s x tss = do
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where -- βlr=traverse (βs (tβ c))
-        -- TODO: lT rr is constant, why not sum
+  where -- TODO: lT rr is constant, why not sum
         -- local <- gets (arit.lo)
         -- and pass (ars c<>local<>ars c)
         lR=lT (ars c)
 
-        tuck ts0 (t@SV{}:ts1) = t:ts0++ts1
+        l (SV{}:t) = length t; l t=length t
+
+        tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
 
         srs sϵ []            = pure ([], sϵ)
         srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
