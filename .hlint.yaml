@@ -3,6 +3,10 @@
 
 - fixity: infixr 3 &&&
 - fixity: infixr 1 <=<
+- fixity: infixl 7 .&.
+- fixity: infixl 5 .|.
+- fixity: infixl 8 `shiftR`
+- fixity: infixl 8 `shiftL`
 - fixity: infixl 7 \-
 - fixity: infixr 6 @>
 - fixity: infixl 6 @@
