@@ -78,13 +78,11 @@ Recalling the identity rule\footnote{This pairs well with the fact that inverses
 \quad(\textsc{Id})
 \end{mathpar}
 
-and the definition of $(-)^\bot$ by the De Morgan laws $(A\oplus B)^\bot = A^\bot \& B^\bot$ \cite{girard1987}[p.~20], we can prove that $\&$ (with) generalizes on the left. And indeed a function accepting a value of type $A\oplus B$ as argument can just as well accept a value of type $A$, though this is not manifest in, say, Haskell. But it turns out to be useful; we define \verb|foldr| to work on non-empty lists in \S\ref{sec:head}.
+and the definition of $(-)^\bot$ by the De Morgan laws $(A\oplus B)^\bot = A^\bot \& B^\bot$ \cite{girard1987}[p.~20], we can prove that $\&$ (with) generalizes on the left. And indeed a function accepting a value of type $A\oplus B$ as argument can just as well accept a value of type $A$, though this is not manifest in, say, Haskell. But this turns out to be useful; we define \verb|foldr| to work on non-empty lists in \S\ref{sec:head}.
  
 % not spiritual types...
-
 % true inverse
-
-% not like row polymorphism in that left-right must be distinguished, insightful (for instance existential types)
+% not like row polymorphism in that left-right must be distinguished
 
 \subsection{Reusing Pattern-Match Arms}
 
