@@ -756,9 +756,8 @@ dU c s x tss = do
     let rϵ=fmap (map trights) tψ
         rm=maximum (l<$>concat rϵ)
     ρ <- traverse (traverse (pad x.(rm-).l)) rϵ
-    let ψ' = Nm.intersectionWith (zipWith (\p (TS l r) -> TS (tuck p l) (tuck p r))) ρ tψ
+    let ψ' = Nm.intersectionWith (zipWith (\p (TS l_ r_) -> TS (tuck p l_) (tuck p r_))) ρ tψ
         rs'= concatMap (map trights) ψ'
-    -- (al,s') <- traceShow ψ' $ srs s (Nm.toList x ψ')
     (al,s') <- srs s (Nm.toList x ψ')
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
