@@ -98,15 +98,15 @@ mapTV f (Subst v s) = Subst (f v) s; mapSV f (Subst v s) = Subst v (f s)
 iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) t)
 sTV (Nm _ (U u) _) t = Subst (IM.singleton u t) IM.empty
 
+(\-) s u = mapTV (IM.delete u) s
+
 c1 :: Nm a -> T a -> T a -> TM a (Subst a)
 c1 (Nm _ (U u) _) t te | u `IS.member` occ t = throwError $ O te t
                        | otherwise = pure (Subst (IM.singleton u t) IM.empty)
 
 ci :: Nm a -> T a -> T a -> Subst a -> TM a (Subst a)
-ci n t te s | n `NmSet.member` occ t = throwError $ O te t
-            | otherwise = pure (mapTV (IM.insert (unU$un n) t) s)
-
-(\-) s u = mapTV (IM.delete u) s
+ci (Nm _ (U u) _) t te s | u `IS.member` occ t = throwError $ O te t
+                         | otherwise = pure (mapTV (IM.insert u t) s)
 
 cf, sf, φf :: T a -> T a -> TM a b
 sf t0 t1 = throwError$LF t0 t1
@@ -123,20 +123,6 @@ tun = g [] where g s (TC _ n)     = Just (n, s)
 
 lΒ :: Cs a -> T a -> TM a (T a)
 lΒ c = liftEither . first BE . tCtx c
-
-iFn :: Nm a -> TS b -> TM b ()
-iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
-
-cA :: T a -> TM b ()
-cA (UU _ ts) = traverse_ cA ts
-cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
-  where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
-                  | otherwise = error"sum declaration includes tag with conflicting arity"
-                  -- FIXME: more precise naming errors
-cA _=pure ()
-
-iTD :: Nm a -> [Nm b] -> T b -> TM b ()
-iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f (IM.insert i (vs,t) c) a))
 
 {-# SCC (@*) #-}
 (@*) :: Subst a -> TS a -> TM a (TS a)
@@ -604,6 +590,18 @@ tD1 b (F _ n ts as) = do
     as''<- taseq (s'@*) as'
     pure (F ts (n$>ts) ts as'')
 
+-- TODO check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
+iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
+iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f (IM.insert i (vs,t) c) a))
+
+cA :: T a -> TM b ()
+cA (UU _ ts) = traverse_ cA ts
+cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
+    where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
+                    | otherwise = error"sum declaration includes tag with conflicting arity"
+                    -- FIXME: more precise naming errors
+cA _=pure ()
+
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> TM a (TS a, Subst a)
 sseq _ l s []     = do {a <- fsv l "A"; pure ([a] --: [a], s)}
 sseq b l s (a:as) = do
@@ -785,22 +783,25 @@ dU c s x tss = do
         urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
 
         an as = do
-            (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lR nm; when (n>length ts) (error"Internal error?") $> (ts /| n)}) as
+            (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lR nm; when (n>length ts) ie $> (ts /| n)}) as
             pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
           where nms=map fst as
 
 βt :: Cs a -> TS a -> TM a (TS a)
 βt c (TS l r) = TS <$> βs c l <*> βs c r
 
+-- FIXME: duplicates functionality of tCtx
 βs :: Cs a -> TSeq a -> TM a (TSeq a)
 βs c = traverse q where
     q t | Just{} <- unA t = lΒ c t
-    -- TODO: UU?
     q t = pure t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
 tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
+
+eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
+eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
 
 onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
@@ -808,9 +809,6 @@ onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 (@<>) :: (Monoid m, Foldable f) => (a -> m) -> f a -> m
 (@<>) = foldMap
 
-ie=error"internal error."
-
 foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
 
-eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
-eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
+ie=error"internal error."
