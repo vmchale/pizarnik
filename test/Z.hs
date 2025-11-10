@@ -35,6 +35,7 @@ main = defaultMain $
                           , "test/data/perm.piz"
                           , "test/examples/exp.piz"
                           , "prelude/fn.piz"
+                          , "test/examples/ros.piz"
                           ] ])
     where tI = tFile ["."]; tNo = tFile []
           tE = tErr ["."]; tENo = tErr []

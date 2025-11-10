@@ -1,0 +1,11 @@
+type DNA = { `a ⊕ `c ⊕ `g ⊕ `t };
+
+type RNA = { `a ⊕ `c ⊕ `g ⊕ `u };
+
+transcribe : DNA -- RNA
+           := [ { `t⁻¹ `u & `a⁻¹ `a & `c⁻¹ `c & `g⁻¹ `g } ]
+
+complement : DNA -- DNA
+           := [ { `a⁻¹ `t & `t⁻¹ `a
+                & `c⁻¹ `g & `g⁻¹ `c }
+              ]
