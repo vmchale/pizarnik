@@ -315,12 +315,11 @@ sus=sv su;susc=ctx'ize sus; sσ = uσ susc
 
 type UC v a = Nt a -> Subst a -> v -> v -> TM a (v, Subst a)
 
--- iSV₁ n₀ [SV _ n₁] | n₀==n₁ = id; iSV₁ n t = iSV n t
-
+-- if we have A, B [B c -- A b] (say) then we must have A=0
 si :: Nm a -> TSeq a -> TM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
-si n t | n `NmSet.member` so@<>t = throwError (Os n t)
-       | otherwise = pure (iSV n t)
+si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
