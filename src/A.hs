@@ -9,6 +9,8 @@ module A ( A (..)
          , SL (..), ASeq
          , (--:)
          , taseq
+         , PT (..)
+         , ppt, psv
          , unA
          , am
          , tTS
@@ -149,6 +151,8 @@ instance Functor T where
     fmap f (TA x t₀ t₁) = TA (f x) (f<$>t₀) (f<$>t₁)
     fmap f (QT x ts)    = QT (f x) (fmap f ts)
     fmap f (UU x ts)    = UU (f x) (map (fmap f) ts)
+
+psv=fr sr
 
 instance PT (T a) where
     pp t@TP{} = pure t; pp t@TT{} = pure t

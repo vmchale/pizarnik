@@ -11,7 +11,7 @@ import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
 import           Data.Bifunctor                   (first, second)
-import           Data.Foldable                    (toList, traverse_)
+import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -48,27 +48,39 @@ instance Monoid (Ext a) where mempty = Ext IM.empty IM.empty (IM.fromDistinctAsc
 data TE a = BE (BE a) | O (T a) (T a) | Os (Nm a) (TSeq a)
           | PM (TSeq a)
           | LE (TSeq a) (TSeq a)
-          | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a) | UF (T a) (T a)
+          | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
+          | UF (T a) (T a) | MF (T a) (T a) | Bare (T a)
           | AM (Nm a) | IS (Nm a)
-          | Bare (T a)
+
+instance PT (TE a) where
+    pp (UF t₀ t₁) = UF <$> pp t₀ <*> pp t₁; pp (O t₀ t₁) = O <$> pp t₀ <*> pp t₁
+    pp (Os n ts)  = Os <$> psv n <*> traverse pp ts
+    pp (LE ts₀ ts₁) = LE <$> traverse pp ts₀ <*> traverse pp ts₁
+    pp (LF t₀ t₁) = LF <$> pp t₀ <*> pp t₁; pp (ΦF t₀ t₁) = ΦF <$> pp t₀ <*> pp t₁
+    pp (CF t₀ t₁) = CF <$> pp t₀ <*> pp t₁; pp (MF t₀ t₁) = MF <$> pp t₀ <*> pp t₁
+    pp e@AM{} = pure e; pp e@IS{} = pure e
+    pp e@Bare{} = pure e; pp e@PM{} = pure e
+    pp e@BE{} = pure e
 
 {-# SCC tLs #-}
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
-    pretty (AM n)       = pretty (Nm.loc n) <> ":" <+> "unknown arity:" <+> sq n
-    pretty (BE e)       = pretty e
-    pretty (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
-    pretty (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
-    pretty (Os n t)     = pretty (Nm.loc n) <> ":" <+> "occurs check failed:" <+> sq n <> "," <+> sqs t
-    pretty (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
-    pretty (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
-    pretty (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
-    pretty (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
-    pretty (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
-    pretty (Bare t)     = tc t$"Bare union:" <+> sq t
+    pretty=p0.ppt where
+        p0 (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
+        p0 (AM n)       = pretty (Nm.loc n) <> ":" <+> "unknown arity:" <+> sq n
+        p0 (BE e)       = pretty e
+        p0 (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+        p0 (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
+        p0 (Os n t)     = pretty (Nm.loc n) <> ":" <+> "occurs check failed:" <+> sq n <> "," <+> sqs t
+        p0 (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
+        p0 (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
+        p0 (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
+        p0 (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
+        p0 (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "with" <+> sq t1
+        p0 (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
+        p0 (Bare t)     = tc t$"Bare union:" <+> sq t
 
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
