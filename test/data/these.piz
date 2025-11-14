@@ -2,8 +2,8 @@
 @i lib/either
 @i lib/both
 
-map1_ : [a -- b] Both(a,c) -- Both(b,c)
-        := [ { `left⁻¹ swap $ `left
-             & `right⁻¹ nip `right
-             & `both⁻¹ (23) [$] dip `both }
-           ]
+map1 : [a -- b] Both(a,c) -- Both(b,c)
+     := [ { mapLeft
+          & `both⁻¹ (23) [$] dip `both
+          }
+        ]
