@@ -696,7 +696,7 @@ ta b s (C l tt)        = do
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
-    -- TODO: this gets tucked away immediately
+    -- TODO: just peekS?
     sigs <- traverse (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
@@ -704,8 +704,8 @@ ta b s (Pat l as)      = do
 pad :: a -> Int -> TM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
-tally :: [([Nm a], b)] -> Nm.NmMap [b]
-tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.augment g n | n <- ns] z) Nm.empty
+tally :: [([(Nm a, TSeq a)], TS a)] -> Nm.NmMap [TS a]
+tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs)=TS (l++υ) r:xs in thread [Nm.augment (g υ) n | (n,υ) <- ns] z) Nm.empty
 
 ψ :: Nt a -> [TS a] -> TM a (Nm.NmMap [TS a])
 ψ c tss = do
@@ -714,24 +714,26 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
     forks <- traverse (p n) sl
     h <- traverse (l n) sl
     let tss' = zipWith TS (map reverse h) (map trights tss)
+    -- TODO: fuse with p below
     pure (tally (zip forks tss'))
     where sl=map (reverse.tlefts) tss
 
     -- counts, punches hole, picks out "pivot name" all separately...
     -- probably should map this one or two traversals...
     --
-    -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹ ??
-
+    -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹
+    -- def mishandles Both(a,b)... smh
           l :: Int -> [T a] -> TM a [T a]
           l 1 (_:ts)           = pure ts
           l n (t@Σ{}:ts)       = (t:) <$> l (n-1) ts
-          l n (t@(TT _ tt):ts) = do {k <- lT a tt; (t:).(take k ts++) <$> l (n-1) ts}
+          l n (t@(TT _ tt):ts) = do {k <- lψ tt; (t:).(take k ts++) <$> l (n-1) ts}
+          -- TODO: UU?
           l n (t:ts)           = (t:) <$> l n ts
 
-          p :: Int -> [T a] -> TM a [Nm a]
+          p :: Int -> [T a] -> TM a [(Nm a, TSeq a)]
           p n ts = cs =<< (ts!*n) where cs = \case
-                                            TT _ nm -> pure [nm]
-                                            Σ x σ -> pure (Nm.keys σ x)
+                                            TT _ nm -> pure [(nm,[])] -- FIXME: we don't pad tags but we DO pad constructors... this can probably be simplified!
+                                            Σ x σ -> traverse (\nm -> do {k <- lψ nm; υ <- pad (loc nm) k; pure (nm,υ)}) (Nm.keys σ x)
                                             t | Just{} <- unA t -> error (show t)
                                             _ -> throwError (PM ts)
 
@@ -739,13 +741,13 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           (Σ{}:ts) !* n       = ts!*(n-1)
           (TC{}:ts) !* n      = ts!*(n-1)
           (TA{}:ts) !* n      = ts!*(n-1)
-          ((TT _ tt):ts) !* n = do {k <- lT a tt; drop k ts !* (n-1)}
+          ((TT _ tt):ts) !* n = do {k <- lψ tt; drop k ts !* (n-1)}
           (TP{}:ts) !* n      = ts!*n
           (QT{}:ts) !* n      = ts!*n
           (Ρ{}:ts) !* n       = ts!*n
           (TV{}:ts) !* n      = ts!*n
 
-          g ((TT _ tt):ts) = do {n <- lT a tt; (1+) <$> g (drop n ts)}
+          g ((TT _ tt):ts) = do {n <- lψ tt; (1+) <$> g (drop n ts)}
           g (Σ{}:ts)       = (1+) <$> g ts
           g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?
           g (TA{}:ts)      = (1+) <$> g ts
@@ -756,7 +758,7 @@ tally = foldl' (\z (ns,x) -> let g Nothing=[x]; g (Just xs)=x:xs in thread [Nm.a
           g (TP{}:ts)      = g ts
           g (QT{}:ts)      = g ts
 
-          a = ars c
+          lψ=lT (ars c)
 
 {-# SCC dU #-}
 dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
