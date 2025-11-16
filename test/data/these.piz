@@ -1,9 +1,0 @@
-@i prelude/fn
-@i lib/either
-@i lib/both
-
-map1 : [a -- b] Both(a,c) -- Both(b,c)
-     := [ { mapLeft
-          & `both⁻¹ (23) [$] dip `both
-          }
-        ]

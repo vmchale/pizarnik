@@ -302,6 +302,8 @@ su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1 = cf t0 t1; su _ _ t0 t1@TT{} = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
+su c s t0@UU{} t1 = do {t0' <- uU (tβ c) t0; su c s t0' t1}
+su c s t0 t1@UU{} = do {t1' <- uU (tβ c) t1; su c s t0 t1'}
 
 uσ u c s l σ0 σ1 =
     us s (Nm.toList l ς)
@@ -436,35 +438,34 @@ rwAr ar = under (fmap reverse . g . reverse)
 
 mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 
-hasU = any (\case TC{} -> True; _-> False)
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 
 -- TODO: replace UU etc.
-ce c = traverse (lΒ c); ue c = traverse (uU c)
+ce c = traverse (lΒ c)
 
 ms :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
-    | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
+    -- -- | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
+    -- -- | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
     -- FIXME: eat based on constructor arity
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
 ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV n uws s) t0 res
-    | hasU t1 = do {t1' <- ue (tβ c) t1; ms u c s t0e t1'}
-    | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
+    -- -- | hasU t1 = do {t1' <- ue (tβ c) t1; ms u c s t0e t1'}
+    -- -- | hasC t1 = do {t1' <- ce (tβ c) t1; ms u c s t0e t1'}
     -- FIXME: make sure this doesn't loop indefinitely?
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
 ms u c s t0 t1e@(SV _ n:t1)
     | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
                in mc u c (iSV n uws s) res t1
-    | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
-    | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
+    -- -- | hasU t0 = do {t0' <- ue (tβ c) t0; ms u c s t0' t1e}
+    -- -- | hasC t0 = do {t0' <- ce (tβ c) t0; ms u c s t0' t1e}
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
@@ -501,12 +502,12 @@ lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
                             | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
-                               | otherwise = do {(_,g) <- nρ n (σ0<>σ1); g<$>mσ lt c σ0 σ1}
+                               | otherwise = do {(_,g) <- nρ n (σ0<>σ1); g<$>mσ lt c σ0 σ1} -- [tag:fresh]
 lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
 -- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t) TODO?
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
-                                   -- TODO: should we allow ρ to expand? we handle it exactly different on line 426
+                                   -- FIXME: we do exactly the opposite in [ref:fresh]
                                    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
@@ -545,7 +546,8 @@ mTS c = mtsc c mempty
 -- FIXME: if we generalize on the right we should check it still matches on the left?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
+mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc lt c s l1 l0; mc lt c s' r0 r1}
+-- r1 annotation, r0 inferred from atoms
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
@@ -773,7 +775,7 @@ dU c s x tss = do
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where -- TODO: lT rr is constant, why not sum
+  where -- TODO: lT rr is constant, consider
         -- local <- gets (arit.lo)
         -- and pass (ars c<>local<>ars c)
         lR=lT (ars c)
