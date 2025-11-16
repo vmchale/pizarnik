@@ -10,6 +10,8 @@ main = defaultMain $
         -- TODO: error line no.?
       ( tENo "test/data/pmfail.piz" "3:12: {a `just ⊕ `nil} ⊀ {ρ₁ `just}"
       : tENo "test/data/badPerm.piz" "?"
+      : tENo "test/data/univL.piz" "?"
+      : tENo "test/data/univR.piz" "?"
       : tENo "test/examples/errorHierarchy.piz" "?"
       : tENo "test/data/badBool.piz" "3:12: failed to unify ‘{True}’ with ‘{True ⊕ False}’"
       : tENo "test/data/badBool2.piz" "3:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
@@ -24,8 +26,8 @@ main = defaultMain $
                         , "test/examples/pat.piz"
                         , "lib/numbertheory.piz"
                         , "test/data/beta.piz"
-                        , "test/data/these.piz"
                         , "test/data/rec.piz"
+                        , "test/data/both.piz"
                         , "test/examples/pat2.piz"
                         ] ]
       ++ [ tNo fp | fp <- [ "examples/vierergruppe.piz"
