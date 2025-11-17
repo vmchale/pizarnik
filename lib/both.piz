@@ -7,6 +7,12 @@ type Both a b = Either(a,b) ∪ { a b `both };
 left : { a `left ⊕ a b `both } -- a
      := [ { `left⁻¹ & `both⁻¹ drop } ]
 
+mapL : [a -- b] Both(a,c) -- Both(b,c)
+     := [ { mapLeft
+          & `both⁻¹ (23) [$] dip `both
+          }
+        ]
+
 bimap : [a -- b] [c -- d] Both(a,b) -- Both(c,d)
       := [ { `left⁻¹ nip swap $ `left
            & `right⁻¹ nip2 swap $ `right
