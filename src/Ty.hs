@@ -78,7 +78,7 @@ instance Pretty a => Pretty (TE a) where
         p0 (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
         p0 (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
         p0 (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
-        p0 (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "with" <+> sq t1
+        p0 (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
         p0 (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
         p0 (Bare t)     = tc t$"Bare union:" <+> sq t
 
