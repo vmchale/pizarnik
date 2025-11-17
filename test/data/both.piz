@@ -1,0 +1,12 @@
+@i prelude/bool
+@i lib/either
+@i lib/both
+
+x : -- Either(Bool,Int)
+  := [ True `left ]
+
+a : -- Either(Bool,Int)
+  := [ [not] x mapLeft ]
+
+b : -- Both(Bool,Int)
+  := [ [ not ] x mapL ]
