@@ -26,7 +26,7 @@ instance Ord (Nm a) where compare (Nm _ u _) (Nm _ u' _) = compare u u'
 
 instance Pretty (Nm a) where
     pretty (Nm t _ _) = pretty t
-    -- pretty (Nm t (U u) _) = pretty t <> pᵤ u
+    -- pretty (Nm t (U u) _) = pretty t <> pretty (pᵤ u)
 
 instance Show (Nm a) where show=show.pretty
 
