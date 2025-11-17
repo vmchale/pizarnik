@@ -143,7 +143,7 @@ s @* (TS l r) = TS <$> s@@l <*> s@@r
 {-# SCC peek #-}
 peek :: Subst a -> TSeq a -> TM a (TSeq a)
 peek _ []          = pure []
-peek s (SV _ n:ts) = do {v <- s@~>n; pure (v++ts)}
+peek s (SV _ n:ts) = do {v <- s@~>n; if null v then peek s ts else pure (v++ts)}
 peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
 
 peekS :: Subst a -> TS a -> TM a (TS a)
