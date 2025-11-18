@@ -5,8 +5,5 @@
 x : -- Either(Bool,Int)
   := [ True `left ]
 
-a : -- Either(Bool,Int)
-  := [ [not] x mapLeft ]
-
 b : -- Both(Bool,Int)
   := [ [ not ] x mapL ]

@@ -9,7 +9,7 @@ left : { a `left ⊕ a b `both } -- a
 
 mapL : [a -- b] Both(a,c) -- Both(b,c)
      := [ { mapLeft
-          & `both⁻¹ (23) [$] dip `both
+          & `both⁻¹ [swap $] dip `both
           }
         ]
 
