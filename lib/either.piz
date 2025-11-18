@@ -3,6 +3,9 @@
 type Either a b = { a `left ⊕ b `right };
 
 mapLeft : [ a -- c ] Either(a,b) -- Either(c,b)
-        := [ { `left⁻¹ swap $ `left & `right⁻¹ nip `right } ]
+        := [ { `left⁻¹ swap $ `left
+             & `right⁻¹ nip `right
+             }
+           ]
 
 # TODO: conjugation? (dip...)
