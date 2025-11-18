@@ -1,11 +1,14 @@
 MAKEFLAGS += -j
 
-docs: index.html perm.html inv.html ne.html or.html
+docs: index.html
 
-index.html: index.md
+index.html: index.md perm.html inv.html ne.html or.html exp.html
 	pandoc -s $< -o $@
 
 or.html: ../tut/or.html
+	ln -f $< $@
+
+exp.html: ../tut/exp.html
 	ln -f $< $@
 
 perm.html: ../tut/perm.html

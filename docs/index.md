@@ -1,6 +1,7 @@
 # Examples
 
   - [Non-Empty Lists](./ne.html)
+  - [Solving the Expression Problem](./exp.html)
 
 # Theory
 
