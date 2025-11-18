@@ -24,7 +24,7 @@ bS st (TV _ n@(Nm _ (U j) _)) =
         Nothing -> Left $ TCA n
         Just t  -> Right t
 -- avoid TCA errors not by user when substituting
-bS st t@(TA x t0 t1) | Just{} <- unA t = pure t -- avoid over-expanding infinite (e.g. List(a))
+bS st t@(TA x t0 t1) | Just (th,ts) <- unA t = foldl (TA x) th <$> traverse (bS st) ts -- avoid expanding infinite (e.g. List(a))
                      | otherwise = TA x <$> bS st t0 <*> bS st t1
 bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
