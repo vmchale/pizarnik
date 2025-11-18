@@ -1,3 +1,4 @@
+@i prelude/fn
 @i prelude/bool
 @i lib/either
 @i lib/both
@@ -7,3 +8,6 @@ x : -- Either(Bool,Int)
 
 b : -- Both(Bool,Int)
   := [ [ not ] x mapL ]
+
+c : Both(Bool, Int) -- Either(Bool,Int)
+  := [ [ not ] swap mapLeft ]

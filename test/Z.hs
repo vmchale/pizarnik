@@ -17,6 +17,7 @@ main = defaultMain $
       : tENo "test/data/badBool2.piz" "3:12: failed to unify ‘{False}’ with ‘{True ⊕ False}’"
       : tE "test/data/permeable.piz" "21:8: ‘{`nil ⊕\n       List( Unit ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) a `cons}’"
       : tE "test/data/badList.piz" "4:14: {List(a) a `cons ⊕ `nil} ⊀ {ρ₁ a `cons}"
+      : tE "test/data/both.piz" "12:5: {{True ⊕ False} `left ⊕ Int `right ⊕ {True ⊕ False} Int `both} ⊀ {{True ⊕\n                                                                        False} `left ⊕\n                                                                       Int `right}"
       : [ tI fp | fp <- [ "lib/list.piz"
                         , "lib/either.piz"
                         , "lib/both.piz"
@@ -27,7 +28,6 @@ main = defaultMain $
                         , "lib/numbertheory.piz"
                         , "test/data/beta.piz"
                         , "test/data/rec.piz"
-                        , "test/data/both.piz"
                         , "test/examples/pat2.piz"
                         ] ]
       ++ [ tNo fp | fp <- [ "examples/vierergruppe.piz"
