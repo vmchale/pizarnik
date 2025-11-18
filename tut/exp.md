@@ -21,7 +21,7 @@ We can extend `mapLeft`, viz.
 
 `mapL` accepts a value of type `Either(a,b)` as argument:
 
-```{.pizarnik include="../test/data/both.piz" startLine=6 endLine=7}
+```{.pizarnik include="../test/data/both.piz" startLine=6 endLine=10}
 ```
 
 Functions defined for `Either(a,b)` do not need to be rewritten and they do not
@@ -37,7 +37,7 @@ compromise safety.
 Pattern matching is different from a function returning values: it is a
 disjunctive product. By distinguishing polarity, i.e. disjunctions as arguments
 vs. return values, we get first-class patterns. Both the "left" and "right"
-aspects are reusable, can be named.
+aspects are first-class, can be named as functions are.
 
 In a similar vein, we can define
 

@@ -290,7 +290,7 @@ imagine how a pattern match that handles both the `<code>nil</code> and
 class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 10;"><span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span> : <span class="dt">NE</span>(<span class="fu">a</span>) -- <span class="fu">a</span></span>
 <span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`cons</span>⁻¹ <span class="fu">nip</span> } ]</span></code></pre></div>
 <p>Had we tried to write <code>head : List(a) -- a</code>:</p>
-<pre><code>5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}</code></pre>
+<pre><code>5:17: {`nil ⊕ List(a) a `cons} ⊀ {ρ₁ a `cons}</code></pre>
 <p>Moreover, pattern-match exhaustiveness is enforced for non-empty
 lists, viz.</p>
 <div class="sourceCode" id="cb5" data-startFrom="12"><pre
@@ -305,7 +305,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb6-1"><
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>  := [ <span class="fu">x</span> <span class="fu">head</span> ]</span></code></pre></div>
 <p>will fail:</p>
 <pre><code>23:8: ‘{`nil ⊕
-       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’</code></pre>
+       List( Unit ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) a `cons}’</code></pre>
 <h1 id="polarity-and-analogy">Polarity and Analogy</h1>
 <p>Doing the above in Haskell (for instance) is more fickle. We can
 define <code>foldr</code> to apply to both lists and non-empty lists

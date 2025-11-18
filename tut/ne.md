@@ -21,7 +21,7 @@ Non-empty lists enforce the same safety as in Haskell:
 Had we tried to write `head : List(a) -- a`:
 
 ```
-5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
+5:17: {`nil ⊕ List(a) a `cons} ⊀ {ρ₁ a `cons}
 ```
 
 Moreover, pattern-match exhaustiveness is enforced for non-empty lists, viz.
@@ -45,7 +45,7 @@ will fail:
 
 ```
 23:8: ‘{`nil ⊕
-       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’
+       List( Unit ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) a `cons}’
 ```
 
 # Polarity and Analogy
