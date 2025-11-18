@@ -443,6 +443,9 @@ hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 -- TODO: replace UU etc.
 ce c = traverse (lΒ c)
 
+-- TODO: check agreement w.r.t. previous agreements... e.g.
+-- a b c
+-- d e d
 ms :: (Nt a -> T a -> T a -> TM a (Subst a))
    -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
@@ -478,6 +481,27 @@ mσ u c σ0 σ1 =
   where
     g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
 
+μ :: Nt a
+  -> T a -- ^ inferred
+  -> T a -- ^ sig
+  -> TM a (Subst a)
+μ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+μ _ t0@(TV _ n) t1 = c1 n t1 t0
+μ _ t0@(Ρ _ n σ) t1@TV{} | Nm.null σ = c1 n t1 t0
+μ _ t0 t1@TV{} = throwError$MF t0 t1
+μ c (Σ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1
+μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later
+-- TODO: this proceeds the same as [ref:expand] in expanding constants...
+μ c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms μ c mempty a0 a1
+μ c (TC _ n) t1 = do {t0 <- lC (tβ c) n; μ c t0 t1}
+μ c t0 (TC _ n) = do {t1 <- lC (tβ c) n; μ c t0 t1}
+μ c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; μ c t0' t1}
+μ c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
+μ c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; μ c t0' t1}
+μ c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; μ c t0 t1'}
+μ _ TP{} TP{} = pure mempty
+μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1 -- TODO: contravariance?
+
 -- ≺
 lt :: Nt a -> T a -> T a -> TM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
@@ -485,9 +509,14 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-lt _ t0@(TV _ n) t1 = c1 n t1 t0
-lt _ t0@(Ρ _ _ σ) t1@(TV _ n) | Nm.null σ = c1 n t0 t1
-lt c (QT _ ts0) (QT _ ts1) = mTS c ts0 ts1
+-- lt _ t0@(TV _ n) t1 = c1 n t1 t0
+-- lt _ t0@(Ρ _ _ σ) t1@(TV _ n) | Nm.null σ = c1 n t0 t1
+lt _ t0@TV{} t1@(Ρ _ n σ) | Nm.null σ = c1 n t0 t1
+lt _ t0@(Ρ _ n σ) t1@TV{} | Nm.null σ = c1 n t1 t0
+lt _ t0 t1@TV{} = sf t0 t1
+lt _ t0@TV{} t1 = sf t0 t1
+lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
+-- [tag:expand]
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
@@ -537,15 +566,24 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
 lC :: Cs a -> Nm a -> TM a (T a)
 lC c n@(Nm _ (U i) l) =
     case IM.lookup i c of
+        -- TODO: clone? think type J r x = [[x -- r] -- x];
         Just ([],t) -> pure (l<$t)
         Nothing     -> throwError$IS n
 
-mTS :: Nt a -> TS a -> TS a -> TM a (Subst a)
-mTS c = mtsc c mempty
--- FIXME: if we generalize on the right we should check it still matches on the left?
+μs :: Nt a -> Subst a
+   -> TS a -- ^ inferreed
+   -> TS a -- ^ signature
+   -> TM a (Subst a)
+μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
+
+lts :: Nt a -> Subst a
+    -> TS a -- ^ inferred
+    -> TS a -- ^ signature
+    -> TM a (Subst a)
+lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1} -- TODO: why flip lt instead of l1 l0...?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
-mtsc c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1}
+mtsc c s ts0 ts1 = do {s' <- μs c s ts0 ts1; lts c s' ts0 ts1}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
