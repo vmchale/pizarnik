@@ -36,13 +36,13 @@ head : NE(a) -- a
 
 foldr : [ a b -- b ] b List(a) -- b
       := [ { `nil⁻¹ nip
-           & `cons⁻¹ [dup] dip3 (153)(24) [$] dip2 (23) foldr } ]
+           & `cons⁻¹ [dup] dip3 (152)(23) [$] dip2 (23) foldr } ]
 ```
 
 The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we written `head : List(a) -- a`:
 
 ```
-5:17: {`nil ⊕ List(a) b `cons} ⊀ {ρ₁ ρ₂ `cons}
+5:17: {`nil ⊕ List(a) a `cons} ⊀ {ρ₁ a `cons}
 ```
 
 # Or-Patterns
@@ -74,7 +74,7 @@ will fail, viz.
 
 ```
 23:8: ‘{`nil ⊕
-       List( a ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) b `cons}’
+       List( Unit ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) a `cons}’
 ```
 
 <!-- related to extensibility + atomicity of each _arm_ rather than tying each clause to the sum type decl... (constructors have arity buuut independent from the other sum typeys -->
@@ -115,6 +115,7 @@ map1 : [a -- b] Both(a,c) -- Both(b,c)
 ## Examples
 
   - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
+  - [Solving the Expression Problem](https://vmchale.github.io/pizarnik/exp.html)
 
 ## Theory
 
