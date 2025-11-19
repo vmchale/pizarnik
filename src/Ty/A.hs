@@ -47,3 +47,4 @@ cloneSigM (TS tl tr) = TS <$> traverse cT tl <*> traverse cT tr
     cT (QT x ts) = QT x <$> cloneSigM ts
     cT (TA x t ts) = TA x <$> cT t <*> cT ts
     cT (Σ x ts) = Σ x <$> traverse (traverse cT) ts
+    cT (Ρ x n a) = Ρ x <$> tryTV n <*> traverse (traverse cT) a
