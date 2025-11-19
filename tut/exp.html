@@ -234,7 +234,26 @@
     code span.va { color: #19177c; } /* Variable */
     code span.vs { color: #4070a0; } /* VerbatimString */
     code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
-  </style>
+    /* CSS for citations */
+    div.csl-bib-body { }
+    div.csl-entry {
+      clear: both;
+    }
+    .hanging-indent div.csl-entry {
+      margin-left:2em;
+      text-indent:-2em;
+    }
+    div.csl-left-margin {
+      min-width:2em;
+      float:left;
+    }
+    div.csl-right-inline {
+      margin-left:2em;
+      padding-left:1em;
+    }
+    div.csl-indent {
+      margin-left: 2em;
+    }  </style>
 </head>
 <body>
 <header id="title-block-header">
@@ -284,5 +303,27 @@ vs. return value, we get first-class patterns. Both the “left” and
 class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 6;"><span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">left</span> : { <span class="fu">a</span> <span class="cn">`left</span> ⊕ <span class="fu">a</span> <span class="fu">b</span> <span class="cn">`both</span> } -- <span class="fu">a</span></span>
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`left</span>⁻¹ &amp; <span class="cn">`both</span>⁻¹ <span class="fu">drop</span> } ]</span></code></pre></div>
 <p>which can be thought of as an or-pattern binding a variable.</p>
+<p>As Wadler <span class="citation"
+data-cites="expression">(1998)</span> puts it,</p>
+<blockquote>
+<p>One can think of cases as rows and functions as columns in a table.
+In a functional language, the rows are fixed (cases in a datatype
+declaration) but it is easy to add new columns (functions). In an
+object-oriented language, the columns are fixed (methods in a class
+declaration) but it is easy to add new rows (subclasses). We want to
+make it easy to add either rows or columns.</p>
+</blockquote>
+<p>Polarity, wherein argument and return value are dual (De Morgan laws
+for disjunctive product (pattern match, argument) and disjunctive sum
+(return value)) might frame the expression problem.</p>
+<h1 class="unnumbered" id="reference">Reference</h1>
+<div id="refs" class="references csl-bib-body hanging-indent"
+role="list">
+<div id="ref-expression" class="csl-entry" role="listitem">
+Wadler, Philip. 1998. <em>The Expression Problem</em>. <a
+href="https://homepages.inf.ed.ac.uk/wadler/papers/expression/expression.txt"
+class="uri">Https://homepages.inf.ed.ac.uk/wadler/papers/expression/expression.txt</a>.
+</div>
+</div>
 </body>
 </html>
