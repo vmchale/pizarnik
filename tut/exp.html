@@ -276,11 +276,10 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-res
 <span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  := [ [ <span class="fu">not</span> ] <span class="fu">swap</span> <span class="fu">mapLeft</span> ]</span></code></pre></div>
 <pre><code>{Bool `left ⊕ Int `right ⊕ Bool Int `both} ⊀ {Bool `left ⊕ Int `right}</code></pre>
 <p>Pattern matching is different from a function returning values: it is
-a disjunctive product. By distinguishing polarity, i.e. disjunctions as
-arguments vs. return values, we get first-class patterns. Both the
-“left” and “right” aspects are first-class, can be named as functions
-are.</p>
-<p>In a similar vein, we can define</p>
+a disjunctive product. By accounting for polarity, i.e. argument
+vs. return value, we get first-class patterns. Both the “left” and
+“right” aspects are first-class.</p>
+<p>To wit, we can define</p>
 <div class="sourceCode" id="cb7" data-startFrom="7"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 6;"><span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="fu">left</span> : { <span class="fu">a</span> <span class="cn">`left</span> ⊕ <span class="fu">a</span> <span class="fu">b</span> <span class="cn">`both</span> } -- <span class="fu">a</span></span>
 <span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`left</span>⁻¹ &amp; <span class="cn">`both</span>⁻¹ <span class="fu">drop</span> } ]</span></code></pre></div>

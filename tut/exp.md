@@ -35,11 +35,11 @@ compromise safety.
 ```
 
 Pattern matching is different from a function returning values: it is a
-disjunctive product. By distinguishing polarity, i.e. disjunctions as arguments
-vs. return values, we get first-class patterns. Both the "left" and "right"
-aspects are first-class, can be named as functions are.
+disjunctive product. By accounting for polarity, i.e. argument
+vs. return value, we get first-class patterns. Both the "left" and "right"
+aspects are first-class.
 
-In a similar vein, we can define
+To wit, we can define
 
 ```{.pizarnik include="../lib/both.piz" startLine=7 endLine=8}
 ```
