@@ -73,12 +73,14 @@ _ ≺ _                   = False
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
 
 lV :: Ctx a -> Nm a -> (MC a, ASeq a)
-lV (c:cs) n | Just (c',a) <- lVm c n = (c',a)
-            | otherwise = lV cs n
-lV [] _ = error"internal error: variable not found."
+lV ctx (Nm _ (U u) _) = l ctx
+  where
+    l (c:cs) | Just (c',a) <- lVm c u = (c',a)
+             | otherwise = l cs
+    l [] = error"internal error: variable not found."
 
-lVm c@(Node (t,_) s) (Nm _ (U u) _) | Just a <- t IM.!? u = Just (c,a)
-                                    | otherwise = tr s
+lVm c@(Node (t,_) s) u | Just a <- t IM.!? u = Just (c,a)
+                       | otherwise = tr s
   where
     tr [] = Nothing -- error"internal error: variable not found."
     tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
