@@ -9,7 +9,7 @@ import           Prettyprinter     (Pretty (..), (<+>))
 import           R
 import           Ty
 
-data E a = PE ParseE | TyE (TE a) | RE (RE a) | MDF !MN | MDC !MN | MDT !MN
+data E a = PE ParseE | TyE (TE a) | RE (RE a) | MDF !MN | MDC !MN | MDT !MN | ES
 
 instance Pretty a => Pretty (E a) where
     pretty (PE e)  = pretty e
@@ -18,6 +18,7 @@ instance Pretty a => Pretty (E a) where
     pretty (MDF m) = "Module" <+> sq m <+> "imports the same function from different sources."
     pretty (MDC m) = "Module" <+> sq m <+> "imports the same type from different sources."
     pretty (MDT m) = "Module" <+> sq m <+> "imports the same constructor from different sources."
+    pretty ES      = "not enough arguments on the stack."
 
 instance Pretty a => Show (E a) where show=show.pretty
 

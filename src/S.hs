@@ -42,13 +42,12 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
 (TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
 _ ≺ _                   = False
 
--- (precisely why stack-based is interesting, inverse is application...?)
-
 ψ :: Ctx (TS a) -> [ASeq (TS a)] -> S a -> S a
-ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) as -- FIXME: tail assumes one (count types on right)
+ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
   where
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
+    u (Ca _ (C{}:cs)) = (cs++); u C{} = id
 
 ι :: Ctx (TS a) -> A (TS a) -> S a -> S a
 ι _ (B _ Dup) (a:as)       = a:a:as
@@ -66,25 +65,40 @@ _ ≺ _                   = False
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
-ι _ a@C{} as               = a:as
+-- FIXME: type catenation???
+ι c a@(C _ tt) as          = let n=lA c tt; (x,a_)=splitAt n as;(ᴀ:_) = trights (aL a) in if n==0 then a:as else let in Ca (TS [ᴀ] (trights (aL a))) (a:x):a_
 ι c (Pat _ (SL _ aa)) as   = ψ c aa as -- FIXME: this pinches off stack variables...
 ι c (V _ n) as             = let (c',a) = lV c n in r [c'] (aas a) as
+ι _ (Inv _ (C _ tt₀)) (Ca _ (C _ tt₁:cs):as) | tt₀==tt₁ = cs++as
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
+
+lA :: Ctx a -> Nm a -> Int
+lA c (Nm _ (U u) _) = l c where
+    l (cϵ:cs) | Just n <- l0 cϵ = n
+              | otherwise = l cs
+    l [] = error"internal error: arity not found"
+
+    l0 (Node (_,a) s) | Just n <- a IM.!? u = Just n
+                      | otherwise = tr s
+      where
+        tr [] = Nothing
+        tr ((Node (_,aϵ) _):cs) | Just n <- aϵ IM.!? u = Just n
+                                | otherwise = tr cs
 
 lV :: Ctx a -> Nm a -> (MC a, ASeq a)
 lV ctx (Nm _ (U u) _) = l ctx
   where
-    l (c:cs) | Just (c',a) <- lVm c u = (c',a)
+    l (c:cs) | Just (c',a) <- l0 c = (c',a)
              | otherwise = l cs
     l [] = error"internal error: variable not found."
 
-lVm c@(Node (t,_) s) u | Just a <- t IM.!? u = Just (c,a)
-                       | otherwise = tr s
-  where
-    tr [] = Nothing -- error"internal error: variable not found."
-    tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
-                              | otherwise = tr cs
+    l0 c@(Node (t,_) s) | Just a <- t IM.!? u = Just (c,a)
+                        | otherwise = tr s
+      where
+        tr [] = Nothing
+        tr (c'@(Node (m,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
+                                  | otherwise = tr cs
 
 stack :: S a -> Doc ann
 stack = p.reverse where

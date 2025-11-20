@@ -85,7 +85,7 @@ type ASeq a = SL a (A a)
 data A a = B { aL :: a, builtin :: !B } | Q { aL :: a, aqs :: ASeq a }
          | L { aL :: a, lita :: L } | C { aL :: a, tagn :: Nm a }
          | V { aL :: a, fn :: Nm a } | Inv { aL :: a, inva :: A a }
-         | Pat { aL :: a, arms :: SL a (ASeq a) }
+         | Pat { aL :: a, arms :: SL a (ASeq a) } | Ca { aL :: a, acs :: [A a] }
 
 aT :: SL b (A (TS a)) -> Doc ann
 aT = align.fillSep.map ana.aas
@@ -231,6 +231,7 @@ instance Pretty (A a) where
     pretty (B _ b) = pretty b; pretty (Q _ as) = brackets (pASeq as)
     pretty (L _ l) = pretty l; pretty (Pat _ as) = group (braces (align (pA (map pASeq (aas as)))))
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
+    pretty (Ca _ as) = braces (hsep (pretty<$>reverse as))
 
 pA = concatWith (\x y -> x <+> "&" <> line <> y)
 

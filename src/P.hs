@@ -1,8 +1,8 @@
-module P ( fmt, rMs, tMs, rRepl, db, rDoc ) where
+module P ( fmt, rMs, tMs, rc, e1, rRepl, db, rDoc ) where
 
 import           A
 import           Control.Monad                    (foldM)
-import           Control.Monad.Except             (throwError)
+import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, withExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put)
@@ -21,6 +21,7 @@ import           Parse
 import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
 import           Prettyprinter.Render.Text        (renderIO)
 import           R
+import           S
 import           System.IO                        (stdout)
 import           TS
 import           Ty
@@ -38,13 +39,33 @@ db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
+naïve :: [Tree (F (TS a), Ar)] -> Ext a
+naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
+
+e1 :: [FilePath] -> [FilePath]
+   -> BSL.ByteString
+   -> IO (Either (E AlexPosn) (S AlexPosn))
+e1 incls fp e = rRepl $ do
+    c <- tMs incls fp
+    l <- get
+    case pAtoms l e of
+        Left err -> throwError (PE err)
+        Right ((i,_,_,_),at) ->
+            liftEither $ fst <$> rc i (map (fmap (first lm)) c) [] at
+
+rc :: Int -> Ctx (TS a) -> S a -> ASeq a -> Either (E a) (S a, Int)
+rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
+  where
+    tm=naïve c
+
+-- TODO: this will need type synonyms...
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
 tMs incls fp = do
     (i,c) <- rMs incls fp
     (u,_,_,_) <- get
-    let r = [ c IM.! unU n | n <- i ]
-    let tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
-    lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) r) u)
+    let roots = [ c IM.! unU n | n <- i ]
+        tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
+    lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns
@@ -58,7 +79,7 @@ rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     st <- get
     let s=tsort ims
-    (st',m) <- go (IS.fromList [ unU r | r <- rs ]) ms st IM.empty s
+    (st',m) <- go (IS.fromList [ unU u | u <- rs ]) ms st IM.empty s
     put st' $> (rs,m)
   where
     go _ _ st _ [] = pure (st, IM.empty)

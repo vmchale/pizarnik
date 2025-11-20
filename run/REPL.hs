@@ -88,9 +88,9 @@ printT src = do
             case tAS i tyctx [] at of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
-
-naïve :: [Tree (F (TS AlexPosn), Ar)] -> Ext AlexPosn
-naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
+  where
+    naïve :: [Tree (F (TS a), Ar)] -> Ext a
+    naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
 
 printA :: String -> Repl ()
 printA src = do
@@ -98,11 +98,8 @@ printA src = do
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
-            let tyctx = naïve c
-            case tAS i tyctx s at of
-                Right ((TS (_:_:_) _,_),_) -> po"not enough arguments on the stack."
-                Right ((_,a),i') -> do
-                    let s' = r c (aas a) s
+            case rc i c s at of
+                Right (s',i') -> do
                     lift $ put (X (i',ii,ti,m) s' c)
                     stackpp s'
                 Left err -> pE err

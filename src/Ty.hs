@@ -683,8 +683,6 @@ cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
     pure (l0 --: r1, s')
 
-  -- check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
-
 fr :: a -> T.Text -> TM a (Nm a)
 fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
 

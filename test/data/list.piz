@@ -1,0 +1,10 @@
+@i lib/list
+
+n : -- List(Int)
+  := [ `nil 1 `cons 2 `cons 3 `cons ]
+
+sum : List(Int) -- Int
+    := [ [[+] 0] dip foldr ]
+
+six : -- Int
+    := [ n sum ]
