@@ -8,6 +8,6 @@ lte : { `lt ⊕ `eq } --
 gte : { `eq ⊕ `gt } --
     := [ { `eq⁻¹ & `gt⁻¹ } ]
 
-# originally from Mirth
+# cf. Mirth
 cmpInt : Int Int -- Ord
-       := [ dup2 = { False⁻¹ drop2 `eq & True⁻¹ < { False⁻¹ `lt & True⁻¹ `gt } } ]
+       := [ dup2 = { True⁻¹ drop2 `eq & False⁻¹ < { True⁻¹ `lt & False⁻¹ `gt } } ]
