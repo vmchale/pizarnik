@@ -13,8 +13,8 @@ mapL : [a -- b] Both(a,c) -- Both(b,c)
           }
         ]
 
-bimap : [a -- b] [c -- d] Both(a,b) -- Both(c,d)
+bimap : [a -- b] [c -- d] Both(a,c) -- Both(b,d)
       := [ { `left⁻¹ nip swap $ `left
            & `right⁻¹ nip2 swap $ `right
-           & `both⁻¹ (24) [$] dip2 (13) [$] dip swap `both
+           & `both⁻¹ (243) [$] dip2 (13) [$] dip swap `both
            } ]
