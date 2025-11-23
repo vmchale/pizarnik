@@ -16,6 +16,8 @@ main = defaultMain $
           , eEx [] "prelude/bool.piz" "True False or" "True"
           , eEx [] "test/examples/mutual.piz" "5 even" "False"
           , eEx ["."] "lib/numbertheory.piz" "15 10 gcd" "5"
+          , eEx ["."] "prelude/ord.piz" "3 2 cmpInt" "`gt"
+          , eEx [] "test/examples/ros.piz" "`g complement" "`c"
           ]
         , testGroup "ty"
               -- TODO: error line no.?
@@ -32,7 +34,6 @@ main = defaultMain $
             : [ tI fp | fp <- [ "lib/list.piz"
                               , "lib/either.piz"
                               , "lib/both.piz"
-                              , "prelude/ord.piz"
                               , "test/examples/maybe.piz"
                               , "test/examples/ifte.piz"
                               , "test/examples/pat.piz"
@@ -44,7 +45,6 @@ main = defaultMain $
                                 , "test/data/perm.piz"
                                 , "test/examples/exp.piz"
                                 , "prelude/fn.piz"
-                                , "test/examples/ros.piz"
                                 ] ])
         ]
     where tI = tFile ["."]; tNo = tFile []

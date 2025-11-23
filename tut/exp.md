@@ -12,8 +12,6 @@ Then we can define
 ```{.pizarnik include="../lib/both.piz" startLine=4 endLine=4}
 ```
 
-<!-- makes sense that "first-class left" ig -->
-
 We can extend `mapLeft`, viz.
 
 ```{.pizarnik include="../lib/both.piz" startLine=10 endLine=14}
