@@ -1,9 +1,3 @@
- [+] 0 `nil 1 `cons 2 `cons foldr
-pc: Uncaught exception ghc-internal:GHC.Internal.Exception.ErrorCall:
-
-Internal error. Type synonym not in scope?
-
-While handling Internal error. Type synonym not in scope?
 
 cabal run pc -- repl lib/maybe.piz prelude/fn.piz
 <TAB>

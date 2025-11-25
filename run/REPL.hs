@@ -5,7 +5,6 @@ import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets, put, runStateT)
-import           Data.Bifunctor                   (first)
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
 import qualified Data.Map                         as M
@@ -13,7 +12,7 @@ import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
-import           Data.Tree                        (Tree (Node, rootLabel))
+import           Data.Tree                        (Tree (rootLabel))
 import           L
 import           P
 import           Parse                            (pAtoms)
@@ -30,7 +29,7 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) [Tree (F (TS AlexPosn), Ar)]
+data X = X !AlexUserState (S AlexPosn) [Tree (F (TS AlexPosn), Cs AlexPosn, Ar)]
 
 type Repl = InputT (StateT X IO)
 
@@ -39,8 +38,10 @@ names = do
     -- X (_,t,_,_) _ c <- get
     -- pure $ map T.unpack (M.keys t)
     X (_,_,n,_) _ c <- get
-    let u=concatMap (IM.keys . snd . rootLabel) c
+    let u=concatMap (IM.keys . thd3 . rootLabel) c
     pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) u)
+  where
+    thd3 (_,_,z)=z
 
 lg=lift.gets
 
@@ -52,7 +53,7 @@ runRepl fp x = do
     liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
         Right (ctx,st) -> do
-            let t=map (fmap (first lm)) ctx
+            let t=map (fmap (first3 lm)) ctx
             flip evalStateT (X st [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
@@ -62,6 +63,8 @@ runRepl fp x = do
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
     c ("", "")     = do {ns <- names; pure ("", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
+
+first3 f ~(x,y,z) = (f x,y,z)
 
 strC = map simpleCompletion
 
@@ -85,12 +88,10 @@ printT src = do
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
             let tyctx = naïve c
+            -- FIXME: needs all types that are "one step up" (naïve is not good enough!)
             case tAS i tyctx [] at of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
-  where
-    naïve :: [Tree (F (TS a), Ar)] -> Ext a
-    naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
 
 printA :: String -> Repl ()
 printA src = do

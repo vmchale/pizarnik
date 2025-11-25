@@ -19,7 +19,9 @@ adbg incls fp = do
     tms <- rRepl $ tMs incls fp
     case tms of
         Left err -> throwIO err
-        Right ms -> traverse_ (traverse_ (rDoc.am.fst)) ms
+        Right ms -> traverse_ (traverse_ (rDoc.am.fst3)) ms
+  where
+    fst3 (x,_,_)=x
 
 dFmt :: BSL.ByteString -> IO ()
 dFmt = (putDoc <=< either throwIO pure) . (fmap (pretty.snd).pA)

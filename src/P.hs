@@ -1,6 +1,7 @@
-module P ( fmt, rMs, tMs, rc, e1, rRepl, db, rDoc ) where
+module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rDoc, naïve ) where
 
 import           A
+import           B
 import           Control.Monad                    (foldM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
@@ -31,16 +32,18 @@ type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-db :: AlexUserState -> [Tree (IM.IntMap (ASeq (TS AlexPosn)), b)] -> IO ()
-db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst))
+db :: AlexUserState -> [Tree (IM.IntMap (ASeq (TS AlexPosn)), b, c)] -> IO ()
+db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst3))
   where
     pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
     pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList
 
+    fst3 (x,_,_)=x
+
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
-naïve :: [Tree (F (TS a), Ar)] -> Ext a
-naïve t = Ext (foldMap (\(Node (m,_) _) -> aLs<$>m) t) IM.empty (foldMap (\(Node (_,a) _) -> a) t)
+naïve :: [Tree (F (TS a), Cs a, Ar)] -> Ext a
+naïve t = Ext (foldMap (\(Node (m,_,_) _) -> aLs<$>m) t) (foldMap (\(Node (_,c,_) _) -> c) t) (foldMap (\(Node (_,_,a) _) -> a) t)
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
@@ -51,21 +54,22 @@ e1 incls fp e = rRepl $ do
     case pAtoms l e of
         Left err -> throwError (PE err)
         Right ((i,_,_,_),at) ->
-            liftEither $ fst <$> rc i (map (fmap (first lm)) c) [] at
+            liftEither $ fst <$> rc i (map (fmap (first3 lm)) c) [] at
+  where
+    first3 f ~(x,y,z) = (f x,y,z)
 
-rc :: Int -> Ctx (TS a) -> S a -> ASeq a -> Either (E a) (S a, Int)
+rc :: Int -> Ctx (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
 rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
   where
     tm=naïve c
 
--- TODO: this will need type synonyms...
-tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Ar)]
+tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
 tMs incls fp = do
     (i,c) <- rMs incls fp
     (u,_,_,_) <- get
     let roots = [ c IM.! unU n | n <- i ]
         tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
-    lift $ except $ bimap TyE (map (fmap (second arit))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
+    lift $ except $ bimap TyE (map (fmap (\(x,t)->(x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
   where
     tg c (Node n ns) = do
         ms <- traverse (tg c) ns
