@@ -9,7 +9,7 @@
 import A
 import Control.Arrow ((&&&))
 import Control.Exception (Exception)
-import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Control.Monad.Trans.Class (lift)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Functor (($>))
@@ -105,7 +105,7 @@ brackets(p) : lbracket p rbracket { ($1, $2) }
 braces(p) : lbrace p rbrace { ($1, $2) }
 
 Arm :: { (Nm AlexPosn, TSeq AlexPosn) }
-    : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwError . AnonymousArm =<< lift get_pos } }
+    : some(T) {% case head $1 of {TT _ n -> pure (n, reverse (tail $1)); _ -> throwE.AnonymousArm =<< lift get_pos } }
 
 TS :: { TS AlexPosn }
    : many(T) sig many(T) { TS (reverse $1) (reverse $3) }
@@ -178,7 +178,7 @@ roll t []      = t
 roll t (t':ts) = roll (TA (tL t) t t') ts
 
 parseErr :: Tok -> [String] -> Parse a
-parseErr t = throwError . Unexpected t
+parseErr t = throwE.Unexpected t
 
 data ParseE = Unexpected !Tok [String] | LexErr String | AnonymousArm !AlexPosn
 
