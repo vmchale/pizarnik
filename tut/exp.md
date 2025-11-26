@@ -34,7 +34,7 @@ compromise safety.
 
 Pattern matching is different from a function returning values: it is a
 disjunctive product. By accounting for polarity, i.e. argument
-vs. return value, we get first-class patterns. Both the "left" and "right"
+vs. return value, we get extensible pattern matching. Both the "left" and "right"
 aspects are first-class.
 
 To wit, we can define
