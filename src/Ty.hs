@@ -696,7 +696,7 @@ exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (ᴀ:l --: ᴀ:r)}
 
 tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
 tae _ s (B l Dip)  = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "C"; pure (B ([a, b, QT l ([a] --: [c])] --: [c,b]) Dip, s)}
-tae _ s (B l Doll) = do {a <- fsv l "A"; b <- fsv l "B"; pure (B ([a, QT l ([a] --: [b])] --: [b]) Doll, s)}
+tae _ s (B l Ap) = do {a <- fsv l "A"; b <- fsv l "B"; pure (B ([a, QT l ([a] --: [b])] --: [b]) Ap, s)}
 tae b s a = do
     (a',s') <- ta b s a
     let t=aL a'
