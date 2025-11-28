@@ -83,9 +83,10 @@ tsc t p = pretty (tLs t) <> ":" <+> p
 data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 
 type TM x = StateT (TSt x) (Either (TE x))
+type UM x = StateT Int (Either (TE x))
 
-runTM :: Int -> TM a b -> Either (TE a) (b, Ext a, Int)
-runTM u = fmap (\(x, TSt m s) -> (x, s, m)).flip runStateT (TSt u (Ext IM.empty IM.empty (IM.fromDistinctAscList [(-2,0),(-1,0)])))
+liftTM :: TM a b -> UM a (b, Ext a)
+liftTM x = StateT $ \u -> do {(y, TSt u' c) <- runStateT x (TSt u (Ext IM.empty IM.empty (IM.fromDistinctAscList [(-2,0),(-1,0)]))); Right ((y,c),u')}
 
 type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
@@ -101,15 +102,15 @@ sTV (Nm _ (U u) _) t = Subst (IM.singleton u t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
 
-c1 :: Nm a -> T a -> T a -> TM a (Subst a)
+c1 :: Nm a -> T a -> T a -> UM a (Subst a)
 c1 (Nm _ (U u) _) t te | u `IS.member` occ t = throwError $ O te t
                        | otherwise = pure (Subst (IM.singleton u t) IM.empty)
 
-ci :: Nm a -> T a -> T a -> Subst a -> TM a (Subst a)
+ci :: Nm a -> T a -> T a -> Subst a -> UM a (Subst a)
 ci (Nm _ (U u) _) t te s | u `IS.member` occ t = throwError $ O te t
                          | otherwise = pure (mapTV (IM.insert u t) s)
 
-cf, sf, φf :: T a -> T a -> TM a b
+cf, sf, φf :: T a -> T a -> UM a b
 sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
@@ -119,39 +120,39 @@ tun = g [] where g s (TC _ n)     = Just (n, s)
                  g s (TA _ t0 t1) = g (t1:s) t0
                  g _ _            = Nothing
 
-lΒ :: Cs a -> T a -> TM a (T a)
+lΒ :: Cs a -> T a -> UM a (T a)
 lΒ cϵ = liftEither . first BE . tCtx
   where
     tCtx tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
 
 
 {-# SCC (@*) #-}
-(@*) :: Subst a -> TS a -> TM a (TS a)
+(@*) :: Subst a -> TS a -> UM a (TS a)
 s @* (TS l r) = TS <$> s@@l <*> s@@r
 
 {-# SCC peek #-}
-peek :: Subst a -> TSeq a -> TM a (TSeq a)
+peek :: Subst a -> TSeq a -> UM a (TSeq a)
 peek _ []          = pure []
 peek s (SV _ n:ts) = do {v <- s@~>n; if null v then peek s ts else pure (v++ts)}
 peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
 
-peekS :: Subst a -> TS a -> TM a (TS a)
+peekS :: Subst a -> TS a -> UM a (TS a)
 peekS s (TS l r) = TS <$> peek s l <*> peek s r
 
 {-# SCC (@@) #-}
-(@@) :: Subst a -> TSeq a -> TM a (TSeq a)
+(@@) :: Subst a -> TSeq a -> UM a (TSeq a)
 (@@) _ []          = pure []
 (@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
 (@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
 
-(@~>) :: Subst a -> Nm a -> TM a (TSeq a)
+(@~>) :: Subst a -> Nm a -> UM a (TSeq a)
 (@~>) s v@(Nm _ (U i) x) =
     case IM.lookup i (svs s) of
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> pure [SV x v]
 
 {-# SCC (@>) #-}
-(@>) :: Subst a -> T a -> TM a (T a)
+(@>) :: Subst a -> T a -> UM a (T a)
 (@>) _ t@TP{}          = pure t
 (@>) _ t@TT{}          = pure t
 (@>) _ t@TC{}          = pure t
@@ -201,7 +202,7 @@ roll = foldr (\t₀ -> TA (tL t₀) t₀)
 nv s n σ t e | Nm.null σ = pure (t, iTV n t s)
              | otherwise = throwError e
 
-uu :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+uu :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
@@ -236,7 +237,7 @@ uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
 uus=sv uu;usc=ctx'ize uus
 
 -- "subsumes"
-su :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 su _ s t@(Ρ _ n0 _) (Ρ _ n1 _) | n0==n1 = pure (t,s)
 su _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
@@ -304,10 +305,10 @@ uσ u c s l σ0 σ1 =
 
 sus=sv su;susc=ctx'ize sus; sσ = uσ susc
 
-type UC v a = Nt a -> Subst a -> v -> v -> TM a (v, Subst a)
+type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 
 -- if we have A, B [B c -- A b] (say) then we must have A=0
-si :: Nm a -> TSeq a -> TM a (Subst a -> Subst a)
+si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
 si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
 si n t = pure (iSV n t)
@@ -343,7 +344,7 @@ sv _ _ _ [] t1 = throwError$LE t1 []
 
 ctx'ize us c s = us c s `onM` (rwAr (ars c)<=<peek s)
 
-ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> TM a (T a, Subst a -> Subst a)
+ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> UM a (T a, Subst a -> Subst a)
 ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
           | otherwise = nρ n σ
 
@@ -353,7 +354,7 @@ nρ n@(Nm t _ l) σ = do
     let t'=Ρ l n' σ
     pure (t', iTV n t')
 
-φ :: Nt a -> Subst a -> T a -> T a -> TM a (T a, Subst a)
+φ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
 φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
@@ -415,7 +416,7 @@ nρ n@(Nm t _ l) σ = do
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
 -- FIXME: eat into stack var when present
-rwAr :: Ar -> TSeq a -> TM a (TSeq a)
+rwAr :: Ar -> TSeq a -> UM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
     where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
           g (t:ts)           = (t:)<$>g ts
@@ -434,8 +435,8 @@ ce c = traverse (lΒ c)
 -- TODO: check agreement w.r.t. previous agreements... e.g.
 -- a b c
 -- d e d
-ms :: (Nt a -> T a -> T a -> TM a (Subst a))
-   -> Nt a -> Subst a -> TSeq a -> TSeq a -> TM a (Subst a)
+ms :: (Nt a -> T a -> T a -> UM a (Subst a))
+   -> Nt a -> Subst a -> TSeq a -> TSeq a -> UM a (Subst a)
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
     | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
                in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
@@ -472,7 +473,7 @@ mσ u c σ0 σ1 =
 μ :: Nt a
   -> T a -- ^ inferred
   -> T a -- ^ sig
-  -> TM a (Subst a)
+  -> UM a (Subst a)
 μ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 μ _ t0@(TV _ n) t1 = c1 n t1 t0
 μ _ t0@(Ρ _ n σ) t1@TV{} | Nm.null σ = c1 n t1 t0
@@ -491,7 +492,7 @@ mσ u c σ0 σ1 =
 μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1 -- TODO: contravariance?
 
 -- ≺
-lt :: Nt a -> T a -> T a -> TM a (Subst a)
+lt :: Nt a -> T a -> T a -> UM a (Subst a)
 lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                              | otherwise = sf t0 t1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
@@ -537,7 +538,7 @@ lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
-uU :: Cs a -> T a -> TM a (T a)
+uU :: Cs a -> T a -> UM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
     f (Σ _ σ)    = pure σ
@@ -553,64 +554,57 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
 μs, lts :: Nt a -> Subst a
         -> TS a -- ^ inferred
         -> TS a -- ^ signature
-        -> TM a (Subst a)
+        -> UM a (Subst a)
 μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
 lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1} -- TODO: why flip lt instead of l1 l0...?
 
-mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
+mtsc :: Nt a -> Subst a -> TS a -> TS a -> UM a (Subst a)
 mtsc c s ts0 ts1 = do {s' <- μs c s ts0 ts1; lts c s' ts0 ts1}
 
-liftClone :: TS a -> TM a (TS a)
-liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
+liftClone :: TS a -> UM a (TS a)
+liftClone ts = StateT $ \u -> let (w, ts') = cloneSig u ts in Right (ts',w)
 
-lC :: Cs a -> Nm a -> TM a (T a)
+lC :: Cs a -> Nm a -> UM a (T a)
 lC c n@(Nm _ (U i) l) = do
     case IM.lookup i c of
         Just ([],t) -> pure (t$>l)
         Nothing     -> throwError$IS n
 
-lT :: Ar -> Nm a -> TM a Int
+lT :: Ar -> Nm a -> UM a Int
 lT ar n@(Nm _ (U u) _) = do
     case IM.lookup u ar of
         Just i  -> pure i
         Nothing -> throwError$AM n
 
-lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
+lA :: IM.IntMap (TS a) -> Nm a -> UM a (TS a)
 lA c n@(Nm _ (U i) l) = do
     case IM.lookup i c of
         Just ts -> (l<$) <$> liftClone ts
         Nothing -> throwError$IS n
 
-tM :: Ext a -> M a a -> StateT Int (Either (TE a)) (M a (TS a), Ext a)
-tM c m = StateT $ \i -> (\(x,y,z) -> ((x,y),z)) <$> runTM i (tMM c m)
+tM :: Ext a -> M a a -> UM a (M a (TS a), Ext a)
+tM b (M is ds) = first (M is) <$> tD b ds
 
-tMM :: Ext a -> M a a -> TM a (M a (TS a))
-tMM b (M is ds) = M is <$> tD b ds
-
-tD :: Ext a -> [D a a] -> TM a [D a (TS a)]
-tD b ds = traverse_ tD0 ds *> traverse (tD1 b) ds
+tD :: Ext a -> [D a a] -> UM a ([D a (TS a)], Ext a)
+tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b)) ds}
 
 tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
-tAS u b s a = fmap π₁₃ $ runTM u $ do
+tAS u b s a = flip runStateT u $ do
     (t0,s0) <- sseq n (aLs a) mempty (reverse s)
     (t1,s1) <- tseq b s0 a
     (t2,s2) <- cat n s1 t0 (aLs t1)
     (,) <$> s2@*t2 <*> taseq (s2@*) t1
-  where π₁₃ (x,_,z)=(x,z); n=π b
+  where n=π b
 
 {-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n ts
 tD0 (TD _ n vs t) = iTD n vs t *> cA t
 
-aug :: Ext a -> TM a (Ext a)
-aug c₁ = do {c₀ <- gets lo; pure (c₀<>c₁)}
-
 {-# SCC tD1 #-}
-tD1 :: Ext a -> D a a -> TM a (D a (TS a))
+tD1 :: Ext a -> D a a -> UM a (D a (TS a))
 tD1 _ (TD x n vs t) = pure (TD x n vs t)
-tD1 b (F _ n ts as) = do
-    c <- aug b
+tD1 c (F _ n ts as) = do
     (as', s) <- tseq c mempty as
     s' <- mtsc (π c) s (aLs as') ts
     as''<- taseq (s'@*) as'
@@ -628,13 +622,13 @@ cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx
                     -- FIXME: more precise naming errors
 cA _=pure ()
 
-sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> TM a (TS a, Subst a)
+sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> UM a (TS a, Subst a)
 sseq _ l s []     = do {a <- fsv l "A"; pure ([a] --: [a], s)}
 sseq b l s (a:as) = do
     (tϵ, s0) <- sseq b l s as
     cat b s0 (aL a) tϵ
 
-tseq :: Ext a -> Subst a -> ASeq a -> TM a (ASeq (TS a), Subst a)
+tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
 tseq b s (SL l (a:as)) = do
     (a',s0) <- tae b s a
@@ -649,23 +643,23 @@ splitFromLeft :: Int -> [a] -> ([a], [a])
 splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
-cat :: Nt a -> Subst a -> TS a -> TS a -> TM a (TS a, Subst a)
+cat :: Nt a -> Subst a -> TS a -> TS a -> UM a (TS a, Subst a)
 cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
     pure (l0 --: r1, s')
 
-fr :: a -> T.Text -> TM a (Nm a)
-fr l t = state (\(TSt m s) -> let n=m+1 in (Nm t (U n) l, TSt n s))
+fr :: a -> T.Text -> UM a (Nm a)
+fr l t = state (\m -> let n=m+1 in (Nm t (U n) l, n))
 
-ftv, fsv, erv :: a -> T.Text -> TM a (T a)
+ftv, fsv, erv :: a -> T.Text -> UM a (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 erv l n = Ρ l <$> fr l n <*> pure Nm.empty
 
-exps :: a -> TS a -> TM a (TS a)
+exps :: a -> TS a -> UM a (TS a)
 exps _ t@(TS (SV{}:_) _) = pure t; exps _ t@(TS _ (SV{}:_)) = pure t
 exps x (TS l r) = do {ᴀ <- fsv x "A"; pure (ᴀ:l --: ᴀ:r)}
 
-tae :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
+tae :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
 tae _ s (B l Dip)  = do {a <- fsv l "A"; b <- ftv l "b"; c <- fsv l "C"; pure (B ([a, b, QT l ([a] --: [c])] --: [c,b]) Dip, s)}
 tae _ s (B l Ap) = do {a <- fsv l "A"; b <- fsv l "B"; pure (B ([a, QT l ([a] --: [b])] --: [b]) Ap, s)}
 tae b s a = do
@@ -677,7 +671,7 @@ tae b s a = do
 ib l = B ([TP l Int, TP l Int] --: [TP l Int])
 rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
-ta :: Ext a -> Subst a -> A a -> TM a (A (TS a), Subst a)
+ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l String]) lit, s)
 ta _ s (L l (S p)) = do
@@ -708,13 +702,13 @@ ta b s (Pat l as)      = do
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 
-pad :: a -> Int -> TM a (TSeq a)
+pad :: a -> Int -> UM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 tally :: [([(Nm a, TSeq a)], TS a)] -> Nm.NmMap [TS a]
 tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs)=TS (l++υ) r:xs in thread [Nm.augment (g υ) n | (n,υ) <- ns] z) Nm.empty
 
-ψ :: Nt a -> [TS a] -> TM a (Nm.NmMap [TS a])
+ψ :: Nt a -> [TS a] -> UM a (Nm.NmMap [TS a])
 ψ c tss = do
     n <- minimum <$> traverse g sl
     when (n==0) $ throwError (PM (head$map tlefts tss))
@@ -730,14 +724,14 @@ tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs
     --
     -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹
     -- def mishandles Both(a,b)... smh
-          l :: Int -> [T a] -> TM a [T a]
+          l :: Int -> [T a] -> UM a [T a]
           l 1 (_:ts)           = pure ts
           l n (t@Σ{}:ts)       = (t:) <$> l (n-1) ts
           l n (t@(TT _ tt):ts) = do {k <- lψ tt; (t:).(take k ts++) <$> l (n-1) ts}
           -- TODO: UU?
           l n (t:ts)           = (t:) <$> l n ts
 
-          p :: Int -> [T a] -> TM a [(Nm a, TSeq a)]
+          p :: Int -> [T a] -> UM a [(Nm a, TSeq a)]
           p n ts = cs =<< (ts!*n) where cs = \case
                                             TT _ nm -> pure [(nm,[])] -- FIXME: we don't pad tags but we DO pad constructors... this can probably be simplified!
                                             Σ x σ -> traverse (\nm -> do {k <- lψ nm; υ <- pad (loc nm) k; pure (nm,υ)}) (Nm.keys σ x)
@@ -768,7 +762,7 @@ tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs
           lψ=lT (ars c)
 
 {-# SCC dU #-}
-dU :: Nt a -> Subst a -> a -> [TS a] -> TM a (TS a, Subst a)
+dU :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
 dU c s x tss = do
     tψ <- ψ c =<< traverse (βt (tβ c)) tss
     let rϵ=fmap (map trights) tψ
@@ -807,16 +801,16 @@ dU c s x tss = do
             pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
           where nms=map fst as
 
-βt :: Cs a -> TS a -> TM a (TS a)
+βt :: Cs a -> TS a -> UM a (TS a)
 βt c (TS l r) = TS <$> βs c l <*> βs c r
 
 -- TODO: duplicates functionality of tCtx?
-βs :: Cs a -> TSeq a -> TM a (TSeq a)
+βs :: Cs a -> TSeq a -> UM a (TSeq a)
 βs c = traverse q where
     q t | Just{} <- unA t = lΒ c t
     q t = pure t
 
-tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
+tS :: Ext a -> Subst a -> [ASeq a] -> UM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
 tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
 
