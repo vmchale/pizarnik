@@ -23,19 +23,18 @@ import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
 import           Prettyprinter                    (Pretty (pretty), (<+>))
+import           Q
 import           Ty.A
 
 infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
-infixr 7 @<>
 
 type Ar = IM.IntMap Int
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
 
--- FIXME: functions in external context may need to bundle type synonyms from third modules? ("unmask") idk
 data Ext a = Ext { fns :: IM.IntMap (TS a), tds :: Cs a, arit :: Ar }
 
 instance Semigroup (Ext a) where (<>) (Ext f0 td0 a0) (Ext f1 td1 a1) = Ext (f0<>f1) (td0<>td1) (a0<>a1)
@@ -120,13 +119,10 @@ tun = g [] where g s (TC _ n)     = Just (n, s)
                  g s (TA _ t0 t1) = g (t1:s) t0
                  g _ _            = Nothing
 
-βc c t = do {cs <- gets (tds.lo); lΒ (c<>cs) t}
+lΒ :: Cs a -> T a -> TM a (T a)
+lΒ cϵ = liftEither . first BE . tCtx
   where
-    lΒ :: Cs a -> T a -> TM a (T a)
-    lΒ cϵ = liftEither . first BE . tCtx cϵ
-
-    tCtx :: Cs a -> T a -> Either (BE a) (T a)
-    tCtx cϵ tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
+    tCtx tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
 
 
 {-# SCC (@*) #-}
@@ -253,8 +249,8 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- sus c s a0 a1
     pure (roll th a',s')
-su c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; su c s t0' t1}
-su c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; su c s t0 t1'}
+su c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
+su c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
 su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
     -- TODO propagate back?
     (ς,s') <- sσ c s x σ0 σ1
@@ -398,8 +394,8 @@ nρ n@(Nm t _ l) σ = do
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- φs c s a0 a1
     pure (roll th a',s')
-φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; φ c s t0' t1}
-φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; φ c s t0 t1'}
+φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; φ c s t0' t1}
+φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
 φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
     (ς, s') <- φσ c s x σ0 σ1
     -- FIXME: propagates back too much?
@@ -433,7 +429,7 @@ mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
 hasC = any (\t -> case unA t of Just (TC{},_) -> True;_ -> False)
 
 -- TODO: replace UU etc.
-ce c = traverse (βc c)
+ce c = traverse (lΒ c)
 
 -- TODO: check agreement w.r.t. previous agreements... e.g.
 -- a b c
@@ -487,8 +483,8 @@ mσ u c σ0 σ1 =
 μ c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms μ c mempty a0 a1
 μ c (TC _ n) t1 = do {t0 <- lC (tβ c) n; μ c t0 t1}
 μ c t0 (TC _ n) = do {t1 <- lC (tβ c) n; μ c t0 t1}
-μ c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; μ c t0' t1}
-μ c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; μ c t0 t1'}
+μ c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; μ c t0' t1}
+μ c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
 μ c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; μ c t0' t1}
 μ c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; μ c t0 t1'}
 μ _ TP{} TP{} = pure mempty
@@ -512,8 +508,8 @@ lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
-lt c t0 t1 | Just{} <- unA t0 = do {t0' <- βc (tβ c) t0; lt c t0' t1}
-lt c t0 t1 | Just{} <- unA t1 = do {t1' <- βc (tβ c) t1; lt c t0 t1'}
+lt c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; lt c t0' t1}
+lt c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; lt c t0 t1'}
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     | occρ n σ1 = throwError$O t0 t1
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
@@ -545,7 +541,7 @@ uU :: Cs a -> T a -> TM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
     f (Σ _ σ)    = pure σ
-    f t          | Just{} <- unA t = f =<< βc c t
+    f t          | Just{} <- unA t = f =<< lΒ c t
     f (TC _ n)   = f =<< lC c n
     f (UU _ ts_) = foldMapM f ts_
     -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
@@ -568,31 +564,22 @@ liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
 
 lC :: Cs a -> Nm a -> TM a (T a)
-lC ex n@(Nm _ (U i) l) = do
-    c <- gets (tds.lo)
-    (l<$) <$> case IM.lookup i c of
-        Just ([],t) -> pure t
-        Nothing -> case IM.lookup i ex of
-            Just ([],t) -> pure t
-            Nothing     -> throwError$IS n
+lC c n@(Nm _ (U i) l) = do
+    case IM.lookup i c of
+        Just ([],t) -> pure (t$>l)
+        Nothing     -> throwError$IS n
 
 lT :: Ar -> Nm a -> TM a Int
-lT ex n@(Nm _ (U u) _) = do
-    ar <- gets (arit.lo)
+lT ar n@(Nm _ (U u) _) = do
     case IM.lookup u ar of
         Just i  -> pure i
-        Nothing -> case IM.lookup u ex of
-            Just i  -> pure i
-            Nothing -> throwError$AM n
+        Nothing -> throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> TM a (TS a)
-lA es n@(Nm _ (U i) l) = do
-    b <- gets (fns.lo)
-    ($>l) <$> case IM.lookup i b of
-        Just ts -> liftClone ts
-        Nothing -> case IM.lookup i es of
-            Just ts -> liftClone ts
-            Nothing -> throwError$IS n
+lA c n@(Nm _ (U i) l) = do
+    case IM.lookup i c of
+        Just ts -> (l<$) <$> liftClone ts
+        Nothing -> throwError$IS n
 
 tM :: Ext a -> M a a -> StateT Int (Either (TE a)) (M a (TS a), Ext a)
 tM c m = StateT $ \i -> (\(x,y,z) -> ((x,y),z)) <$> runTM i (tMM c m)
@@ -616,10 +603,14 @@ tD0 :: D a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n ts
 tD0 (TD _ n vs t) = iTD n vs t *> cA t
 
+aug :: Ext a -> TM a (Ext a)
+aug c₁ = do {c₀ <- gets lo; pure (c₀<>c₁)}
+
 {-# SCC tD1 #-}
 tD1 :: Ext a -> D a a -> TM a (D a (TS a))
-tD1 _ (TD x n vs t)         = pure (TD x n vs t)
-tD1 c (F _ n ts as) = do
+tD1 _ (TD x n vs t) = pure (TD x n vs t)
+tD1 b (F _ n ts as) = do
+    c <- aug b
     (as', s) <- tseq c mempty as
     s' <- mtsc (π c) s (aLs as') ts
     as''<- taseq (s'@*) as'
@@ -822,7 +813,7 @@ dU c s x tss = do
 -- TODO: duplicates functionality of tCtx?
 βs :: Cs a -> TSeq a -> TM a (TSeq a)
 βs c = traverse q where
-    q t | Just{} <- unA t = βc c t
+    q t | Just{} <- unA t = lΒ c t
     q t = pure t
 
 tS :: Ext a -> Subst a -> [ASeq a] -> TM a ([ASeq (TS a)], Subst a)
@@ -834,9 +825,6 @@ eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
 
 onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
-
-(@<>) :: (Monoid m, Foldable f) => (a -> m) -> f a -> m
-(@<>) = foldMap
 
 foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
 
