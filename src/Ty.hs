@@ -5,7 +5,6 @@ module Ty ( TE, Ar, Ext (..), tM, tAS ) where
 import           A
 import           B
 import           C
-import           Control.Exception                (Exception)
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
@@ -17,14 +16,13 @@ import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.List                        (foldl')
 import qualified Data.Text                        as T
-import           Data.Typeable                    (Typeable)
 import           F
 import           G
 import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hardline, hsep, indent, (<+>))
+import           Prettyprinter                    (Pretty (pretty), (<+>))
 import           Ty.A
 
 infixl 7 \-
@@ -85,10 +83,6 @@ instance Pretty a => Pretty (TE a) where
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
 
-instance Pretty a => Show (TE a) where show=show.pretty
-
-instance (Typeable a, Pretty a) => Exception (TE a) where
-
 data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
 
 type TM x = StateT (TSt x) (Either (TE x))
@@ -100,8 +94,6 @@ type Bt a = IM.IntMap (T a)
 data Subst a = Subst { tvs :: Bt a, svs :: IM.IntMap (TSeq a) }
 
 instance Pretty (Subst a) where pretty (Subst t s) = "tv" <#> pBound t <##> "sv" <#> pBound s
-
-instance Show (Subst a) where show=show.pretty
 
 instance Semigroup (Subst a) where (<>) (Subst tv0 sv0) (Subst tv1 sv1) = Subst (tv0<>tv1) (sv0<>sv1)
 instance Monoid (Subst a) where mempty = Subst IM.empty IM.empty
@@ -664,12 +656,6 @@ tseq b s (SL l (a:as)) = do
     (SL tϵ as', s1) <- tseq b s0 (SL l as)
     (t, s2) <- cat (π b) s1 (aL a') tϵ
     pure (SL t (a':as'), s2)
-
-traceCat :: A b -> [A b] -> TS a -> TS a -> TS a -> Doc ann
-traceCat a as t0 t1 tRes = pretty a <+> ":" <+> pretty t0
-    <#> hsep (pretty<$>as) <+> ":" <+> pretty t1
-    <#> indent 4 (hsep(pretty<$>a:as) <+> ":" <+> pretty tRes)
-    <> hardline
 
 (/|) :: [a] -> Int -> ([a], [a])
 xs /| n = splitFromLeft n xs
