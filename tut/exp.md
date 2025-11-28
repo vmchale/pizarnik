@@ -56,6 +56,6 @@ As Wadler [-@expression] puts it,
 
 Polarity, wherein argument and return value are dual (De Morgan laws for
 disjunctive product (pattern match, argument) and disjunctive sum (return value))
-might frame the expression problem.
+frames the expression problem.
 
 # Reference
