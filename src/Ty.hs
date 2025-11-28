@@ -35,6 +35,7 @@ type Ar = IM.IntMap Int
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
 
+-- [tag:aug]
 aug :: Ext a -> TM a (Ext a)
 aug (Ext f c₀ r) = do {c₁ <- gets (tds.lo); pure (Ext f (c₁<>c₀) r)}
 
@@ -554,24 +555,11 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f TP{}       = throwError$Bare te
     f QT{}       = throwError$Bare te
 
--- for constant it is less likely to be "local" so maybe we can smooshmaps?
-lC :: Cs a -> Nm a -> TM a (T a)
-lC c n@(Nm _ (U i) l) =
-    case IM.lookup i c of
-        -- TODO: clone? think type J r x = [[x -- r] -- x];
-        Just ([],t) -> pure (l<$t)
-        Nothing     -> throwError$IS n
-
-μs :: Nt a -> Subst a
-   -> TS a -- ^ inferreed
-   -> TS a -- ^ signature
-   -> TM a (Subst a)
+μs, lts :: Nt a -> Subst a
+        -> TS a -- ^ inferred
+        -> TS a -- ^ signature
+        -> TM a (Subst a)
 μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
-
-lts :: Nt a -> Subst a
-    -> TS a -- ^ inferred
-    -> TS a -- ^ signature
-    -> TM a (Subst a)
 lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1} -- TODO: why flip lt instead of l1 l0...?
 
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> TM a (Subst a)
@@ -579,6 +567,13 @@ mtsc c s ts0 ts1 = do {s' <- μs c s ts0 ts1; lts c s' ts0 ts1}
 
 liftClone :: TS a -> TM a (TS a)
 liftClone ts = do {u <- gets maxT; let (w, ts') = cloneSig u ts in modify (\s -> s {maxT = w}) $> ts'}
+
+-- [ref:aug]
+lC :: Cs a -> Nm a -> TM a (T a)
+lC c n@(Nm _ (U i) l) =
+    case IM.lookup i c of
+        Just ([],t) -> pure (l<$t)
+        Nothing     -> throwError$IS n
 
 lT :: Ar -> Nm a -> TM a Int
 lT ex n@(Nm _ (U u) _) = do
