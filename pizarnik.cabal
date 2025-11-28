@@ -57,6 +57,7 @@ library
         R
         TS
         Ty.A
+        Q
 
     other-extensions:
         DeriveFunctor

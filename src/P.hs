@@ -21,6 +21,7 @@ import           Nm
 import           Parse
 import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
 import           Prettyprinter.Render.Text        (renderIO)
+import           Q
 import           R
 import           S
 import           System.IO                        (stdout)
@@ -42,8 +43,10 @@ db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst3))
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
-naïve :: [Tree (F (TS a), Cs a, Ar)] -> Ext a
-naïve t = Ext (foldMap (\(Node (m,_,_) _) -> aLs<$>m) t) (foldMap (\(Node (_,c,_) _) -> c) t) (foldMap (\(Node (_,_,a) _) -> a) t)
+-- TODO: inefficient... for one
+naïve :: Ctx (TS a) a -> Ext a
+naïve t = Ext (foldMap ((fmap aLs.fst3)@<>) t) (foldMap (snd3@<>) t) (foldMap (thd3@<>) t)
+  where fst3 (x,_,_)=x;snd3 (_,y,_)=y;thd3 (_,_,z)=z
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
@@ -59,9 +62,11 @@ e1 incls fp e = rRepl $ do
     first3 f ~(x,y,z) = (f x,y,z)
 
 rc :: Int -> Ctx (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
-rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
-  where
-    tm=naïve c
+rc i c s at = let tm=naïve c in (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
+
+-- suppose module A imports module B, which imports module C
+-- module B defines an atom whose type references something defined in C
+-- THEN module A needs some visibility into C's types... (but its own atoms should not specify types from C...)
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
 tMs incls fp = do
