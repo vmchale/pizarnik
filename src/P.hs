@@ -19,7 +19,8 @@ import           L
 import           M
 import           Nm
 import           Parse
-import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
+import           Pr
+import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, indent, layoutSmart, pretty, vsep, (<+>))
 import           Prettyprinter.Render.Text        (renderIO)
 import           Q
 import           R
@@ -33,20 +34,21 @@ type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-db :: AlexUserState -> [Tree (IM.IntMap (ASeq (TS AlexPosn)), b, c)] -> IO ()
-db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT.fst3))
+db :: AlexUserState -> [Tree (MN, IM.IntMap (ASeq (TS AlexPosn)), b, c)] -> IO ()
+db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT))
   where
-    pBoundT :: IM.IntMap (ASeq (TS a)) -> Doc ann
-    pBoundT = vsep.map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a).IM.toList
-
-    fst3 (x,_,_)=x
+    pBoundT :: (MN, IM.IntMap (ASeq (TS a)), b, c) -> Doc ann
+    pBoundT (mn,aa,_,_) = pretty mn <#> indent 2 (vsep (map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a) (IM.toList aa)))
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
+-- suppose module A imports module B, which imports module C
+-- module B defines an atom whose type references something defined in C
+-- THEN module A needs some visibility into C's types...
 -- TODO: inefficient... for one
 naïve :: Ctx (TS a) a -> Ext a
-naïve t = Ext (foldMap ((fmap aLs.fst3)@<>) t) (foldMap (snd3@<>) t) (foldMap (thd3@<>) t)
-  where fst3 (x,_,_)=x;snd3 (_,y,_)=y;thd3 (_,_,z)=z
+naïve t = Ext (foldMap ((fmap aLs.snd4)@<>) t) (foldMap (thd4@<>) t) (foldMap (fth4@<>) t)
+  where snd4 (_,x,_,_)=x; thd4 (_,_,y,_)=y; fth4 (_,_,_,z)=z
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
@@ -57,39 +59,40 @@ e1 incls fp e = rRepl $ do
     case pAtoms l e of
         Left err -> throwError (PE err)
         Right ((i,_,_,_),at) ->
-            liftEither $ fst <$> rc i (map (fmap (first3 lm)) c) [] at
+            liftEither $ fst <$> rc i (map (fmap (second4 lm)) c) [] at
   where
-    first3 f ~(x,y,z) = (f x,y,z)
+    second4 f ~(w,x,y,z) = (w,f x,y,z)
 
 rc :: Int -> Ctx (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
 rc i c s at = let tm=naïve c in (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
 
--- suppose module A imports module B, which imports module C
--- module B defines an atom whose type references something defined in C
--- THEN module A needs some visibility into C's types... (but its own atoms should not specify types from C...)
-
-tMs :: [FilePath] -> [FilePath] -> RIO [Tree (M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
+tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN, M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
 tMs incls fp = do
-    (i,c) <- rMs incls fp
+    (i,c,mns) <- rMs incls fp
     (u,_,_,_) <- get
-    let roots = [ c IM.! unU n | n <- i ]
-        tr m@(M is _) = Node m (tr.(c IM.!).unU.mU<$>is)
-    lift $ except $ bimap TyE (map (fmap (\(x,t)->(x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
+    let roots = [ (c `ul` n, mns `ul` n) | n <- i ]
+        tr (m@(M is _), mn) = Node (mn, m) (tr.(\n -> let uϵ=mU n in (c `ul` uϵ, mns `ul` uϵ))<$>is)
+    lift $ except $ bimap TyE (map (fmap (\(n,x,t)->(n,x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
   where
-    tg c (Node n ns) = do
+    tg c (Node (mn,n) ns) = do
         ms <- traverse (tg c) ns
-        let ctx = foldMap (snd.rootLabel) ms
-        Node <$> tM ctx n <*> pure ms
+        let ctx = foldMap (thd3.rootLabel) ms
+        (mT,cϵ) <- tM ctx n
+        pure (Node (mn,mT,cϵ) ms)
+      where
+        thd3 (_,_,z)=z
+    ul x (U i) = x IM.! i
 
 rMs :: [FilePath] -- ^ Include dirs
     -> [FilePath] -- ^ Root modules
-    -> RIO ([U], IM.IntMap (M AlexPosn AlexPosn))
+    -> RIO ([U], IM.IntMap (M AlexPosn AlexPosn), IM.IntMap MN)
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     st <- get
     let s=tsort ims
     (st',m) <- go (IS.fromList [ unU u | u <- rs ]) ms st IM.empty s
-    put st' $> (rs,m)
+    let dbgM=IM.fromList [ (i,mn) | mn@(MN _ (U i)) <- s ]
+    put st' $> (rs,m,dbgM)
   where
     go _ _ st _ [] = pure (st, IM.empty)
     go rs ms (u,t,ii,m) mex (n@(MN _ (U i)):mns) = do

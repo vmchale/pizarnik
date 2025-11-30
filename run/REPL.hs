@@ -29,7 +29,7 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) [Tree (F (TS AlexPosn), Cs AlexPosn, Ar)]
+data X = X !AlexUserState (S AlexPosn) (Ctx (TS AlexPosn) AlexPosn) --- [Tree (MN, F (TS AlexPosn), Cs AlexPosn, Ar)]
 
 type Repl = InputT (StateT X IO)
 
@@ -38,10 +38,10 @@ names = do
     -- X (_,t,_,_) _ c <- get
     -- pure $ map T.unpack (M.keys t)
     X (_,_,n,_) _ c <- get
-    let u=concatMap (IM.keys . thd3 . rootLabel) c
+    let u=concatMap (IM.keys . fth4 . rootLabel) c
     pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) u)
   where
-    thd3 (_,_,z)=z
+    fth4 (_,_,_,z)=z
 
 lg=lift.gets
 
@@ -53,7 +53,7 @@ runRepl fp x = do
     liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
         Right (ctx,st) -> do
-            let t=map (fmap (first3 lm)) ctx
+            let t=map (fmap (second4 lm)) ctx
             flip evalStateT (X st [] t) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
@@ -64,7 +64,7 @@ runRepl fp x = do
     c ("", "")     = do {ns <- names; pure ("", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
 
-first3 f ~(x,y,z) = (f x,y,z)
+second4 f ~(w,x,y,z) = (w,f x,y,z)
 
 strC = map simpleCompletion
 

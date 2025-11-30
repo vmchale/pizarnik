@@ -1,22 +1,29 @@
 module S ( Ctx, F, S, lm, r, stack ) where
 
 import           A
+import           Data.Foldable (toList)
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Data.List     (find)
 import           Data.Tree     (Tree (Node))
+import           Debug.Trace
 import           F
 import           G
 import           Nm
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, pretty)
+import           Prettyprinter (Doc, hardline, pretty, vsep)
 
 type S a = [A (TS a)]
 
 type F a = IM.IntMap (ASeq a)
-type MC a b = Tree (F a, IM.IntMap ([Nm b], T b), IM.IntMap Int)
+type MC a b = Tree (MN, F a, IM.IntMap ([Nm b], T b), IM.IntMap Int)
 type Ctx a b = [MC a b]
+
+dbgStep aa s m = hardline <> stack s <#> pASeq aa <##> dbgC m
+
+dbgC :: MC a b -> Doc ann
+dbgC = vsep . fmap (\(mn,_,_,_) -> pretty mn) . toList
 
 r :: Ctx (TS a) b -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
@@ -80,12 +87,12 @@ lA c (Nm _ (U u) _) = l c where
               | otherwise = l cs
     l [] = error"internal error: arity not found"
 
-    l0 (Node (_,_,a) s) | Just n <- a IM.!? u = Just n
-                        | otherwise = tr s
+    l0 (Node (_,_,_,a) s) | Just n <- a IM.!? u = Just n
+                          | otherwise = tr s
       where
         tr [] = Nothing
-        tr ((Node (_,_,aϵ) _):cs) | Just n <- aϵ IM.!? u = Just n
-                                  | otherwise = tr cs
+        tr ((Node (_,_,_,aϵ) _):cs) | Just n <- aϵ IM.!? u = Just n
+                                    | otherwise = tr cs
 
 lV :: Ctx a b -> Nm a -> (MC a b, ASeq a)
 lV ctx n@(Nm _ (U u) _) = l ctx
@@ -94,12 +101,12 @@ lV ctx n@(Nm _ (U u) _) = l ctx
              | otherwise = l cs
     l [] = error("internal error: variable " ++ show n ++ " not found.")
 
-    l0 c@(Node (t,_,_) s) | Just a <- t IM.!? u = Just (c,a)
-                          | otherwise = tr s
+    l0 c@(Node (_,t,_,_) s) | Just a <- t IM.!? u = Just (c,a)
+                            | otherwise = tr s
       where
         tr [] = Nothing
-        tr (c'@(Node (m,_,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
-                                    | otherwise = tr cs
+        tr (c'@(Node (_,m,_,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
+                                      | otherwise = tr cs
 
 stack :: S a -> Doc ann
 stack = p.reverse where
