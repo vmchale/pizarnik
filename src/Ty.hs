@@ -8,7 +8,7 @@ import           C
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, gets, modify, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, modify, put, runStateT, state)
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
@@ -57,18 +57,17 @@ instance PT (TE a) where
     pp e@Bare{} = pure e; pp e@PM{} = pure e
     pp e@BE{} = pure e
 
-{-# SCC tLs #-}
 tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
     pretty=p0.ppt where
         p0 (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
-        p0 (AM n)       = pretty (Nm.loc n) <> ":" <+> "unknown arity:" <+> sq n
+        p0 (AM n)       = tn n$"unknown arity:" <+> sq n
         p0 (BE e)       = pretty e
         p0 (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
         p0 (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
-        p0 (Os n t)     = pretty (Nm.loc n) <> ":" <+> "occurs check failed:" <+> sq n <> "," <+> sqs t
+        p0 (Os n t)     = tn n$"occurs check failed:" <+> sq n <> "," <+> sqs t
         p0 (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
         p0 (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
         p0 (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
@@ -77,10 +76,11 @@ instance Pretty a => Pretty (TE a) where
         p0 (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
         p0 (Bare t)     = tc t$"Bare union:" <+> sq t
 
+tn n p = pretty (Nm.loc n) <> ":" <+> p
 tc t p = pretty (tL t) <> ":" <+> p
 tsc t p = pretty (tLs t) <> ":" <+> p
 
-data TSt a = TSt { maxT :: !Int, lo :: !(Ext a) }
+data TSt a = TSt !Int !(Ext a)
 
 type TM x = StateT (TSt x) (Either (TE x))
 type UM x = StateT Int (Either (TE x))
@@ -124,7 +124,6 @@ lΒ :: Cs a -> T a -> UM a (T a)
 lΒ cϵ = liftEither . first BE . tCtx
   where
     tCtx tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
-
 
 {-# SCC (@*) #-}
 (@*) :: Subst a -> TS a -> UM a (TS a)
@@ -307,9 +306,9 @@ sus=sv su;susc=ctx'ize sus; sσ = uσ susc
 
 type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 
--- if we have A, B [B c -- A b] (say) then we must have A=0
 si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
+-- if we have A, B [B c -- A b] (say) then say A=0
 si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
 si n t = pure (iSV n t)
 
@@ -545,7 +544,7 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f t          | Just{} <- unA t = f =<< lΒ c t
     f (TC _ n)   = f =<< lC c n
     f (UU _ ts_) = foldMapM f ts_
-    -- TODO: unions on variables? (could end up being instantiated wrong idk if that's useful tho)
+    -- FIXME: unions on variables? (could end up being instantiated wrong...)
     f SV{}       = ie
     f Ρ{}        = ie
     f TP{}       = throwError$Bare te
@@ -619,7 +618,6 @@ cA (UU _ ts) = traverse_ cA ts
 cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
     where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
                     | otherwise = error"sum declaration includes tag with conflicting arity"
-                    -- FIXME: more precise naming errors
 cA _=pure ()
 
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> UM a (TS a, Subst a)
@@ -723,7 +721,6 @@ tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs
     -- probably should map this one or two traversals...
     --
     -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹
-    -- def mishandles Both(a,b)... smh
           l :: Int -> [T a] -> UM a [T a]
           l 1 (_:ts)           = pure ts
           l n (t@Σ{}:ts)       = (t:) <$> l (n-1) ts
@@ -774,10 +771,7 @@ dU c s x tss = do
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where -- TODO: lT rr is constant, consider
-        -- local <- gets (arit.lo)
-        -- and pass (ars c<>local<>ars c)
-        lR=lT (ars c)
+  where lR=lT (ars c)
 
         l (SV{}:t) = length t; l t=length t
 
@@ -804,7 +798,6 @@ dU c s x tss = do
 βt :: Cs a -> TS a -> UM a (TS a)
 βt c (TS l r) = TS <$> βs c l <*> βs c r
 
--- TODO: duplicates functionality of tCtx?
 βs :: Cs a -> TSeq a -> UM a (TSeq a)
 βs c = traverse q where
     q t | Just{} <- unA t = lΒ c t
