@@ -210,6 +210,9 @@ uu _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (UF te t)
 uu _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
 uu _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (UF te t)
 uu _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
+uu c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+    (a',s') <- zS (uu c) s a0 a1
+    pure (roll th a',s')
 uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
                                    | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
@@ -246,9 +249,12 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     (l',s₀) <- susc c s l1 l0
     (r',s₁) <- susc c s₀ r0 r1
     pure (QT x (l' --: r'), s₁)
+    -- [tag:constant]
 su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
-    (a',s') <- sus c s a0 a1
+    (a',s') <- zS (su c) s a0 a1
     pure (roll th a',s')
+su c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; su c s t0 t1}
+su c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; su c s t0 t1}
 su c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
 su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
@@ -390,8 +396,10 @@ nρ n@(Nm t _ l) σ = do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
-    (a',s') <- φs c s a0 a1
+    (a',s') <- zS (φ c) s a0 a1
     pure (roll th a',s')
+φ c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; φ c s t0 t1}
+φ c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; φ c s t0 t1}
 φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; φ c s t0' t1}
 φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
 φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
@@ -795,6 +803,9 @@ dU c s x tss = do
 tS :: Ext a -> Subst a -> [ASeq a] -> UM a ([ASeq (TS a)], Subst a)
 tS _ s []     = pure ([], s)
 tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
+
+zS op s (t0:t0s) (t1:t1s) = do {(t',s') <- op s t0 t1; first (t':) <$> zS op s' t0s t1s}
+zS _ s [] []              = pure ([], s)
 
 eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
 eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
