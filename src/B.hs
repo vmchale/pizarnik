@@ -17,7 +17,7 @@ instance Pretty a => Pretty (BE a) where pretty (TCA n) = pretty (loc n) <> ":" 
 β c n bs = let (vs,t) = lC n c in ($>loc n) <$> bS (IM.fromList$zipWith (\(Nm _ (U u) _) b -> (u,b)) vs bs) t
 
 lC :: Nm a -> Cs a -> ([Nm a], T a)
-lC (Nm _ (U i) _) = IM.findWithDefault (error"Internal error. Type synonym not in scope?") i
+lC n@(Nm _ (U i) _) = IM.findWithDefault (error("Internal error. Type synonym '" ++ show n ++ "' not in scope")) i
 
 bS :: Β a -> T a -> Either (BE a) (T a)
 bS st (TV _ n@(Nm _ (U j) _)) =
