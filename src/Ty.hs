@@ -541,8 +541,8 @@ uU :: Cs a -> T a -> UM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
     f (Σ _ σ)    = pure σ
-    f t          | Just{} <- unA t = f =<< lΒ c t
     f (TC _ n)   = f =<< lC c n
+    f t          | Just{} <- unA t = f =<< lΒ c t
     f (UU _ ts_) = foldMapM f ts_
     -- FIXME: unions on variables? (could end up being instantiated wrong...)
     f SV{}       = ie
