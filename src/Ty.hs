@@ -238,6 +238,7 @@ uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
 
 uus=sv uu;usc=ctx'ize uus
 
+{-# SCC su #-}
 -- "subsumes"
 su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
@@ -466,6 +467,7 @@ mσ u c σ0 σ1 =
   where
     g t0 t1 = do {s <- get; s' <- lift (mc u c s t0 t1); put s'}
 
+{-# SCC μ #-}
 μ :: Nt a
   -> T a -- ^ inferred
   -> T a -- ^ sig
@@ -534,6 +536,7 @@ lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
 lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
+{-# SCC uU #-}
 uU :: Cs a -> T a -> UM a (T a)
 uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
@@ -554,6 +557,7 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
 μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
 lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1} -- TODO: why flip lt instead of l1 l0...?
 
+{-# SCC mtsc #-}
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> UM a (Subst a)
 mtsc c s ts0 ts1 = do {s' <- μs c s ts0 ts1; lts c s' ts0 ts1}
 
