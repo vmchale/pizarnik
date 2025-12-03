@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( TE, Ar, Ext (..), tM, tAS ) where
+module Ty ( TE, Ext (..), tM, tAS ) where
 
 import           A
 import           B
@@ -9,6 +9,7 @@ import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, modify, put, runStateT, state)
+import           D
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
@@ -31,7 +32,6 @@ infixr 6 @>
 infixl 6 @@
 infixr 6 @*
 
-type Ar = IM.IntMap Int
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
 

@@ -12,7 +12,6 @@ import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
-import           Data.Tree                        (Tree (rootLabel))
 import           L
 import           P
 import           Parse                            (pAtoms)
@@ -29,19 +28,14 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) (Ctx (TS AlexPosn) AlexPosn) --- [Tree (MN, F (TS AlexPosn), Cs AlexPosn, Ar)]
+data X = X !AlexUserState (S AlexPosn) (MC (TS AlexPosn) AlexPosn)
 
 type Repl = InputT (StateT X IO)
 
 names :: Monad m => StateT X m [String]
 names = do
-    -- X (_,t,_,_) _ c <- get
-    -- pure $ map T.unpack (M.keys t)
-    X (_,_,n,_) _ c <- get
-    let u=concatMap (IM.keys . fth4 . rootLabel) c
-    pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) u)
-  where
-    fth4 (_,_,_,z)=z
+    X (_,_,n,_) _ (_,_,b) <- get
+    pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) (IM.keys b))
 
 lg=lift.gets
 
@@ -52,9 +46,8 @@ runRepl fp x = do
     h <- (</> ".pizarnik") <$> getHomeDirectory
     liftIO (sRepl $ tMs ["."] fp) >>= \case
         Left err -> error (show err)
-        Right (ctx,st) -> do
-            let t=map (fmap (second4 lm)) ctx
-            flip evalStateT (X st [] t) $
+        Right (ctx,st) ->
+            flip evalStateT (X st [] (naïve ctx)) $
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
     c (":", "")    = pure (":", strC ["ty"])
@@ -63,8 +56,6 @@ runRepl fp x = do
     c (" yt:", "") = do {ns <- names; pure (" yt:", strC ns)}
     c ("", "")     = do {ns <- names; pure ("", strC ns)}
     c (rp, "")     = do {ns <- names; pure (unwords ("" : tail (words rp)), strC (namePrefix ns rp))}
-
-second4 f ~(w,x,y,z) = (w,f x,y,z)
 
 strC = map simpleCompletion
 
@@ -83,11 +74,11 @@ loop = do
 
 printT :: String -> Repl ()
 printT src = do
-    (X l _ c) <- lift get
+    (X l _ (b,c,ar)) <- lift get
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
-            let tyctx = naïve c
+            let tyctx = Ext (fmap aLs b) c ar
             -- FIXME: needs all types that are "one step up" (naïve is not good enough!)
             case tAS i tyctx [] at of
                 Right ((_, SL a _),_) -> pE a

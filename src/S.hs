@@ -1,31 +1,25 @@
-module S ( Ctx, F, S, lm, r, stack ) where
+module S ( MC, F, S, lm, r, stack ) where
 
 import           A
-import           Data.Foldable (toList)
+import           D
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Data.List     (find)
-import           Data.Tree     (Tree (Node))
-import           Debug.Trace
 import           F
 import           G
 import           Nm
 import qualified Nm.Map        as Nm
 import           Pr
-import           Prettyprinter (Doc, hardline, pretty, vsep)
+import           Prettyprinter (Doc, pretty)
 
 type S a = [A (TS a)]
 
 type F a = IM.IntMap (ASeq a)
-type MC a b = Tree (MN, F a, IM.IntMap ([Nm b], T b), IM.IntMap Int)
-type Ctx a b = [MC a b]
+type MC a b = (F a, Cs b, Ar)
 
-dbgStep aa s m = hardline <> stack s <#> pASeq aa <##> dbgC m
+-- dbgStep aa s m = hardline <> stack s <#> pASeq aa <##> dbgC m
 
-dbgC :: MC a b -> Doc ann
-dbgC = vsep . fmap (\(mn,_,_,_) -> pretty mn) . toList
-
-r :: Ctx (TS a) b -> [A (TS a)] -> S a -> S a
+r :: MC (TS a) b -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
 
 lm :: M b a -> F a
@@ -49,14 +43,14 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
 (TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
 _ ≺ _                   = False
 
-ψ :: Ctx (TS a) b -> [ASeq (TS a)] -> S a -> S a
+ψ :: MC (TS a) b -> [ASeq (TS a)] -> S a -> S a
 ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
   where
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
     u (Ca _ (C{}:cs)) = (cs++); u C{} = id
 
-ι :: Ctx (TS a) b -> A (TS a) -> S a -> S a
+ι :: MC (TS a) b -> A (TS a) -> S a -> S a
 ι _ (B _ Dup) (a:as)       = a:a:as
 ι _ (B _ Un) (_:as)        = as
 ι c (B _ Plus) as          = i2 c (+) as
@@ -72,41 +66,22 @@ _ ≺ _                   = False
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
--- FIXME: type catenation???
-ι c a@(C _ tt) as          = let n=lA c tt; (x,a_)=splitAt n as;(ᴀ:_) = trights (aL a) in if n==0 then a:as else let in Ca (TS [ᴀ] (trights (aL a))) (a:x):a_
+-- FIXME: type catenation?
+ι c a@(C (TS _ tr) tt) as  = let n=lA c tt; (x,a_)=splitAt n as; (ᴀ:_)=tr in if n==0 then a:as else let in Ca (TS [ᴀ] tr) (a:x):a_
 ι c (Pat _ (SL _ aa)) as   = ψ c aa as -- FIXME: this pinches off stack variables...
-ι c (V _ n) as             = let (c',a) = lV c n in r [c'] (aas a) as
+ι c (V _ n) as             = let a = lV c n in r c (aas a) as
+-- FIXME: recursion and context?
 ι _ (Inv _ (C _ tt₀)) (Ca _ (C _ tt₁:cs):as) | tt₀==tt₁ = cs++as
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
-ι c a as = error (show (a,as))
 
-lA :: Ctx a b -> Nm a -> Int
-lA c (Nm _ (U u) _) = l c where
-    l (cϵ:cs) | Just n <- l0 cϵ = n
-              | otherwise = l cs
-    l [] = error"internal error: arity not found"
+lA :: MC a b -> Nm a -> Int
+lA (_,_,a) (Nm _ (U u) _) | Just ar <- a IM.!? u = ar
+                          | otherwise = error"internal error: arity not found"
 
-    l0 (Node (_,_,_,a) s) | Just n <- a IM.!? u = Just n
-                          | otherwise = tr s
-      where
-        tr [] = Nothing
-        tr ((Node (_,_,_,aϵ) _):cs) | Just n <- aϵ IM.!? u = Just n
-                                    | otherwise = tr cs
-
-lV :: Ctx a b -> Nm a -> (MC a b, ASeq a)
-lV ctx n@(Nm _ (U u) _) = l ctx
-  where
-    l (c:cs) | Just (c',a) <- l0 c = (c',a)
-             | otherwise = l cs
-    l [] = error("internal error: variable " ++ show n ++ " not found.")
-
-    l0 c@(Node (_,t,_,_) s) | Just a <- t IM.!? u = Just (c,a)
-                            | otherwise = tr s
-      where
-        tr [] = Nothing
-        tr (c'@(Node (_,m,_,_) _):cs) | Just a <- m IM.!? u = Just (c',a)
-                                      | otherwise = tr cs
+lV :: MC a b -> Nm a -> ASeq a
+lV (c,_,_) n@(Nm _ (U u) _) | Just a <- c IM.!? u = a
+                            | otherwise = error("internal error: variable " ++ show n ++ " not found.")
 
 stack :: S a -> Doc ann
 stack = p.reverse where

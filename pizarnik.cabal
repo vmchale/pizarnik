@@ -46,6 +46,7 @@ library
     other-modules:
         B
         C
+        D
         E
         F
         G

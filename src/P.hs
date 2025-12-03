@@ -1,15 +1,14 @@
 module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rDoc, naïve ) where
 
 import           A
-import           B
 import           Control.Monad                    (foldM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, withExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put)
+import           D
 import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
-import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
@@ -19,8 +18,7 @@ import           L
 import           M
 import           Nm
 import           Parse
-import           Pr
-import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, indent, layoutSmart, pretty, vsep, (<+>))
+import           Prettyprinter                    (Doc, SimpleDocStream, defaultLayoutOptions, hardline, layoutSmart, pretty, vsep, (<+>))
 import           Prettyprinter.Render.Text        (renderIO)
 import           Q
 import           R
@@ -34,11 +32,11 @@ type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
 fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-db :: AlexUserState -> [Tree (MN, IM.IntMap (ASeq (TS AlexPosn)), b, c)] -> IO ()
-db (_,_,n,_) = traverse_ (traverse_ (rDoc.(<>hardline).pBoundT))
+db :: AlexUserState -> (IM.IntMap (ASeq (TS AlexPosn)), b, c) -> IO ()
+db (_,_,n,_) = rDoc.(<>hardline).pBoundT
   where
-    pBoundT :: (MN, IM.IntMap (ASeq (TS a)), b, c) -> Doc ann
-    pBoundT (mn,aa,_,_) = pretty mn <#> indent 2 (vsep (map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a) (IM.toList aa)))
+    pBoundT :: (IM.IntMap (ASeq (TS a)), b, c) -> Doc ann
+    pBoundT (aa,_,_) = vsep (map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a) (IM.toList aa))
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
@@ -46,9 +44,6 @@ rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 -- module B defines an atom whose type references something defined in C
 -- THEN module A needs some visibility into C's types...
 -- TODO: inefficient... for one
-naïve :: Ctx (TS a) a -> Ext a
-naïve t = Ext (foldMap ((fmap aLs.snd4)@<>) t) (foldMap (thd4@<>) t) (foldMap (fth4@<>) t)
-  where snd4 (_,x,_,_)=x; thd4 (_,_,y,_)=y; fth4 (_,_,_,z)=z
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
@@ -59,12 +54,17 @@ e1 incls fp e = rRepl $ do
     case pAtoms l e of
         Left err -> throwError (PE err)
         Right ((i,_,_,_),at) ->
-            liftEither $ fst <$> rc i (map (fmap (second4 lm)) c) [] at
-  where
-    second4 f ~(w,x,y,z) = (w,f x,y,z)
+            liftEither $ fst <$> rc i (naïve c) [] at
 
-rc :: Int -> Ctx (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
-rc i c s at = let tm=naïve c in (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i tm s at)
+-- inefficient but I think this won't cause problems b/c we already renamed?
+naïve :: [Tree (MN, M a (TS a), Cs a, Ar)] -> MC (TS a) a
+naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, foldMap (fth4@<>) c)
+  where snd4 (_,y,_,_)=y; thd4 (_,_,z,_)=z; fth4 (_,_,_,w)=w
+
+rc :: Int -> MC (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
+rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i (π c) s at)
+  where
+    π (b,cϵ,a) = Ext (fmap aLs b) cϵ a
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN, M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
 tMs incls fp = do

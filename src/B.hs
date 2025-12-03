@@ -1,12 +1,13 @@
-module B ( Cs, BE, β ) where
+module B ( BE, β ) where
 
 import           A
+import           D
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Nm
 import           Prettyprinter (Pretty (pretty), (<+>))
 
-type Cs a=IM.IntMap ([Nm a], T a); type Β a=IM.IntMap (T a)
+type Β a=IM.IntMap (T a)
 
 newtype BE a = TCA (Nm a)
 

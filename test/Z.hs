@@ -19,6 +19,7 @@ main = defaultMain $
           , eEx "prelude/ord.piz" "3 2 cmpInt 2 2 cmpInt" "`gt `eq"
           , eEx "test/examples/ros.piz" "`g complement `t complement" "`c `a"
           , eEx "test/examples/parity.piz" "`even `even add `odd `odd add" "`even `even"
+          , eEx "test/examples/dep.piz" "x ors" "True"
           ]
         , testGroup "ty"
             ( tE "test/data/pmfail.piz" "3:12: {a `just ⊕ `nil} ⊀ {a `just}"
