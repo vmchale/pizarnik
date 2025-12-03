@@ -100,6 +100,7 @@ mapLeft : [ a -- c ] Either(a,b) -- Either(c,b)
 ```
 
 ```pizarnik
+@i prelude/fn
 @i lib/either
 
 type Both a b = Either(a,b) ∪ { a b `both };
