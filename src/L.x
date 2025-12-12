@@ -92,7 +92,6 @@ tokens :-
         _                       { sym Under }
         "<"                     { sym Lt }
         ">"                     { sym Gt }
-        -- 𝟙
 
         dip                     { builtin Dip }
         dup                     { builtin Dup }
