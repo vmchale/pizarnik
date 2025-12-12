@@ -27,7 +27,7 @@ import qualified Data.Text as T
 import Data.Text.Encoding (decodeUtf8)
 import Nm
 import Pr (sq)
-import Prettyprinter (Pretty (..), (<+>))
+import Prettyprinter (Pretty (..), (<+>), dquotes)
 
 }
 
@@ -107,6 +107,8 @@ tokens :-
 
         True                    { tok (\p _ -> alex $ TokT p (true p)) }
         False                   { tok (\p _ -> alex $ TokT p (false p)) }
+
+        \" [^\"]* \"            { tok (\p s -> alex $ TokStr p (mkText s)) }
 
         @name                   { tok (\p s -> TokN p <$> nIdent p (mkText s)) }
         @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
@@ -211,6 +213,7 @@ data Tok = EOF { loc :: AlexPosn }
          | TokSV { loc :: AlexPosn, svn :: !(Nm AlexPosn) }
          | TokMN { loc :: AlexPosn, modname :: !MN }
          | TokKw { loc :: AlexPosn, tokKw :: !Kw }
+         | TokStr { loc :: AlexPosn, str :: T.Text }
 
 instance Pretty Tok where
     pretty EOF{}        = "(eof)"
@@ -223,6 +226,7 @@ instance Pretty Tok where
     pretty (TokB _ b)   = "builtin" <+> sq b
     pretty (TokT _ t)   = pretty t
     pretty (TokKw _ k)  = "keyword" <+> sq k
+    pretty (TokStr _ s) = dquotes (pretty s)
 
 withAlexSt :: BSL.ByteString -> Int -> AlexUserState -> Alex a -> Either String (AlexUserState, a)
 withAlexSt inp scd ust (Alex f) = first alex_ust <$> f

@@ -72,6 +72,8 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     rem { TokB $$ L.Rem }
     doll { TokB $$ Doll }
 
+    str { $$@(TokStr _ _) }
+
     name { TokN _ $$ }
     tyname { TokTN _ $$ }
     sv { TokSV _ $$ }
@@ -140,6 +142,7 @@ A :: { A AlexPosn }
   | brackets(many(A)) { Q (fst $1) (SL (fst $1) (reverse (snd $1))) }
   | braces(sepBy(some(A),amp)) { Pat (fst $1) (SL (fst $1) (reverse (map (\as -> let as'=reverse as in SL (aL$head as') as') (snd $1)))) }
   | ilit { L (loc $1) (A.I (int $1)) }
+  | str { L (loc $1) (Str (str $1)) }
   | some(Cyc) { L (fst $ head $1) (S $ iperm (map snd $1)) }
 
 ASeq :: { ASeq AlexPosn }
