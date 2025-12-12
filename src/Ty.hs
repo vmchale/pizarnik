@@ -805,6 +805,7 @@ dU c s x tss = do
 
 βs :: Cs a -> TSeq a -> UM a (TSeq a)
 βs c = traverse q where
+    q (TC _ n) = q =<< lC c n
     q t | Just{} <- unA t = lΒ c t
     q t = pure t
 
