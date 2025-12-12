@@ -213,6 +213,8 @@ uu _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
 uu c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- zS (uu c) s a0 a1
     pure (roll th a',s')
+uu c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; uu c s t0 t1}
+uu c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; uu c s t0 t1}
 uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
                                    | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
@@ -487,7 +489,9 @@ mσ u c σ0 σ1 =
 μ c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; μ c t0' t1}
 μ c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; μ c t0 t1'}
 μ _ TP{} TP{} = pure mempty
-μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1 -- TODO: contravariance?
+μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1
+μ _ t0@TP{} t1@Σ{} = throwError$MF t0 t1
+μ _ t0@Σ{} t1@TP{} = throwError$MF t0 t1
 
 -- ≺
 lt :: Nt a -> T a -> T a -> UM a (Subst a)
