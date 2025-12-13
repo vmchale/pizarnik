@@ -1,0 +1,29 @@
+type Name = { Int String `name } ;
+type ResVar = { `x ⊕ `y };
+
+# type AbsAST a = { a a `ap ⊕ a Name `lam ⊕ Name `var };
+
+type DExpr = Syn ∪ { ResVar `resVar };
+type Syn = { Syn Syn `ap ⊕ Syn Name `lam ⊕ DExpr `dfn ⊕ Name `var };
+type AST = { AST AST `ap ⊕ AST Name `lam ⊕ Name `var };
+# type AST = AbsAST(AST);
+
+freshY : Int -- Int Name
+       := [ 1 + dup "x" `name ]
+
+freshX : Int -- Int Name
+       := [ 1 + dup "x" `name ]
+
+dedfn : Int DExpr -- Int AST
+      := [ { `resVar⁻¹ { `x⁻¹ freshX & `y⁻¹ freshY } `var
+           & `lam⁻¹ [dedfn] dip `lam
+           & `var⁻¹ `var
+           }
+         ]
+
+desugar : Int Syn -- Int AST
+        := [ { `dfn⁻¹ dedfn
+             & `var⁻¹ `var
+             & `lam⁻¹ [desugar] dip `lam
+             }
+           ]
