@@ -85,8 +85,7 @@ will fail, viz.
 by Blume, Acar, and Chae solve the expression problem:
 
 <!-- properly solved, expression problem is one of polarity, (sum types that are disjuncts demand disjunctive products?) not analogy -->
-<!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (or contravariantly) -->
-
+<!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (contravariantly) -->
 
 ```pizarnik
 @i prelude/fn
