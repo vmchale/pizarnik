@@ -9,7 +9,7 @@ import           Prettyprinter (Pretty (pretty), (<+>))
 
 type Β a=IM.IntMap (T a)
 
-newtype BE a = TCA (Nm a)
+newtype BE a = TCA (Nm a) deriving Functor
 
 instance Pretty a => Pretty (BE a) where pretty (TCA n) = pretty (loc n) <> ":" <+> "Type constructor not fully applied"
 

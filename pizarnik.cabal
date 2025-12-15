@@ -36,8 +36,9 @@ library
     exposed-modules:
         Dbg
         A
-        L
         P
+        L
+        Loc
         Parse
         Pr
         S
@@ -60,8 +61,10 @@ library
         Ty.A
         Q
 
-    other-extensions:
+    default-extensions:
         DeriveFunctor
+
+    other-extensions:
         RankNTypes
 
     build-tool-depends:

@@ -24,7 +24,7 @@ import           Prettyprinter                    (Pretty (..), (<+>))
 
 infixr 5 @~
 
-data RE a = IllScoped (Nm a) | D (Nm a)
+data RE a = IllScoped (Nm a) | D (Nm a) deriving Functor
 
 instance Pretty a => Pretty (RE a) where
     pretty (IllScoped n) = pretty (loc n) <> ":" <+> "Not in scope:" <+> sq n

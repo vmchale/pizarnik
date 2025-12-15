@@ -4,18 +4,20 @@ import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Except       (ExceptT, except)
 import           Control.Monad.Trans.State.Strict (StateT (StateT))
+import           Data.Bifunctor                   (bimap, second)
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
 import qualified Data.Text                        as T
 import           Data.Tuple                       (swap)
 import           Imp
 import           L
+import           Loc
 import           Nm
 import           Parse
 
-type R = StateT AlexUserState (ExceptT ParseE IO)
+type R = StateT AlexUserState (ExceptT (ParseE Loc) IO)
 
-data MS = MS (IM.IntMap (M AlexPosn AlexPosn)) [(MN, [MN])]
+data MS = MS (IM.IntMap (M Loc Loc)) [(MN, [MN])]
 
 rMN :: T.Text -> R MN
 rMN fp = mst $ pure.nMIdent (asMN fp)
@@ -45,11 +47,14 @@ pRoot incls fps = do
                 st'= MS (IM.insert i m mSt) nDeps
             step st' (is++mns)
 
-mst :: (AlexUserState -> ExceptT ParseE IO (AlexUserState, a)) -> R a
+mst :: (AlexUserState -> ExceptT (ParseE Loc) IO (AlexUserState, a)) -> R a
 mst f = StateT $ fmap swap.f
 
-pMIO :: [FilePath] -> MN -> R (M AlexPosn AlexPosn)
+pMIO :: [FilePath] -> MN -> R (M Loc Loc)
 pMIO incls mn = do {fp <- liftIO (resolveI incls mn); pIO fp}
 
-pIO :: FilePath -> R (M AlexPosn AlexPosn)
-pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (pM st src)}
+pIO :: FilePath -> R (M Loc Loc)
+pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (bimap (fmap loca) (second aug) $ pM st src)}
+  where
+    aug = bimap loca loca
+    loca (AlexPn _ l c) = Loc fp l c

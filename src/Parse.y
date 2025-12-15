@@ -15,6 +15,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.Functor (($>))
 import qualified Data.IntMap as IM
 import qualified Data.Text as T
+import Data.Typeable (Typeable)
 import G
 import L
 import Nm hiding (loc)
@@ -183,28 +184,28 @@ roll t (t':ts) = roll (TA (tL t) t t') ts
 parseErr :: Tok -> [String] -> Parse a
 parseErr t = throwE.Unexpected t
 
-data ParseE = Unexpected !Tok [String] | LexErr String | AnonymousArm !AlexPosn
+data ParseE a = Unexpected !Tok [String] | LexErr String | AnonymousArm !a deriving Functor
 
-instance Pretty ParseE where
+instance Pretty a => Pretty (ParseE a) where
     pretty (Unexpected t v) = pretty (loc t) <+> "Unexpected" <+> pretty t <> "." <+> "Expected one of" <+> concatWith (\x y -> x <> ", " <> y) (squotes.pretty<$>v)
     pretty (LexErr s)       = pretty (T.pack s)
     pretty (AnonymousArm l) = pretty l <+> "Sum type variants must be terminated by a tag"
 
-instance Show ParseE where show=show.pretty
+instance Pretty a => Show (ParseE a) where show=show.pretty
 
-instance Exception ParseE
+instance (Pretty a, Typeable a) => Exception (ParseE a)
 
-type Parse = ExceptT ParseE Alex
+type Parse = ExceptT (ParseE AlexPosn) Alex
 
 pM = runParseSt parseM 0
 pAtoms = runParseSt parseASeq 0
 
 pA = pM alexInitUserState
 
-runParseSt :: Parse a -> Int -> AlexUserState -> BSL.ByteString -> Either ParseE (AlexUserState, a)
+runParseSt :: Parse a -> Int -> AlexUserState -> BSL.ByteString -> Either (ParseE AlexPosn) (AlexUserState, a)
 runParseSt parser scd u bs = liftErr $ withAlexSt bs scd u (runExceptT parser)
 
-liftErr :: Either String (b, Either ParseE c) -> Either ParseE (b, c)
+liftErr :: Either String (b, Either (ParseE e) c) -> Either (ParseE e) (b, c)
 liftErr (Left err)            = Left (LexErr err)
 liftErr (Right (_, Left err)) = Left err
 liftErr (Right (i, Right x))  = Right (i, x)

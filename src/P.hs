@@ -15,6 +15,7 @@ import qualified Data.IntSet                      as IS
 import           Data.Tree                        (Tree (..))
 import           E
 import           L
+import           Loc
 import           M
 import           Nm
 import           Parse
@@ -27,12 +28,12 @@ import           System.IO                        (stdout)
 import           TS
 import           Ty
 
-type RIO = StateT AlexUserState (ExceptT (E AlexPosn) IO)
+type RIO = StateT AlexUserState (ExceptT (E Loc) IO)
 
-fmt :: BSL.ByteString -> Either ParseE (SimpleDocStream ann)
+fmt :: BSL.ByteString -> Either (ParseE AlexPosn) (SimpleDocStream ann)
 fmt = fmap (layoutSmart defaultLayoutOptions . pretty . snd) . pA
 
-db :: AlexUserState -> (IM.IntMap (ASeq (TS AlexPosn)), b, c) -> IO ()
+db :: AlexUserState -> (IM.IntMap (ASeq (TS a)), b, c) -> IO ()
 db (_,_,n,_) = rDoc.(<>hardline).pBoundT
   where
     pBoundT :: (IM.IntMap (ASeq (TS a)), b, c) -> Doc ann
@@ -47,14 +48,14 @@ rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
-   -> IO (Either (E AlexPosn) (S AlexPosn))
+   -> IO (Either (E Loc) (S Loc))
 e1 incls fp e = rRepl $ do
     c <- tMs incls fp
     l <- get
     case pAtoms l e of
-        Left err -> throwError (PE err)
+        Left err -> throwError (no<$>PE err)
         Right ((i,_,_,_),at) ->
-            liftEither $ fst <$> rc i (naïve c) [] at
+            liftEither (fst <$> rc i (naïve c) [] (faseq no at))
 
 -- inefficient but I think this won't cause problems b/c we already renamed?
 naïve :: [Tree (MN, M a (TS a), Cs a, Ar)] -> MC (TS a) a
@@ -66,13 +67,13 @@ rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (a
   where
     π (b,cϵ,a) = Ext (fmap aLs b) cϵ a
 
-tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN, M AlexPosn (TS AlexPosn), Cs AlexPosn, Ar)]
+tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
     (i,c,mns) <- rMs incls fp
     (u,_,_,_) <- get
     let roots = [ (c `ul` n, mns `ul` n) | n <- i ]
         tr (m@(M is _), mn) = Node (mn, m) (tr.(\n -> let uϵ=mU n in (c `ul` uϵ, mns `ul` uϵ))<$>is)
-    lift $ except $ bimap TyE (map (fmap (\(n,x,t)->(n,x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext AlexPosn).tr) roots) u)
+    lift $ except $ bimap TyE (map (fmap (\(n,x,t)->(n,x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext Loc).tr) roots) u)
   where
     tg c (Node (mn,n) ns) = do
         ms <- traverse (tg c) ns
@@ -85,7 +86,7 @@ tMs incls fp = do
 
 rMs :: [FilePath] -- ^ Include dirs
     -> [FilePath] -- ^ Root modules
-    -> RIO ([U], IM.IntMap (M AlexPosn AlexPosn), IM.IntMap MN)
+    -> RIO ([U], IM.IntMap (M Loc Loc), IM.IntMap MN)
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     st <- get
@@ -112,7 +113,7 @@ rMs incls fp = do
 mnlookup (MN _ (U i)) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")
 
-rRepl :: RIO a -> IO (Either (E AlexPosn) a)
+rRepl :: RIO a -> IO (Either (E Loc) a)
 rRepl = runExceptT.flip evalStateT (0,mempty,mempty,mempty)
 
 exs :: MN -> [Ex] -> RIO Ex

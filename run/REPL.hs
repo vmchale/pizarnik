@@ -13,6 +13,7 @@ import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
 import           L
+import           Loc
 import           P
 import           Parse                            (pAtoms)
 import           Pr
@@ -28,7 +29,7 @@ repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
 -- TODO: include names in state for completions
-data X = X !AlexUserState (S AlexPosn) (MC (TS AlexPosn) AlexPosn)
+data X = X !AlexUserState (S Loc) (MC (TS Loc) Loc)
 
 type Repl = InputT (StateT X IO)
 
@@ -72,6 +73,8 @@ loop = do
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
+na = faseq no
+
 printT :: String -> Repl ()
 printT src = do
     (X l _ (b,c,ar)) <- lift get
@@ -80,7 +83,7 @@ printT src = do
         Right ((i,_,_,_),at) -> do
             let tyctx = Ext (fmap aLs b) c ar
             -- FIXME: needs all types that are "one step up" (naïve is not good enough!)
-            case tAS i tyctx [] at of
+            case tAS i tyctx [] (na at) of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
 
@@ -90,7 +93,7 @@ printA src = do
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
-            case rc i c s at of
+            case rc i c s (na at) of
                 Right (s',i') -> do
                     lift $ put (X (i',ii,ti,m) s' c)
                     stackpp s'

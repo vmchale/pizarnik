@@ -8,7 +8,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , (--:)
-         , taseq
+         , faseq, taseq
          , PT (..)
          , ppt, psv
          , unA
@@ -18,6 +18,7 @@ module A ( A (..)
          ) where
 
 import           Control.Monad.Trans.State.Strict (State, evalState, get, modify, put)
+import           Data.Bifunctor                   (Bifunctor (bimap, second))
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.Set                         as S
@@ -174,6 +175,12 @@ unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 
+instance Functor (D a) where fmap=second
+
+instance Bifunctor D where
+    bimap f g (TD x n v t) = TD (f x) (fmap f n) (map (fmap f) v) (fmap f t)
+    bimap f g (F x n t as) = F (g x) (fmap g n) (fmap f t) (faseq g as)
+
 anD :: D a (TS b) -> Doc ann
 anD (F _ n t as) = pretty n <+> align (":" <+> p0 t <#> ":=" <+> brackets (aT as))
 anD d@TD{}       = pretty d
@@ -186,6 +193,11 @@ am :: M a (TS b) -> Doc ann
 am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
 
 data M a b = M [MN] [D a b]
+
+instance Functor (M a) where fmap=second
+
+instance Bifunctor M where
+    bimap f g (M is d) = M is (map (bimap f g) d)
 
 instance Pretty (M a b) where
     pretty (M [] ds) = pDs ds

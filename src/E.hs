@@ -9,7 +9,7 @@ import           Prettyprinter     (Pretty (..), (<+>))
 import           R
 import           Ty
 
-data E a = PE ParseE | TyE (TE a) | RE (RE a) | MDF !MN | MDC !MN | MDT !MN | ES
+data E a = PE (ParseE a) | TyE (TE a) | RE (RE a) | MDF !MN | MDC !MN | MDT !MN | ES deriving Functor
 
 instance Pretty a => Pretty (E a) where
     pretty (PE e)  = pretty e

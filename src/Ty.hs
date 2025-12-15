@@ -46,6 +46,7 @@ data TE a = BE (BE a) | O (T a) (T a) | Os (Nm a) (TSeq a)
           | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
           | UF (T a) (T a) | MF (T a) (T a) | Bare (T a)
           | AM (Nm a) | IS (Nm a)
+          deriving Functor
 
 instance PT (TE a) where
     pp (UF t₀ t₁) = UF <$> pp t₀ <*> pp t₁; pp (O t₀ t₁) = O <$> pp t₀ <*> pp t₁
