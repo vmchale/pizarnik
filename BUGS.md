@@ -1,3 +1,7 @@
+```
+ :ty [swap] dip2
+1:2: length mismatch: ‘['A, a, b]’ and ‘[]’
+```
 
 cabal run pc -- repl lib/maybe.piz prelude/fn.piz
 <TAB>
