@@ -709,7 +709,7 @@ pad :: a -> Int -> UM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
 tally :: [([(Nm a, TSeq a)], TS a)] -> Nm.NmMap [TS a]
-tally = foldl' (\z (ns,TS l r) -> let g υ Nothing=[TS (l++υ) r]; g υ (Just xs)=TS (l++υ) r:xs in thread [Nm.augment (g υ) n | (n,υ) <- ns] z) Nm.empty
+tally = foldl' (\z (ns,TS l r) -> thread [Nm.insertWith (++) n [TS (l++υ) r] | (n,υ) <- ns] z) Nm.empty
 
 ψ :: Nt a -> [TS a] -> UM a (Nm.NmMap [TS a])
 ψ c tss = do
