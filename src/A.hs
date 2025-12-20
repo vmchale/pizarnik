@@ -178,7 +178,7 @@ data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 instance Functor (D a) where fmap=second
 
 instance Bifunctor D where
-    bimap f g (TD x n v t) = TD (f x) (fmap f n) (map (fmap f) v) (fmap f t)
+    bimap f _ (TD x n v t) = TD (f x) (fmap f n) (map (fmap f) v) (fmap f t)
     bimap f g (F x n t as) = F (g x) (fmap g n) (fmap f t) (faseq g as)
 
 anD :: D a (TS b) -> Doc ann
