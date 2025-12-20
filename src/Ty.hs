@@ -5,7 +5,7 @@ module Ty ( TE, Ext (..), tM, tAS ) where
 import           A
 import           B
 import           C
-import           Control.Monad                    (foldM, when, (<=<))
+import           Control.Monad                    (foldM, when)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, modify, put, runStateT, state)
@@ -127,46 +127,46 @@ lΒ cϵ = liftEither . first BE . tCtx
     tCtx tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
 
 {-# SCC (@*) #-}
-(@*) :: Subst a -> TS a -> UM a (TS a)
-s @* (TS l r) = TS <$> s@@l <*> s@@r
+(@*) :: Subst a -> TS a -> TS a
+s @* (TS l r) = TS (s@@l) (s@@r)
 
 {-# SCC peek #-}
-peek :: Subst a -> TSeq a -> UM a (TSeq a)
-peek _ []          = pure []
-peek s (SV _ n:ts) = do {v <- s@~>n; if null v then peek s ts else pure (v++ts)}
-peek s (t:ts)      = do {t' <- s@>t; pure (t':ts)}
+peek :: Subst a -> TSeq a -> TSeq a
+peek _ []          = []
+peek s (SV _ n:ts) = let v = s@~>n in if null v then peek s ts else v++ts
+peek s (t:ts)      = s@>t:ts
 
-peekS :: Subst a -> TS a -> UM a (TS a)
-peekS s (TS l r) = TS <$> peek s l <*> peek s r
+peekS :: Subst a -> TS a -> TS a
+peekS s (TS l r) = TS (peek s l) (peek s r)
 
 {-# SCC (@@) #-}
-(@@) :: Subst a -> TSeq a -> UM a (TSeq a)
-(@@) _ []          = pure []
-(@@) s (SV _ n:ts) = do {v <- s@~>n; (v++)<$>s@@ts}
-(@@) s (t:ts)      = do {t' <- s@>t; (t':)<$>s@@ts}
+(@@) :: Subst a -> TSeq a -> TSeq a
+(@@) _ []          = []
+(@@) s (SV _ n:ts) = s@~>n ++ s@@ts
+(@@) s (t:ts)      = s@>t : s@@ts
 
-(@~>) :: Subst a -> Nm a -> UM a (TSeq a)
+(@~>) :: Subst a -> Nm a -> TSeq a
 (@~>) s v@(Nm _ (U i) x) =
     case IM.lookup i (svs s) of
         Just ts -> mapSV (IM.delete i) s @@ ts
-        Nothing -> pure [SV x v]
+        Nothing -> [SV x v]
 
 {-# SCC (@>) #-}
-(@>) :: Subst a -> T a -> UM a (T a)
-(@>) _ t@TP{}          = pure t
-(@>) _ t@TT{}          = pure t
-(@>) _ t@TC{}          = pure t
-(@>) s (TA x t0 t1)    = TA x <$> s@>t0 <*> s@>t1
-(@>) s (QT x sig)      = QT x<$>s@*sig
+(@>) :: Subst a -> T a -> T a
+(@>) _ t@TP{}          = t
+(@>) _ t@TT{}          = t
+(@>) _ t@TC{}          = t
+(@>) s (TA x t0 t1)    = TA x (s@>t0) (s@>t1)
+(@>) s (QT x sig)      = QT x (s@*sig)
 (@>) s t@(TV _ (Nm _ (U u) _)) =
     case IM.lookup u (tvs s) of
-        Nothing -> pure t
+        Nothing -> t
         Just t' -> s\-u@>t'
 (@>) s (Ρ l n@(Nm _ (U u) _) a) =
     case IM.lookup u (tvs s) of
-        Nothing -> Ρ l n <$> traverse (s@@) a
+        Nothing -> Ρ l n (fmap (s@@) a)
         Just t' -> s\-u@>t'
-(@>) s (Σ x ts) = Σ x <$> traverse (s@@) ts
+(@>) s (Σ x ts) = Σ x (fmap (s@@) ts)
 (@>) _ SV{} = error"Internal error: (@>) applied to stack variable "
 
 so :: T a -> IS.IntSet
@@ -349,7 +349,7 @@ sv u c s (t0:ts0) (t1:ts1) = do
 sv _ _ _ t0 [] = throwError$LE t0 []
 sv _ _ _ [] t1 = throwError$LE t1 []
 
-ctx'ize us c s = us c s `onM` (rwAr (ars c)<=<peek s)
+ctx'ize us c s = us c s `onM` (rwAr (ars c).peek s)
 
 ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> UM a (T a, Subst a -> Subst a)
 ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
@@ -433,7 +433,7 @@ rwAr ar = under (fmap reverse . g . reverse)
           under f (t@SV{}:ts) = (t:)<$>f ts
           under f ts          = f ts
 
-mc u c s = ms u c s `onM` (rwAr (ars c)<=<peek s)
+mc u c s = ms u c s `onM` (rwAr (ars c).peek s)
 
 -- TODO: check agreement w.r.t. previous agreements... e.g.
 -- a b c
@@ -597,7 +597,7 @@ tAS u b s a = flip runStateT u $ do
     (t0,s0) <- sseq n (aLs a) mempty (reverse s)
     (t1,s1) <- tseq b s0 a
     (t2,s2) <- cat n s1 t0 (aLs t1)
-    (,) <$> s2@*t2 <*> taseq (s2@*) t1
+    pure (s2@*t2, faseq (s2@*) t1)
   where n=π b
 
 {-# SCC tD0 #-}
@@ -611,8 +611,7 @@ tD1 _ (TD x n vs t) = pure (TD x n vs t)
 tD1 c (F _ n ts as) = do
     (as', s) <- tseq c mempty as
     s' <- mtsc (π c) s (aLs as') ts
-    as''<- taseq (s'@*) as'
-    pure (F ts (n$>ts) ts as'')
+    pure (F ts (n$>ts) ts (faseq (s'@*) as'))
 
 -- TODO check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
@@ -700,8 +699,7 @@ ta b s (C l tt)        = do
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
     (as', s0) <- tS b s (aas as)
-    -- TODO: just peekS?
-    sigs <- traverse (peekS s0.aLs) as'
+    let sigs = map (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 

@@ -8,7 +8,7 @@ module A ( A (..)
          , M (..)
          , SL (..), ASeq
          , (--:)
-         , faseq, taseq
+         , faseq
          , PT (..)
          , ppt, psv
          , unA
