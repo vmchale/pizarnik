@@ -1,0 +1,11 @@
+@i prelude/bool
+@i lib/list
+
+ands : List(Bool) -- Bool
+     := [ [[and] True] dip foldr ]
+
+ors : List(Bool) -- Bool
+    := [ [[or] False] dip foldr ]
+
+x : -- List(Bool)
+  := [ `nil False `cons True `cons False `cons ]
