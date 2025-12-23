@@ -476,7 +476,7 @@ mσ u c σ0 σ1 =
   -> UM a (Subst a)
 μ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 μ _ t0@(TV _ n) t1 = c1 n t1 t0
-μ _ t0@(Ρ _ n σ) t1@TV{} | Nm.null σ = c1 n t1 t0
+μ _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
 μ _ t0 t1@TV{} = throwError$MF t0 t1
 μ c (Σ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1
 μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later
