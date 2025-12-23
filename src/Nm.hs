@@ -1,6 +1,4 @@
-{-# LANGUAGE DeriveFoldable    #-}
-{-# LANGUAGE DeriveFunctor     #-}
-{-# LANGUAGE DeriveTraversable #-}
+{-# LANGUAGE DeriveFunctor #-}
 
 module Nm ( U (..), Nm (..), MN (..), true, false ) where
 
@@ -13,7 +11,7 @@ import           Prettyprinter      (Doc, Pretty (..))
 newtype U = U { unU :: Int } deriving (Eq, Ord)
 
 data MN = MN { mN :: NonEmpty T.Text, mU :: !U }
-data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving (Functor, Foldable, Traversable)
+data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving Functor
 
 true = Nm "True" (U (-2))
 false = Nm "False" (U (-1))
