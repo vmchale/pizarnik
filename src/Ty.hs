@@ -492,6 +492,10 @@ mσ u c σ0 σ1 =
 μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1
 μ _ t0@TP{} t1@Σ{} = throwError$MF t0 t1
 μ _ t0@Σ{} t1@TP{} = throwError$MF t0 t1
+μ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
+μ _ t0 t1@TP{} = throwError$MF t0 t1
+μ _ t0 t1@QT{} = throwError$MF t0 t1
+μ _ SV{} _ = ie; μ _ _ SV{} = ie
 
 -- ≺
 lt :: Nt a -> T a -> T a -> UM a (Subst a)
@@ -500,10 +504,8 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
--- lt _ t0@(TV _ n) t1 = c1 n t1 t0
--- lt _ t0@(Ρ _ _ σ) t1@(TV _ n) | Nm.null σ = c1 n t0 t1
-lt _ t0@TV{} t1@(Ρ _ n σ) | Nm.null σ = c1 n t0 t1
-lt _ t0@(Ρ _ n σ) t1@TV{} | Nm.null σ = c1 n t1 t0
+lt _ t0 t1@(Ρ _ n σ) | Nm.null σ = c1 n t0 t1
+lt _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
 lt _ t0 t1@TV{} = sf t0 t1
 lt _ t0@TV{} t1 = sf t0 t1
 lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
