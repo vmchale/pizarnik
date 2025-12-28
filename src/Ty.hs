@@ -628,24 +628,10 @@ cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx
 cA _=pure ()
 
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> UM a (TS a, Subst a)
-sseq _ l s []     = do {a <- fsv l "A"; pure ([a] --: [a], s)}
-sseq b l s (a:as) = do
-    (tϵ, s0) <- sseq b l s as
-    cat b s0 (aL a) tϵ
-
-pc₁ :: Subst a -> ASeq (TS a) -> Doc ann
-pc₁ s (SL t as) = hsep (pretty<$>as) <:> pretty (s@*t)
+sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
   where
-    x <:> y = x <+> ":" <+> y
-
-traceCat :: Subst a -> ASeq (TS a) -> (A b, TS a) -> ASeq (TS a) -> x -> x
-traceCat s l (a,t1) as = traceShow tc₀
-  where
-    tc₀ = pc₁ s l
-        <#> pretty a <+> ":" <+> pretty (s@*t1)
-        <#> "----"
-        <#> indent 4 (pc₁ s as)
-        <#> hardline
+    γ sϵ tl []     = pure (tl, sϵ)
+    γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq b s as@(SL l _) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
@@ -654,8 +640,6 @@ tseq b s as@(SL l _) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
     tγ sϵ (SL t al) (SL lϵ (a:aa)) = do
         (a',s0) <- tae b sϵ a
         (t',s1) <- cat (π b) s0 t (aL a')
-        -- let as'=SL t' (al++[a'])
-        -- traceCat s1 (SL t al) (a',aL a') as' $ tγ s1 as' (SL l aa)
         tγ s1 (SL t' (al++[a'])) (SL lϵ aa)
 
 (/|) :: [a] -> Int -> ([a], [a])
