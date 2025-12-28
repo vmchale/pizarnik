@@ -292,10 +292,10 @@ su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
 su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
-                               -- TODO: should we check TT has arity 0 here?
+                              -- TODO: should we check TT has arity 0?
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
                               | otherwise = cf t0 t1
-su _ _ t0@(Σ _ σ) t1@(TT _ n) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
+su _ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure (t0, mempty)
                               | otherwise = cf t0 t1
 su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
@@ -328,7 +328,7 @@ sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
     case compare n0 n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
-              in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t1d res}
+              in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
         _  -> let (uws, res) = splitFromLeft n0 t1
               in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
 sv u c s t0@(SV _ sn0:t0d) t1 =
@@ -336,13 +336,14 @@ sv u c s t0@(SV _ sn0:t0d) t1 =
     case compare n0 n1 of
         GT -> throwError$LE t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
+        -- TODO: why iSV vs. ς?
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
 sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
     case compare n0 n1 of
         LT -> throwError$LE t1 t0
         _  -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) t1d res
+              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) res t1d
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
     first (t':) <$> ctx'ize (sv u) c s' ts0 ts1
