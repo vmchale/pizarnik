@@ -57,9 +57,9 @@ e1 incls fp e = rRepl $ do
         Right ((i,_,_,_),at) ->
             liftEither (fst <$> rc i (naïve c) [] (faseq no at))
 
--- inefficient but I think this won't cause problems b/c we already renamed?
+-- TODO inefficient but I think this won't cause problems b/c we already renamed
 naïve :: [Tree (MN, M a (TS a), Cs a, Ar)] -> MC (TS a) a
-naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, foldMap (fth4@<>) c)
+naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, IM.fromDistinctAscList [(-2,0),(-1,0)] <> foldMap (fth4@<>) c)
   where snd4 (_,y,_,_)=y; thd4 (_,_,z,_)=z; fth4 (_,_,_,w)=w
 
 rc :: Int -> MC (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
