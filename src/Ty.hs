@@ -66,7 +66,7 @@ instance Pretty a => Pretty (TE a) where
         p0 (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
         p0 (AM n)       = tn n$"unknown arity:" <+> sq n
         p0 (BE e)       = pretty e
-        p0 (PM ts)      = pretty (tLs ts) <> ":" <+> "Pattern match arms must begin with an inverse constructor."
+        p0 (PM ts)      = tsc ts ":" <+> "Pattern match arms must begin with an inverse constructor."
         p0 (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
         p0 (Os n t)     = tn n$"occurs check failed:" <+> sq n <> "," <+> sqs t
         p0 (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
@@ -74,7 +74,7 @@ instance Pretty a => Pretty (TE a) where
         p0 (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
         p0 (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
         p0 (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
-        p0 (IS n)       = pretty (Nm.loc n) <> ":" <+> sq n <+> "not in scope."
+        p0 (IS n)       = tn n (sq n <+> "not in scope.")
         p0 (Bare t)     = tc t$"Bare union:" <+> sq t
 
 tn n p = pretty (Nm.loc n) <> ":" <+> p
