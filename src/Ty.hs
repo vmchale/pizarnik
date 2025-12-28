@@ -632,13 +632,30 @@ sseq b l s (a:as) = do
     (tϵ, s0) <- sseq b l s as
     cat b s0 (aL a) tϵ
 
+pc₁ :: Subst a -> ASeq (TS a) -> Doc ann
+pc₁ s (SL t as) = hsep (pretty<$>as) <:> pretty (s@*t)
+  where
+    x <:> y = x <+> ":" <+> y
+
+traceCat :: Subst a -> ASeq (TS a) -> (A b, TS a) -> ASeq (TS a) -> x -> x
+traceCat s l (a,t1) as = traceShow tc₀
+  where
+    tc₀ = pc₁ s l
+        <#> pretty a <+> ":" <+> pretty (s@*t1)
+        <#> "----"
+        <#> indent 4 (pc₁ s as)
+        <#> hardline
+
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
-tseq b s (SL l (a:as)) = do
-    (a',s0) <- tae b s a
-    (SL tϵ as', s1) <- tseq b s0 (SL l as)
-    (t, s2) <- cat (π b) s1 (aL a') tϵ
-    pure (SL t (a':as'), s2)
+tseq b s as@(SL l _) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
+  where
+    tγ sϵ c (SL _ [])             = pure (c, sϵ)
+    tγ sϵ (SL t al) (SL lϵ (a:aa)) = do
+        (a',s0) <- tae b sϵ a
+        (t',s1) <- cat (π b) s0 t (aL a')
+        -- let as'=SL t' (al++[a'])
+        -- traceCat s1 (SL t al) (a',aL a') as' $ tγ s1 as' (SL l aa)
+        tγ s1 (SL t' (al++[a'])) (SL lϵ aa)
 
 (/|) :: [a] -> Int -> ([a], [a])
 xs /| n = splitFromLeft n xs
@@ -767,8 +784,8 @@ tally = foldl' (\z (ns,TS l r) -> thread [Nm.insertWith (++) n [TS (l++υ) r] | 
 dU :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
 dU c s x tss = do
     tψ <- ψ c =<< traverse (βt (tβ c)) tss
-    let rϵ=fmap (map trights) tψ
-        rm=maximum (l<$>concat rϵ)
+    rϵ <- traverse (traverse (rwAr (ars c).trights)) tψ
+    let rm=maximum (l<$>concat rϵ)
     ρ <- traverse (traverse (pad x.(rm-).l)) rϵ
     let ψ' = Nm.intersectionWith (zipWith (\p (TS l_ r_) -> TS (tuck p l_) (tuck p r_))) ρ tψ
         rs'= concatMap (map trights) ψ'
