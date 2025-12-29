@@ -86,6 +86,7 @@ tokens :-
         ≔                       { sym DefEq }
         "--"                    { sym Sig }
         ⊕                       { sym DSum }
+        "+."                    { sym DSum }
         ∪                       { sym Up }
         ⁻¹                      { sym PInv }
         =                       { sym Eq }
