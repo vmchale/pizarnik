@@ -216,7 +216,7 @@ data Tok a = EOF { loc :: a }
            | TokStr { loc :: a, str :: T.Text }
            deriving Functor
 
-instance Pretty a => Pretty (Tok a) where
+instance Pretty (Tok a) where
     pretty EOF{}        = "(eof)"
     pretty (TokI _ i _) = pretty i
     pretty (TokS _ s)   = pretty s
