@@ -1,29 +1,32 @@
-type Name = { Int String `name } ;
+@i prelude/fn
+
+type Name = { Int String `name };
 type ResVar = { `x ⊕ `y };
 
 # type AbsAST a = { a a `ap ⊕ a Name `lam ⊕ Name `var };
-
-type DExpr = Syn ∪ { ResVar `resVar };
-type Syn = { Syn Syn `ap ⊕ Syn Name `lam ⊕ DExpr `dfn ⊕ Name `var };
-type AST = { AST AST `ap ⊕ AST Name `lam ⊕ Name `var };
 # type AST = AbsAST(AST);
 
-freshY : Int -- Int Name
-       := [ 1 + dup "x" `name ]
+type DExpr = { DExpr DExpr `ap ⊕ DExpr Name `lam ⊕ DExpr `dfn ⊕ Name `var ⊕ ResVar `resVar };
+type Syn = { Syn Syn `ap ⊕ Syn Name `lam ⊕ DExpr `dfn ⊕ Name `var };
+type AST = { AST AST `ap ⊕ AST Name `lam ⊕ Name `var };
 
-freshX : Int -- Int Name
-       := [ 1 + dup "x" `name ]
+fresh : Int -- Int Name Name
+      := [ 1 + dup 1 + dup ["x" `name] dip "y" `name ]
 
-dedfn : Int DExpr -- Int AST
-      := [ { `resVar⁻¹ { `x⁻¹ freshX & `y⁻¹ freshY } `var
+dedfn : Int Name Name DExpr -- Int AST
+      := [ { `resVar⁻¹ { `x⁻¹ drop & `y⁻¹ nip } `var
            & `lam⁻¹ [dedfn] dip `lam
-           & `var⁻¹ `var
-           }
-         ]
+           & `var⁻¹ drop2 `var
+           & `dfn⁻¹ [drop2 fresh] dip dedfn
+           & `ap⁻¹ [dup2] dip2 (243) [dedfn] dip3 (45) dedfn (32) `ap
+           } ]
+
+# TODO: "under" permutation... (23) [f] (32) for example
 
 desugar : Int Syn -- Int AST
-        := [ { `dfn⁻¹ dedfn
-             & `var⁻¹ `var
+        := [ { `dfn⁻¹ [fresh] dip dedfn
              & `lam⁻¹ [desugar] dip `lam
+             & `var⁻¹ `var
+             & `ap⁻¹ [desugar] dip (32) desugar (23) `ap
              }
            ]
