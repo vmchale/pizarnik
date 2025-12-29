@@ -158,6 +158,7 @@ peekS s (TS l r) = TS (peek s l) (peek s r)
 (@>) _ t@TC{}          = t
 (@>) s (TA x t0 t1)    = TA x (s@>t0) (s@>t1)
 (@>) s (QT x sig)      = QT x (s@*sig)
+(@>) s (UU x ts)       = UU x (map (s@>) ts)
 (@>) s t@(TV _ (Nm _ (U u) _)) =
     case IM.lookup u (tvs s) of
         Nothing -> t
