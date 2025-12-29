@@ -48,8 +48,8 @@ instance Pretty B where
 data L = I !Integer | R !Double | Str !T.Text | S !Sn
 
 instance Pretty L where
-    pretty (I i) = pretty i; pretty (R x) = pretty x; pretty (Str s) = dquotes (pretty s)
-    pretty (S p) = foldMap (\case [_] -> ""; cyc -> parens (foldMap pretty cyc)) (gc p)
+    pretty (I i) = pretty i; pretty (R x) = pretty x
+    pretty (S p) = pretty p; pretty (Str s) = dquotes (pretty s)
 
 data RR = RR !Char !Char
 data W = W (RR->T.Text) (RR->RR)
