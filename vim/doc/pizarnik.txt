@@ -1,0 +1,9 @@
+*pizarnik*
+
+The Vim plugin for Apple provides the following |digraphs|:
+
+⊕   o+
+
+Additionally the following digraphs are provided by Vim:
+
+∪   )U
