@@ -202,19 +202,20 @@ instance Pretty B where
     pretty Int = "Int"; pretty Bool = "Bool"; pretty String = "String"
     pretty Rem = "rem"
 
-data Tok = EOF { loc :: AlexPosn }
-         | TokI { loc :: AlexPosn, int :: Integer, digits :: [Int] }
-         | TokS { loc :: AlexPosn, tokSym :: !Sym }
-         | TokN { loc :: AlexPosn, name :: !(Nm AlexPosn) }
-         | TokB { loc :: AlexPosn, tokB :: !B }
-         | TokT { loc :: AlexPosn, tag :: !(Nm AlexPosn) }
-         | TokTN { loc :: AlexPosn, tyname :: !(Nm AlexPosn) }
-         | TokSV { loc :: AlexPosn, svn :: !(Nm AlexPosn) }
-         | TokMN { loc :: AlexPosn, modname :: !MN }
-         | TokKw { loc :: AlexPosn, tokKw :: !Kw }
-         | TokStr { loc :: AlexPosn, str :: T.Text }
+data Tok a = EOF { loc :: a }
+           | TokI { loc :: a, int :: Integer, digits :: [Int] }
+           | TokS { loc :: a, tokSym :: !Sym }
+           | TokN { loc :: a, name :: !(Nm AlexPosn) }
+           | TokB { loc :: a, tokB :: !B }
+           | TokT { loc :: a, tag :: !(Nm AlexPosn) }
+           | TokTN { loc :: a, tyname :: !(Nm AlexPosn) }
+           | TokSV { loc :: a, svn :: !(Nm AlexPosn) }
+           | TokMN { loc :: a, modname :: !MN }
+           | TokKw { loc :: a, tokKw :: !Kw }
+           | TokStr { loc :: a, str :: T.Text }
+           deriving Functor
 
-instance Pretty Tok where
+instance Pretty a => Pretty (Tok a) where
     pretty EOF{}        = "(eof)"
     pretty (TokI _ i _) = pretty i
     pretty (TokS _ s)   = pretty s

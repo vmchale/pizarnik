@@ -28,7 +28,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
 
 %name parseM M
 %name parseASeq ASeq
-%tokentype { Tok }
+%tokentype { Tok AlexPosn }
 %error { parseErr }
 %error.expected
 %monad { Parse } { (>>=) } { pure }
@@ -181,10 +181,10 @@ roll :: T a -> [T a] -> T a
 roll t []      = t
 roll t (t':ts) = roll (TA (tL t) t t') ts
 
-parseErr :: Tok -> [String] -> Parse a
+parseErr :: Tok AlexPosn -> [String] -> Parse a
 parseErr t = throwE.Unexpected t
 
-data ParseE a = Unexpected !Tok [String] | LexErr String | AnonymousArm !a deriving Functor
+data ParseE a = Unexpected !(Tok a) [String] | LexErr String | AnonymousArm !a deriving Functor
 
 instance Pretty a => Pretty (ParseE a) where
     pretty (Unexpected t v) = pretty (loc t) <+> "Unexpected" <+> pretty t <> "." <+> "Expected one of" <+> concatWith (\x y -> x <> ", " <> y) (squotes.pretty<$>v)
