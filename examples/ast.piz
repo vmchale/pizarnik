@@ -3,12 +3,11 @@
 type Name = { Int String `name };
 type ResVar = { `x ⊕ `y };
 
-# type AbsAST a = { a a `ap ⊕ a Name `lam ⊕ Name `var };
-# type AST = AbsAST(AST);
+type AbsAST a = { a a `ap ⊕ a Name `lam ⊕ Name `var };
+type AST = AbsAST(AST);
 
-type DExpr = { DExpr DExpr `ap ⊕ DExpr Name `lam ⊕ DExpr `dfn ⊕ Name `var ⊕ ResVar `resVar };
-type Syn = { Syn Syn `ap ⊕ Syn Name `lam ⊕ DExpr `dfn ⊕ Name `var };
-type AST = { AST AST `ap ⊕ AST Name `lam ⊕ Name `var };
+type DExpr = AbsAST(DExpr) ∪ { DExpr `dfn ⊕ ResVar `resVar };
+type Syn = AbsAST(Syn) ∪ { DExpr `dfn };
 
 fresh : Int -- Int Name Name
       := [ 1 + dup 1 + dup ["x" `name] dip "y" `name ]

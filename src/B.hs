@@ -31,3 +31,4 @@ bS _ t@TT{} = pure t; bS _ t@TP{} = pure t
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
 bS st (QT x sig) = QT x <$> tTS (bS st) sig
 bS st (UU x ts) = UU x <$> traverse (bS st) ts
+bS _ t@TC{} = pure t
