@@ -2,5 +2,16 @@
 
 type Tree a = { a `leaf ⊕ Tree(a) Tree(a) a `node };
 
-depth : Tree(a) -- Int
-      := [ { `leaf⁻¹ 0 & `node⁻¹ _ [depth] dip depth max } ]
+# depth : Tree(a) -- Int
+      # := [ { `leaf⁻¹ 0 & `node⁻¹ _ [depth] dip depth max } ]
+
+map : [a -- b] Tree(a) -- Tree(b)
+    := [ { `leaf⁻¹ $ `leaf
+         & `node⁻¹ [dup dup] dip3 (15432) [$] dip4 (23) [map] dip2 map (231) `node
+         } ]
+
+fold : [b a -- b] b Tree(a) -- b
+     := [ { `leaf⁻¹ $
+          & `node⁻¹ [dup dup] dip4 (47)(3216) [$] dip4 (45)(23) [fold] dip2 (23) fold
+          }
+        ]

@@ -35,6 +35,7 @@ main = defaultMain $
             : map tF [ "lib/list.piz"
                      , "lib/either.piz"
                      , "lib/both.piz"
+                     , "lib/tree.piz"
                      , "examples/ast.piz"
                      , "test/examples/maybe.piz"
                      , "test/examples/ifte.piz"
