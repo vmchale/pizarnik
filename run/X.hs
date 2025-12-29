@@ -41,7 +41,7 @@ wrapper = info (helper <*> cmd)
 main = run =<< execParser wrapper
 
 run :: Cmd -> IO ()
-run (Fmt fp)   = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt contents)}
+run (Fmt fp)   = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt fp contents)}
 run (TC fp)    = do {res <- rRepl $ void $ tMs ["."] [fp]; fIO res}
 run (An fp)    = adbg ["."] [fp]
 run (Repl fps) = repl fps

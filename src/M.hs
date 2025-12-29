@@ -4,7 +4,6 @@ import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Except       (ExceptT, except)
 import           Control.Monad.Trans.State.Strict (StateT (StateT))
-import           Data.Bifunctor                   (bimap, second)
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
 import qualified Data.Text                        as T
@@ -54,7 +53,4 @@ pMIO :: [FilePath] -> MN -> R (M Loc Loc)
 pMIO incls mn = do {fp <- liftIO (resolveI incls mn); pIO fp}
 
 pIO :: FilePath -> R (M Loc Loc)
-pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (bimap (fmap loca) (second aug) $ pM st src)}
-  where
-    aug = bimap loca loca
-    loca (AlexPn _ l c) = Loc fp l c
+pIO fp = mst $ \st -> do {src <- liftIO (BSL.readFile fp); except (pM fp st src)}

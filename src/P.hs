@@ -30,8 +30,8 @@ import           Ty
 
 type RIO = StateT AlexUserState (ExceptT (E Loc) IO)
 
-fmt :: BSL.ByteString -> Either (ParseE AlexPosn) (SimpleDocStream ann)
-fmt = fmap (layoutSmart defaultLayoutOptions.pretty.snd) . pA
+fmt :: FilePath -> BSL.ByteString -> Either (ParseE Loc) (SimpleDocStream ann)
+fmt = (fmap (layoutSmart defaultLayoutOptions.pretty.snd) .) . pA
 
 db :: AlexUserState -> (IM.IntMap (ASeq (TS a)), b, c) -> IO ()
 db (_,_,n,_) = rDoc.(<>hardline).pBoundT

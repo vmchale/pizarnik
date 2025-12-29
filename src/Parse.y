@@ -11,6 +11,7 @@ import Control.Arrow ((&&&))
 import Control.Exception (Exception)
 import Control.Monad.Trans.Except (ExceptT, runExceptT, throwE)
 import Control.Monad.Trans.Class (lift)
+import Data.Bifunctor (bimap, second)
 import qualified Data.ByteString.Lazy as BSL
 import Data.Functor (($>))
 import qualified Data.IntMap as IM
@@ -18,6 +19,7 @@ import qualified Data.Text as T
 import Data.Typeable (Typeable)
 import G
 import L
+import Loc
 import Nm hiding (loc)
 import qualified Nm
 import Nm.Map (NmMap)
@@ -197,10 +199,15 @@ instance (Pretty a, Typeable a) => Exception (ParseE a)
 
 type Parse = ExceptT (ParseE AlexPosn) Alex
 
-pM = runParseSt parseM 0
+loca :: FilePath -> Either (ParseE AlexPosn) (x, M AlexPosn AlexPosn) -> Either (ParseE Loc) (x, M Loc Loc)
+loca fp = bimap (fmap gr) (second (bimap gr gr))
+  where
+    gr (AlexPn _ l c) = Loc fp l c
+
+pM fp = (loca fp .) . runParseSt parseM 0
 pAtoms = runParseSt parseASeq 0
 
-pA = pM alexInitUserState
+pA fp = pM fp alexInitUserState
 
 runParseSt :: Parse a -> Int -> AlexUserState -> BSL.ByteString -> Either (ParseE AlexPosn) (AlexUserState, a)
 runParseSt parser scd u bs = liftErr $ withAlexSt bs scd u (runExceptT parser)
