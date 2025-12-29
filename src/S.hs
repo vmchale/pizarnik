@@ -17,8 +17,6 @@ type S a = [A (TS a)]
 type F a = IM.IntMap (ASeq a)
 type MC a b = (F a, Cs b, Ar)
 
--- dbgStep aa s m = hardline <> stack s <#> pASeq aa <##> dbgC m
-
 r :: MC (TS a) b -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
 
@@ -66,11 +64,10 @@ _ ≺ _                   = False
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
--- FIXME: type catenation?
+-- FIXME: type catenation? FIXME don't pinch off if there aren't enough...
 ι c a@(C (TS _ tr) tt) as  = let n=lA c tt; (x,a_)=splitAt n as; (ᴀ:_)=tr in if n==0 then a:as else let in Ca (TS [ᴀ] tr) (a:x):a_
 ι c (Pat _ (SL _ aa)) as   = ψ c aa as -- FIXME: this pinches off stack variables...
 ι c (V _ n) as             = let a = lV c n in r c (aas a) as
--- FIXME: recursion and context?
 ι _ (Inv _ (C _ tt₀)) (Ca _ (C _ tt₁:cs):as) | tt₀==tt₁ = cs++as
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as

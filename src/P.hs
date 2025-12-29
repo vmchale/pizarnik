@@ -41,11 +41,6 @@ db (_,_,n,_) = rDoc.(<>hardline).pBoundT
 
 rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
 
--- suppose module A imports module B, which imports module C
--- module B defines an atom whose type references something defined in C
--- THEN module A needs some visibility into C's types...
--- TODO: inefficient... for one
-
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString
    -> IO (Either (E Loc) (S Loc))
