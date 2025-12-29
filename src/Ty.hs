@@ -301,8 +301,8 @@ su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1 = cf t0 t1; su _ _ t0 t1@TT{} = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
-su c s t0@UU{} t1 = do {t0' <- uU (tβ c) t0; su c s t0' t1}
-su c s t0 t1@UU{} = do {t1' <- uU (tβ c) t1; su c s t0 t1'}
+su c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; su c s t0 t1}
+su c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; su c s t0 t1}
 
 uσ u c s l σ0 σ1 =
     us s (Nm.toList l ς)
@@ -487,8 +487,8 @@ mσ u c σ0 σ1 =
 μ c t0 (TC _ n) = do {t1 <- lC (tβ c) n; μ c t0 t1}
 μ c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; μ c t0' t1}
 μ c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
-μ c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; μ c t0' t1}
-μ c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; μ c t0 t1'}
+μ c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; μ c t0 t1}
+μ c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; μ c t0 t1}
 μ _ TP{} TP{} = pure mempty
 μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1
 μ _ t0@TP{} t1@Σ{} = throwError$MF t0 t1
@@ -534,8 +534,8 @@ lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
                                | otherwise = sf t0 t1
-lt c t0@UU{} t1 = do {t0' <- uU (tβ c) t0; lt c t0' t1}
-lt c t0 t1@UU{} = do {t1' <- uU (tβ c) t1; lt c t0 t1'}
+lt c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; lt c t0 t1}
+lt c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; lt c t0 t1}
 lt _ t0@TP{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TP{} = sf t0 t1
 lt _ t0@TP{} t1@TT{} = sf t0 t1; lt _ t0@TT{} t1@TP{} = sf t0 t1
 lt _ t0@TT{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TT{} = sf t0 t1
@@ -544,8 +544,8 @@ lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 {-# SCC uU #-}
-uU :: Cs a -> T a -> UM a (T a)
-uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
+uU :: Cs a -> a -> [T a] -> UM a (T a)
+uU c x ts = Σ x <$> foldMapM f ts where
     f (TT _ n)   = pure (Nm.singleton n [])
     f (Σ _ σ)    = pure σ
     f (TC _ n)   = f =<< lC c n
@@ -554,8 +554,8 @@ uU c te@(UU x ts) = Σ x <$> foldMapM f ts where
     -- FIXME: unions on variables? (could end up being instantiated wrong...)
     f SV{}       = ie
     f Ρ{}        = ie
-    f TP{}       = throwError$Bare te
-    f QT{}       = throwError$Bare te
+    f TP{}       = throwError$Bare (UU x ts)
+    f QT{}       = throwError$Bare (UU x ts)
 
 μs, lts :: Nt a -> Subst a
         -> TS a -- ^ inferred
