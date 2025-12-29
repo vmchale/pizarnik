@@ -1,11 +1,11 @@
 @i prelude/fn
 
-type Ord = {`lt ⊕ `eq ⊕ `gt};
+type Ord = {`lt +. `eq +. `gt};
 
-lte : { `lt ⊕ `eq } --
+lte : { `lt +. `eq } --
     := [ { `lt⁻¹ & `eq⁻¹ } ]
 
-gte : { `eq ⊕ `gt } --
+gte : { `eq +. `gt } --
     := [ { `eq⁻¹ & `gt⁻¹ } ]
 
 # cf. Mirth
