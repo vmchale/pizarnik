@@ -89,6 +89,7 @@ tokens :-
         "+."                    { sym DSum }
         ∪                       { sym Up }
         ⁻¹                      { sym PInv }
+        \^                      { sym PInv }
         =                       { sym Eq }
         _                       { sym Under }
         "<"                     { sym Lt }
