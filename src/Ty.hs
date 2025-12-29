@@ -769,7 +769,7 @@ tally = foldl' (\z (ns,TS l r) -> thread [Nm.insertWith (++) n [TS (l++υ) r] | 
 dU :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
 dU c s x tss = do
     tψ <- ψ c =<< traverse (βt (tβ c)) tss
-    rϵ <- traverse (traverse (rwAr (ars c).trights)) tψ
+    rϵ <- traverse (traverse (rwAr ar.trights)) tψ
     let rm=maximum (l<$>concat rϵ)
     ρ <- traverse (traverse (pad x.(rm-).l)) rϵ
     let ψ' = Nm.intersectionWith (zipWith (\p (TS l_ r_) -> TS (tuck p l_) (tuck p r_))) ρ tψ
@@ -778,7 +778,7 @@ dU c s x tss = do
     (σ,ul) <- an (map (second tlefts) al)
     (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
     pure (l'++[σ] --: r', s''')
-  where lR=lT (ars c)
+  where ar=ars c; lR=lT ar
 
         l (SV{}:t) = length t; l t=length t
 
