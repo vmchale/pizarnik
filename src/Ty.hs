@@ -198,7 +198,6 @@ occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
--- TODO: occurs check at substitution function
 nv s n σ t e | Nm.null σ = pure (t, iTV n t s)
              | otherwise = throwError e
 
@@ -209,8 +208,8 @@ uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 uu _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (UF te t)
 uu _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
-uu _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (UF te t)
-uu _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
+uu _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (UF te t)
+uu _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (UF t te)
 uu c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- zS (uu c) s a0 a1
     pure (roll th a',s')
@@ -278,8 +277,8 @@ su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
         Just [] -> pure (t1, s)
         Just _  -> sf t0 t1
 su _ s te@(Ρ _ n σ) t@TT{} = nv s n σ t (CF te t)
-su _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (CF t te)
-su _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (CF te t)
+su _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (CF t te)
+su _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (CF te t)
 su _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (CF te t)
 su _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (CF t te)
 su c s (Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
@@ -382,8 +381,8 @@ nρ n@(Nm t _ l) σ = do
     pure (n', g s')
 φ _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (ΦF t te)
 φ _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (ΦF te t)
-φ _ s t@QT{} te@(Ρ _ n σ) = nv s n σ t (ΦF t te)
-φ _ s te@(Ρ _ n σ) t@QT{} = nv s n σ t (ΦF te t)
+φ _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (ΦF t te)
+φ _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (ΦF te t)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just [] -> pure (t1,s)
