@@ -82,7 +82,6 @@ printT src = do
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
             let tyctx = Ext (fmap aLs b) c ar
-            -- FIXME: needs all types that are "one step up" (naïve is not good enough!)
             case tAS i tyctx [] (na at) of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
