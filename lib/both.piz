@@ -9,12 +9,12 @@ left : { a `left ⊕ a b `both } -- a
 
 mapL : [a -- b] Both(a,c) -- Both(b,c)
      := [ { mapLeft
-          & `both⁻¹ [swap $] dip `both
+          & `both^ [swap $] dip `both
           }
         ]
 
 bimap : [a -- b] [c -- d] Both(a,c) -- Both(b,d)
-      := [ { `left⁻¹ nip swap $ `left
-           & `right⁻¹ nip2 swap $ `right
-           & `both⁻¹ (243) [$] dip2 (13) [$] dip swap `both
+      := [ { `left^ nip swap $ `left
+           & `right^ nip2 swap $ `right
+           & `both^ (243) [$] dip2 (13) [$] dip swap `both
            } ]
