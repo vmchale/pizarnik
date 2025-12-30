@@ -199,18 +199,15 @@ occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
-nv s n σ t e | Nm.null σ = pure (t, iTV n t s)
-             | otherwise = throwError e
+nv s n σ t e eo | n `NmSet.member` occ t = throwError eo
+                 | Nm.null σ = pure (t, iTV n t s)
+                 | otherwise = throwError e
 
 uu :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-uu _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (UF te t)
-uu _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (UF t te)
-uu _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (UF te t)
-uu _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (UF t te)
 uu c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
     (a',s') <- zS (uu c) s a0 a1
     pure (roll th a',s')
@@ -233,6 +230,10 @@ uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
 uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
                                  | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
+uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
+uu c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; uu c s t0 t1}
+uu _ s te@(Ρ _ n σ) t = nv s n σ t (UF te t) (O te t)
+uu _ s t te@(Ρ _ n σ) = nv s n σ t (UF t te) (O t te)
 uu _ _ t0@TP{} t1 = throwError$UF t0 t1
 uu _ _ t0 t1@TP{} = throwError$UF t0 t1
 uu _ _ t0@QT{} t1 = throwError$UF t0 t1
@@ -277,11 +278,6 @@ su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
         Nothing -> do {(n',g) <- nρ n (Nm.insert tt [] σ); pure (n',g s)}
         Just [] -> pure (t1, s)
         Just _  -> sf t0 t1
-su _ s te@(Ρ _ n σ) t@TT{} = nv s n σ t (CF te t)
-su _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (CF t te)
-su _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (CF te t)
-su _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (CF te t)
-su _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (CF t te)
 su c s (Ρ x n0 σ0) t1@(Ρ _ _ σ1) = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n0 (σ0<>σ1<>ς) t1
@@ -297,12 +293,14 @@ su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
                               | otherwise = cf t0 t1
 su _ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure (t0, mempty)
                               | otherwise = cf t0 t1
+su c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; su c s t0 t1}
+su c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; su c s t0 t1}
+su _ s t te@(Ρ _ n σ) = nv s n σ t (CF t te) (O t te)
+su _ s te@(Ρ _ n σ) t = nv s n σ t (CF te t) (O te t)
 su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
 su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
 su _ _ t0@TT{} t1 = cf t0 t1; su _ _ t0 t1@TT{} = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
-su c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; su c s t0 t1}
-su c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; su c s t0 t1}
 
 uσ u c s l σ0 σ1 =
     us s (Nm.toList l ς)
@@ -380,10 +378,6 @@ nρ n@(Nm t _ l) σ = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- ρc n (σ<>as<>ς) t
     pure (n', g s')
-φ _ s t@TP{} te@(Ρ _ n σ) = nv s n σ t (ΦF t te)
-φ _ s te@(Ρ _ n σ) t@TP{} = nv s n σ t (ΦF te t)
-φ _ s t@QT{} te@(Ρ _ n σ) = if n `NmSet.member` occ t then throwError$O t te else nv s n σ t (ΦF t te)
-φ _ s te@(Ρ _ n σ) t@QT{} = if n `NmSet.member` occ t then throwError$O te t else nv s n σ t (ΦF te t)
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
     case Nm.lookup tt σ of
         Just [] -> pure (t1,s)
@@ -412,15 +406,18 @@ nρ n@(Nm t _ l) σ = do
     -- FIXME: propagates back too much?
     (n',g) <- ρc n (σ0<>σ1<>ς) t
     pure (n', g s')
+φ c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; φ c s t0 t1}
+φ c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; φ c s t0 t1}
+φ _ s t te@(Ρ _ n σ) = nv s n σ t (ΦF t te) (O t te)
+φ _ s te@(Ρ _ n σ) t = nv s n σ t (ΦF te t) (O t te)
 φ _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                 | otherwise = φf t0 t1
+φ c s t0@QT{} t1@QT{} = uu c s t0 t1
 φ _ _ t0@TP{} t1 = φf t0 t1
 φ _ _ t0 t1@TP{} = φf t0 t1
 φ _ _ t0@TT{} t1@QT{} = φf t0 t1
 φ _ _ t0@QT{} t1@TT{} = φf t0 t1
 φ _ _ SV{} _ = ie; φ _ _ _ SV{} = ie
-φ c s t0@QT{} t1@QT{} = uu c s t0 t1
-φ _ _ t0 t1 = error (show (t0,t1))
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
