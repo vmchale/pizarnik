@@ -13,3 +13,9 @@ head : NE(a) -- a
 
 tail : NE(a) -- List(a)
     := [ { `cons⁻¹ _ } ]
+
+concat : List(a) List(a) -- List(a)
+      := [ { `nil^
+           & `cons^ (132) concat swap `cons
+           }
+         ]
