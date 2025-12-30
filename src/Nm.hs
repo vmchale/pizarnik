@@ -20,7 +20,6 @@ instance Eq MN where (==) (MN _ u) (MN _ u') = u == u'
 instance Ord MN where compare (MN _ u) (MN _ u') = compare u u'
 
 instance Eq (Nm a) where (==) (Nm _ u _) (Nm _ u' _) = u == u'
-instance Ord (Nm a) where compare (Nm _ u _) (Nm _ u' _) = compare u u'
 
 instance Pretty (Nm a) where
     pretty (Nm t _ _) = pretty t
