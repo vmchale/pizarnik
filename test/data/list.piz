@@ -6,5 +6,5 @@ n : -- List(Int)
 sum : List(Int) -- Int
     := [ [[+] 0] dip foldr ]
 
-six : -- Int
-    := [ n sum ]
+m : -- List(Int)
+  := [ `nil 3 `cons 4 `cons 5 `cons ]

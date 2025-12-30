@@ -10,16 +10,17 @@ main :: IO ()
 main = defaultMain $
     testGroup "unit"
         [ testGroup "e"
-          [ eEx "test/data/list.piz" "six" "6"
-          , eEx "lib/maybe.piz" "`nothing join" "`nothing"
-          , eEx "examples/vierergruppe.piz" "`b `c mult" "`a"
-          , eEx "prelude/bool.piz" "True False or" "True"
-          , eEx "test/examples/mutual.piz" "5 even" "False"
-          , eEx "lib/numbertheory.piz" "15 10 gcd" "5"
-          , eEx "prelude/ord.piz" "3 2 cmpInt 2 2 cmpInt" "`gt `eq"
-          , eEx "test/examples/ros.piz" "`g complement `t complement" "`c `a"
-          , eEx "test/examples/parity.piz" "`even `even add `odd `odd add" "`even `even"
-          , eEx "test/examples/dep.piz" "x ors" "True"
+          [ eEx ["test/data/list.piz"] "n sum" "6"
+          , eEx ["lib/list.piz", "test/data/list.piz"] "n m concat" "{{{{{{`nil 1 `cons} 2 `cons} 3 `cons} 3 `cons} 4 `cons} 5 `cons}"
+          , eEx ["lib/maybe.piz"] "`nothing join" "`nothing"
+          , eEx ["examples/vierergruppe.piz"] "`b `c mult" "`a"
+          , eEx ["prelude/bool.piz"] "True False or" "True"
+          , eEx ["test/examples/mutual.piz"] "5 even" "False"
+          , eEx ["lib/numbertheory.piz"] "15 10 gcd" "5"
+          , eEx ["prelude/ord.piz"] "3 2 cmpInt 2 2 cmpInt" "`gt `eq"
+          , eEx ["test/examples/ros.piz"] "`g complement `t complement" "`c `a"
+          , eEx ["test/examples/parity.piz"] "`even `even add `odd `odd add" "`even `even"
+          , eEx ["test/examples/dep.piz"] "x ors" "True"
           ]
         , testGroup "ty"
             ( tE "test/data/pmfail.piz" "test/data/pmfail.piz:3:12: {a `just ⊕ `nil} ⊀ {a `just}"
@@ -51,9 +52,9 @@ main = defaultMain $
             )
         ]
 
-eEx :: FilePath -> BSL.ByteString -> String -> TestTree
-eEx fp src expected = testCase (ASCIIL.unpack src ++ " (" ++ fp ++ ")") $
-    e1 ["."] [fp] src >>= \case
+eEx :: [FilePath] -> BSL.ByteString -> String -> TestTree
+eEx fp src expected = testCase (ASCIIL.unpack src ++ " (" ++ head fp ++ ")") $
+    e1 ["."] fp src >>= \case
         Left e -> assertFailure (show e)
         Right e -> unwords (map show (reverse e)) @?= expected
 
