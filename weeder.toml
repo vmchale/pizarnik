@@ -7,9 +7,6 @@ roots = [
 unused-types = true
 
 [[root-instances]]
-class = '\.NFData$'
-
-[[root-instances]]
 module = 'L'
 
 [[root-instances]]
