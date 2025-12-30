@@ -1,3 +1,23 @@
-type BinaryFinger v a = { v a `leaf ⊕ v BinaryFinger(v,a) BinaryFinger(v,a) `branch }
-
 # https://apfelmus.nfshost.com/articles/monoid-fingertree.html
+
+@i prelude/fn
+@i lib/maybe
+
+type Finger v a = { v a `leaf ⊕ v Finger(v,a) Finger(v,a) `branch };
+
+tag : Finger(v,a) -- v
+    := [ { `leaf⁻¹ drop & `branch⁻¹ drop2 } ]
+
+head : Finger(v,a) -- a
+     := [ { `leaf⁻¹ nip & `branch⁻¹ drop nip head } ]
+
+leaf : a -- Finger(Int,a)
+     := [ [1] dip `leaf ]
+
+branch : Finger(Int,a) Finger(Int,a) -- Finger(Int,a)
+       := [ dup2 [[tag] dip tag +] dip2 `branch ]
+
+at : Int Finger(Int,a) -- Maybe(a)
+   := [ { `leaf⁻¹ nip swap 0 = { True⁻¹ `just & False⁻¹ drop `nothing }
+        & `branch⁻¹ nip2 [dup [tag] dip] dip (13)(24) dup2 < { True^ drop nip2 & False^ - nip } swap at
+        } ]
