@@ -135,9 +135,8 @@ tok f (p,_,s,_) l = f p (BSL.take l s)
 
 constructor c t = tok (\p _ -> alex (c p t))
 
-sym = constructor TokS
+sym = constructor TokS; kw = constructor TokKw
 builtin = constructor TokB
-kw = constructor TokKw
 
 type AlexUserState = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn), IM.IntMap MN)
 
