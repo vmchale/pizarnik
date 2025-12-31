@@ -14,7 +14,6 @@
              , get_pos
              ) where
 
-import Control.Arrow ((&&&))
 import Data.Bifunctor (first)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as ASCII
@@ -146,14 +145,10 @@ alexInitUserState :: AlexUserState
 alexInitUserState = (0, mempty, mempty, mempty)
 
 aus :: (AlexUserState -> (AlexUserState, a)) -> Alex a
-aus f = Alex (Right . mapu f)
-  where mapu g s = let (s', x) = g (alex_ust s) in (s { alex_ust = s' }, x)
-
-gets_alex :: (AlexState -> a) -> Alex a
-gets_alex f = Alex (Right . (id &&& f))
+aus f = Alex (Right . (\s -> let (s', x) = f (alex_ust s) in (s { alex_ust = s' }, x)))
 
 get_pos :: Alex AlexPosn
-get_pos = gets_alex alex_pos
+get_pos = Alex $ \st -> Right (st, alex_pos st)
 
 nMIdent :: T.Text -> AlexUserState -> (AlexUserState, MN)
 nMIdent t = \st@(max', ns, us, ums) ->
