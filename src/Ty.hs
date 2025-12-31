@@ -631,13 +631,13 @@ sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq b s as@(SL l _) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
+tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
   where
-    tγ sϵ c (SL _ [])             = pure (c, sϵ)
-    tγ sϵ (SL t al) (SL lϵ (a:aa)) = do
+    tγ sϵ c []              = pure (c, sϵ)
+    tγ sϵ (SL t al) (a:aa) = do
         (a',s0) <- tae b sϵ a
         (t',s1) <- cat (π b) s0 t (aL a')
-        tγ s1 (SL t' (al++[a'])) (SL lϵ aa)
+        tγ s1 (SL t' (al++[a'])) aa
 
 (/|) :: [a] -> Int -> ([a], [a])
 xs /| n = splitFromLeft n xs
