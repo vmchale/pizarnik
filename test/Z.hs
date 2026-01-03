@@ -19,7 +19,7 @@ main = defaultMain $
           , eEx ["lib/numbertheory.piz"] "15 10 gcd" "5"
           , eEx ["prelude/ord.piz"] "3 2 cmpInt 2 2 cmpInt" "`gt `eq"
           , eEx ["test/examples/ros.piz"] "`g complement `t complement" "`c `a"
-          , eEx ["test/examples/parity.piz"] "`even `even add `odd `odd add" "`even `even"
+          , eEx ["examples/parity.piz"] "`even `even add `odd `odd add" "`even `even"
           , eEx ["test/examples/dep.piz"] "x ors" "True"
           ]
         , testGroup "ty"

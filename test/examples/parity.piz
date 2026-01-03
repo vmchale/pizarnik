@@ -1,9 +1,0 @@
-@i prelude/fn
-
-type Parity = { `odd ⊕ `even };
-
-mult : Parity Parity -- Parity
-     := [ { `even⁻¹ _ `even & `odd⁻¹ } ]
-
-add : Parity Parity -- Parity
-    := [ { `even⁻¹ & `odd⁻¹ { `even⁻¹ `odd & `odd⁻¹ `even } } ]
