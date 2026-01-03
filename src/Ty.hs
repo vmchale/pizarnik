@@ -111,8 +111,8 @@ ci :: Nm a -> T a -> T a -> Subst a -> UM a (Subst a)
 ci (Nm _ (U u) _) t te s | u `IS.member` occ t = throwError $ O te t
                          | otherwise = pure (mapTV (IM.insert u t) s)
 
-cf, sf, φf :: T a -> T a -> UM a b
-sf t0 t1 = throwError$LF t0 t1
+mf, cf, sf, φf :: T a -> T a -> UM a b
+mf t0 t1 = throwError$MF t0 t1; sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
 -- Hutton §16.6
@@ -475,6 +475,8 @@ mσ u c σ0 σ1 =
 μ _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 μ _ t0@(TV _ n) t1 = c1 n t1 t0
 μ _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
+μ _ t0@(Ρ _ n σ) t1@(TT _ tt) | [(tt₀,[])] <- Nm.toList undefined σ, tt==tt₀ = pure$sTV n t1
+                              | otherwise = mf t0 t1
 μ _ t0 t1@TV{} = throwError$MF t0 t1
 μ c (Σ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1
 μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later
@@ -488,11 +490,11 @@ mσ u c σ0 σ1 =
 μ c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; μ c t0 t1}
 μ _ TP{} TP{} = pure mempty
 μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1
-μ _ t0@TP{} t1@Σ{} = throwError$MF t0 t1
-μ _ t0@Σ{} t1@TP{} = throwError$MF t0 t1
 μ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
-μ _ t0 t1@TP{} = throwError$MF t0 t1
-μ _ t0 t1@QT{} = throwError$MF t0 t1
+μ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure mempty
+                           | otherwise = mf t0 t1
+μ _ t0 t1@TP{} = mf t0 t1; μ _ t0 t1@QT{} = mf t0 t1
+μ _ t0 t1@Σ{} = mf t0 t1
 μ _ SV{} _ = ie; μ _ _ SV{} = ie
 
 -- ≺
