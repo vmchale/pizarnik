@@ -25,7 +25,7 @@ choice : a a B -- a
 # [(Not) Subtypes](https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping)
 
 ```
-@i prelude/fn
+@prelude/fn
 
 type List a = { `nil ⊕ List(a) a `cons };
 
@@ -50,7 +50,7 @@ The same `foldr` works on nonempty lists and lists and `head` only works on none
 `&` (with) gives us the functionality of or-patterns:
 
 ```
-@i prelude/fn
+@prelude/fn
 
 type Ord = {`lt ⊕ `eq ⊕ `gt};
 
@@ -88,7 +88,7 @@ by Blume, Acar, and Chae solve the expression problem:
 <!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (contravariantly) -->
 
 ```pizarnik
-@i prelude/fn
+@prelude/fn
 
 type Either a b = { a `left ⊕ b `right };
 
@@ -99,8 +99,8 @@ mapLeft : [ a -- c ] Either(a,b) -- Either(c,b)
 ```
 
 ```pizarnik
-@i prelude/fn
-@i lib/either
+@prelude/fn
+@lib/either
 
 type Both a b = Either(a,b) ∪ { a b `both };
 

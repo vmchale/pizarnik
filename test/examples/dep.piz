@@ -1,5 +1,5 @@
-@i prelude/bool
-@i lib/list
+@prelude/bool
+@lib/list
 
 ands : List(Bool) -- Bool
      := [ [[and] True] dip foldr ]

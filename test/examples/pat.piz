@@ -1,4 +1,4 @@
-@i prelude/ord
+@prelude/ord
 
 gt : Ord -- Bool
    := [ { lte False & `gt⁻¹ True } ]

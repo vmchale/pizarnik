@@ -50,7 +50,6 @@ $follow_char = [$latin $digit \_\-]
 tokens :-
 
     <0,imp> {
-
         $white+                 ;
         "#".*                   ;
     }
@@ -61,7 +60,7 @@ tokens :-
 
     <0> {
 
-        "@i"                    { kw I `andBegin` imp }
+        "@"                     { kw I `andBegin` imp }
 
         $digit+                 { tok (\p s -> alex $ TokI p (readDigits s) (iperm s)) }
 
@@ -188,7 +187,7 @@ instance Pretty Sym where
 
 data Kw = I | Ty
 
-instance Pretty Kw where pretty I="@i"; pretty Ty="type"
+instance Pretty Kw where pretty I="@"; pretty Ty="type"
 
 data B = Dup | Dip | Doll | Rem
        | Int | Bool | String

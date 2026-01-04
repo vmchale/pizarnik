@@ -1,4 +1,4 @@
-@i b
+@b
 
 square : Int -- Int
        := [dup *]

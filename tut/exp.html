@@ -276,7 +276,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-res
 <div class="sourceCode" id="cb3" data-startFrom="10"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 9;"><span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="fu">mapL</span> : [<span class="fu">a</span> -- <span class="fu">b</span>] <span class="dt">Both</span>(<span class="fu">a</span>,<span class="fu">c</span>) -- <span class="dt">Both</span>(<span class="fu">b</span>,<span class="fu">c</span>)</span>
 <span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="fu">mapLeft</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>          &amp; <span class="cn">`both</span>⁻¹ [<span class="fu">swap</span> $] <span class="bu">dip</span> <span class="cn">`both</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>          &amp; <span class="cn">`both</span>^ [<span class="fu">swap</span> $] <span class="bu">dip</span> <span class="cn">`both</span></span>
 <span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>          }</span>
 <span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        ]</span></code></pre></div>
 <p><code>mapL</code> accepts a value of type <code>Either(a,b)</code> as

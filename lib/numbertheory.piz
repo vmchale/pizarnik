@@ -1,4 +1,4 @@
-@i prelude/fn
+@prelude/fn
 
 gcd : Int Int -- Int
     := [ dup 0 = { True⁻¹ drop & False⁻¹ dup [rem] dip swap gcd } ]

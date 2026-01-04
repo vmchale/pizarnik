@@ -1,4 +1,4 @@
-@i lib/list
+@lib/list
 
 free : List(a) --
      := [ { `nil⁻¹ & `cons⁻¹ _ free } ]

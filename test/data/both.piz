@@ -1,7 +1,7 @@
-@i prelude/fn
-@i prelude/bool
-@i lib/either
-@i lib/both
+@prelude/fn
+@prelude/bool
+@lib/either
+@lib/both
 
 x : -- Either(Bool,Int)
   := [ True `left ]

@@ -1,4 +1,4 @@
-@i prelude/fn
+@prelude/fn
 
 type List a = { `nil ⊕ List(a) a `cons };
 

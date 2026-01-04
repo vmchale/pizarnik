@@ -15,7 +15,7 @@ syntax match pizarnikSVar "\v'[A-Z][a-zA-Z0-9]*"
 syntax match pizarnikType "\v[A-Z][a-zA-Z0-9]*"
 syntax match pizarnikSymbol "&"
 syntax match pizarnikSymbol "⁻¹"
-syntax match pizarnikKeyword "@i"
+syntax match pizarnikKeyword "@"
 
 highlight link pizarnikName Identifier
 highlight link pizarnikComment Comment

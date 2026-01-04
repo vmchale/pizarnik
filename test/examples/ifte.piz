@@ -1,4 +1,4 @@
-@i prelude/fn
+@prelude/fn
 
 type B = {`t ⊕ `f};
 

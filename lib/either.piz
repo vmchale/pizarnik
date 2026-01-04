@@ -1,4 +1,4 @@
-@i prelude/fn
+@prelude/fn
 
 type Either a b = { a `left ⊕ b `right };
 

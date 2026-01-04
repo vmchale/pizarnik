@@ -1,7 +1,7 @@
 # https://apfelmus.nfshost.com/articles/monoid-fingertree.html
 
-@i prelude/fn
-@i lib/maybe
+@prelude/fn
+@lib/maybe
 
 type Finger v a = { v a `leaf ⊕ v Finger(v,a) Finger(v,a) `branch };
 

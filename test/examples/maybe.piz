@@ -1,5 +1,5 @@
-@i prelude/fn
-@i lib/maybe
+@prelude/fn
+@lib/maybe
 
 just : b [a -- b] a `just -- b
      := [ `just⁻¹ nip2 swap $ ]

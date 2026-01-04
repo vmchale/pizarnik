@@ -192,7 +192,7 @@ instance Pretty (M a b) where
     pretty (M ms ds) = concatWith (<#>) (pI<$>ms) <##> pDs ds
 
 pDs ds = concatWith (<##>) (pretty<$>ds) <> hardline
-pI n = "@i" <+> pretty n
+pI n = "@" <> pretty n
 
 instance P0 (TS a) where
     p0 (TS [] tr) = "--" <+> pSeq tr; p0 (TS tl []) = pSeq tl <+> "--"

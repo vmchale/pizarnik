@@ -1,5 +1,5 @@
-@i prelude/fn
-@i lib/either
+@prelude/fn
+@lib/either
 
 type Both a b = Either(a,b) ∪ { a b `both };
 
