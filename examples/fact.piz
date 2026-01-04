@@ -1,3 +1,3 @@
 # https://hypercubed.github.io/joy/html/j05cmp.html
 fac : Int -- Int
-    := [ dup 0 (12) = { False⁻¹ dup 1 - fac * & True⁻¹ _ 1 } ]
+    := [ dup 0 = { False⁻¹ dup 1 - fac * & True⁻¹ _ 1 } ]
