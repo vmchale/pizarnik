@@ -37,13 +37,13 @@ infixr 0 --:
 data B = Dip | Dup | Un
        | Plus | Minus | Mul | Div
        | Rem | Eq | Gt | Lt
-       | Ap
+       | Ap | Cat
 
 instance Pretty B where
     pretty Dip = "dip"; pretty Dup = "dup"; pretty Un = "_"
     pretty Plus = "+"; pretty Minus = "-"; pretty Mul = "*"; pretty Div = "%"
     pretty Eq = "="; pretty Gt = ">"; pretty Lt = "<"; pretty Rem = "rem"
-    pretty Ap = "$"
+    pretty Ap = "$"; pretty Cat = "strcat"
 
 data L = I !Integer | R !Double | Str !T.Text | S !Sn
 
@@ -109,9 +109,9 @@ instance Functor A where
     fmap f (Pat x (SL y ys)) = Pat (f x) (SL (f y) (map (faseq f) ys))
     fmap f (Inv x a) = Inv (f x) (f<$>a)
 
-data Prim = Int | String deriving Eq
+data Prim = Int | StrT deriving Eq
 
-instance Pretty Prim where pretty Int="Int"; pretty String="String"
+instance Pretty Prim where pretty Int="Int"; pretty StrT="Str"
 
 data TS a = TS { tlefts, trights :: TSeq a }
 type TSeq a = [T a]

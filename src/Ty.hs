@@ -678,7 +678,7 @@ rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
-ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l String]) lit, s)
+ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do
     ns <- traverse (\_ -> ftv l "a") (indices p)
     pure (L (ns --: reverse (p `gp` reverse ns)) (S p), s)
@@ -693,6 +693,7 @@ ta _ s (B l Rem)       = pure (ib l Rem, s)
 ta _ s (B l Eq)        = pure (rel l Eq, s)
 ta _ s (B l Gt)        = pure (rel l Gt, s)
 ta _ s (B l Lt)        = pure (rel l Lt, s)
+ta _ s (B l Cat)       = pure (B ([TP l StrT, TP l StrT] --: [TP l StrT]) Cat, s)
 ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q ([] --: [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (r--:l) a', s')}
 ta b s (C l tt)        = do

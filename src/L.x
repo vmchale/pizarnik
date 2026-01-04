@@ -96,13 +96,14 @@ tokens :-
         dip                     { builtin Dip }
         dup                     { builtin Dup }
         rem                     { builtin Rem }
+        strcat                  { builtin Cat }
         "$"                     { builtin Doll }
 
         type                    { kw Ty }
 
         Int                     { builtin Int }
         Bool                    { builtin Bool }
-        String                  { builtin String }
+        Str                     { builtin String }
 
         True                    { tok (\p _ -> alex $ TokT p (true p)) }
         False                   { tok (\p _ -> alex $ TokT p (false p)) }
@@ -190,12 +191,12 @@ data Kw = I | Ty
 instance Pretty Kw where pretty I="@"; pretty Ty="type"
 
 data B = Dup | Dip | Doll | Rem
-       | Int | Bool | String
+       | Int | Bool | String | Cat
 
 instance Pretty B where
     pretty Dup = "dup"; pretty Dip = "dip"; pretty Doll = "$"
-    pretty Int = "Int"; pretty Bool = "Bool"; pretty String = "String"
-    pretty Rem = "rem"
+    pretty Int = "Int"; pretty Bool = "Bool"; pretty String = "Str"
+    pretty Rem = "rem"; pretty Cat = "strcat"
 
 data Tok a = EOF { loc :: a }
            | TokI { loc :: a, int :: Integer, digits :: [Int] }

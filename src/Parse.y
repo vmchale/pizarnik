@@ -74,6 +74,7 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     dup { TokB $$ L.Dup }
     rem { TokB $$ L.Rem }
     doll { TokB $$ Doll }
+    cat { TokB $$ L.Cat }
 
     str { $$@(TokStr _ _) }
 
@@ -121,7 +122,7 @@ T :: { T AlexPosn }
   | tyname { TC (Nm.loc $1) $1 }
   | intTy { TP $1 A.Int }
   | boolTy { ʙ $1 }
-  | stringTy { TP $1 A.String }
+  | stringTy { TP $1 A.StrT }
   | tag { TT (Nm.loc $1) $1 }
   | brackets(TS) { uncurry QT $1 }
   | T lparen sepBy(T,comma) rparen { roll $1 (reverse $3) }
@@ -138,7 +139,7 @@ A :: { A AlexPosn }
   | mul { B $1 A.Mul } | idiv { B $1 A.Div }
   | eq { B $1 A.Eq }  | gt { B $1 A.Gt }
   | lt { B $1 A.Lt } | rem { B $1 A.Rem }
-  | doll { B $1 Ap }
+  | doll { B $1 Ap } | cat { B $1 A.Cat }
   | name { V (Nm.loc $1) $1 }
   | tag inv { Inv (Nm.loc $1) (C (Nm.loc $1) $1) }
   | tag { C (Nm.loc $1) $1 }
