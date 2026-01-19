@@ -1,6 +1,6 @@
 @prelude/fn
 
-type Name = { Int String `name };
+type Name = { Int Str `name };
 type ResVar = { `x ⊕ `y };
 
 type AbsAST a = { a a `ap ⊕ a Name `lam ⊕ Name `var };
@@ -29,3 +29,24 @@ desugar : Int Syn -- Int AST
              & `ap⁻¹ [desugar] dip (32) desugar (23) `ap
              }
            ]
+
+# convert to IR?
+
+printName : Name -- Str
+          := [ { `name⁻¹ nip } ]
+
+printAbs : [a -- Str] AbsAST(a) -- Str
+         := [ { `var⁻¹ printName nip
+              & `lam⁻¹ printName ["λ"] dip strcat "." strcat [$] dip swap strcat
+              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (231) [$] dip swap [["("] dip strcat] dip ")" strcat strcat
+              }
+            ]
+
+printDExpr : DExpr -- Str
+           := [ { `resVar⁻¹ { `x⁻¹ "x" & `y⁻¹ "y" }
+                & `dfn⁻¹ printDExpr ["["] dip strcat "]" strcat
+                & [[printDExpr]] dip printAbs
+                }
+              ]
+
+# another upside: anything that works on a Syn will work on an AST (e.g. stripping comments, pretty-printer...) AS IT SHOULD

@@ -7,7 +7,7 @@ x : -- NE(Unit)
   := [ `nil `unit `cons ]
 
 z : -- Unit
-  := [ [nip] `unit x foldr ]
+  := [ `unit [nip] x foldl ]
 
 y : -- Unit
   := [ x head ]

@@ -2,10 +2,10 @@
 @lib/list
 
 ands : List(Bool) -- Bool
-     := [ [[and] True] dip foldr ]
+     := [ [True [and]] dip foldl ]
 
 ors : List(Bool) -- Bool
-    := [ [[or] False] dip foldr ]
+    := [ [False [or]] dip foldl ]
 
 x : -- List(Bool)
   := [ `nil False `cons True `cons False `cons ]
