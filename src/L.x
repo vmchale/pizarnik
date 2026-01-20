@@ -108,7 +108,7 @@ tokens :-
         True                    { tok (\p _ -> alex $ TokT p (true p)) }
         False                   { tok (\p _ -> alex $ TokT p (false p)) }
 
-        \" [^\"]* \"            { tok (\p s -> alex $ TokStr p (mkText s)) }
+        \" [^\"]* \"            { tok (\p s -> alex $ TokStr p (T.tail$T.init$mkText s)) }
 
         @name                   { tok (\p s -> TokN p <$> nIdent p (mkText s)) }
         @tyname                 { tok (\p s -> TokTN p <$> nIdent p (mkText s)) }
