@@ -26,7 +26,7 @@ lm (M _ ds) = thread (map b ds) IM.empty
 b :: D b a -> F a -> F a
 b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
 
-i_ c a | [L t (I i)] <- ι c a [] = (i,t)
+i_ c a | [L t (I i)] <- ι c a [] = (i,t); s_ c a | [L t (Str s)] <- ι c a [] = (s,t)
 
 ta l=let nm=true l;t=TS [] [TT l nm] in C t (nm$>t)
 fa l=let nm=false l;t=TS [] [TT l nm] in C t (nm$>t)
@@ -59,6 +59,7 @@ _ ≺ _                   = False
 ι c (B _ Eq) as            = ib c (==) as
 ι c (B _ Gt) as            = ib c (>) as
 ι c (B _ Lt) as            = ib c (<) as
+ι c (B _ Cat) (a0:a1:as)   = let (s0,_)=s_ c a0; (s1,t)=s_ c a1 in L t (Str$s0<>s1):as
 ι c (B _ Ap) (Q _ a:as)    = r c (aas a) as
 ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
