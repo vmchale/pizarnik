@@ -44,6 +44,7 @@ main = defaultMain $
                      , "test/examples/pat.piz"
                      , "test/data/beta.piz"
                      , "test/data/rec.piz"
+                     , "test/data/fingertree.piz"
                      , "test/examples/pat2.piz"
                      , "test/examples/klein.piz"
                      , "test/data/perm.piz"

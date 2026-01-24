@@ -1,0 +1,5 @@
+@lib/fingertree
+@examples/parity
+
+example : -- Finger(Int,Parity)
+        := [ `even leaf `odd leaf branch `even leaf `odd leaf `odd leaf branch branch branch ]
