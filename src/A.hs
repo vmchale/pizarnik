@@ -196,7 +196,7 @@ pI n = "@" <> pretty n
 
 instance P0 (TS a) where
     p0 (TS [] tr) = "--" <+> pSeq tr; p0 (TS tl []) = pSeq tl <+> "--"
-    p0 (TS tl tr) = pSeq tl <+> "--" <+> pSeq tr
+    p0 (TS tl tr) = pSeq tl <.> "--" <+> pSeq tr
 
 instance Pretty (TS a) where pretty=p0.ppt
 instance Show (TS a) where show=show.pretty
@@ -217,7 +217,7 @@ instance P0 (T a) where
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
-pΣ = group.align.braces.fillSep.punctuate (flatAlt " ⊕" " ⊕")
+pΣ = group.align.braces.fillSep.punctuate " ⊕"
 
 pΡ :: NmMap (TSeq a) -> [Doc ann]
 pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map p0 t)})

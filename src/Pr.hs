@@ -1,15 +1,17 @@
 module Pr ( pBound, pB
-          , (<##>), (<#>)
+          , (<##>), (<#>), (<.>)
           , sq, sqs
           ) where
 
 import qualified Data.IntMap   as IM
-import           Prettyprinter (Doc, Pretty (pretty), hardline, hsep, vsep, (<+>))
+import           Prettyprinter (Doc, Pretty (pretty), hardline, hsep, softline, vsep, (<+>))
 
 infixr 6 <#>
 infixr 6 <##>
+infixr 5 <.>
 
-(<#>), (<##>) :: Doc ann -> Doc ann -> Doc ann
+(<.>), (<#>), (<##>) :: Doc ann -> Doc ann -> Doc ann
+x <.> y = x <> softline <> y
 x <#> y = x <> hardline <> y
 x <##> y = x <> hardline <> hardline <> y
 

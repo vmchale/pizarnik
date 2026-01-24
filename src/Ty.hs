@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( TE, Ext (..), tM, tAS ) where
+module Ty ( TE, Ext (..), tM, tAS, tdbg ) where
 
 import           A
 import           B
@@ -8,7 +8,7 @@ import           C
 import           Control.Monad                    (foldM, when)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (StateT (StateT), execStateT, get, modify, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
 import           Data.Foldable                    (traverse_)
@@ -23,7 +23,7 @@ import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Pretty (pretty), (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), hsep, (<+>))
 import           Q
 import           Ty.A
 
@@ -632,6 +632,43 @@ sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
     γ sϵ tl []     = pure (tl, sϵ)
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
+tdbg :: Ext a -> ASeq a -> State Int [Either (TE a) (TS a)]
+tdbg b (SL l as) = do {a <- fsv l "A"; (t,s) <- dbg mempty ([a] --: [a]) as; pure (map (fmap (s@*)) t)}
+  where
+    dbg sϵ tl []            = pure ([Right tl], sϵ)
+    dbg sϵ t (a:aa)         = do
+        step <- r $ do
+            (a',s) <- tae b sϵ a
+            -- TODO: if we fail at cat rather than tae, pass substitution from tae forward?
+            cat (π b) s t (aL a')
+        case step of Right (t',s) -> first (Right t':) <$> dbg s t' aa; Left e -> pure ([Left e], sϵ)
+
+    r :: UM a x -> State Int (Either (TE a) x)
+    r x = state (\i -> let y=runStateT x i in case y of {Left e -> (Left e,i); Right (z,j) -> (Right z,j)})
+
+pc₁ :: Subst a -> ASeq (TS a) -> Doc ann
+pc₁ s (SL t as) = hsep (pretty<$>as) <:> pretty (s@*t)
+  where
+    x <:> y = x <+> ":" <+> y
+
+{-
+traceCat :: Subst a -> ASeq (TS a) -> (A b, TS a) -> ASeq (TS a) -> x -> x
+traceCat s l (a,t1) as = traceShow tc₀ where
+    tc₀ = pc₁ s l
+        <#> pretty a <+> ":" <+> pretty (s@*t1)
+        <#> "----"
+        <#> indent 4 (pc₁ s as)
+        <#> hardline
+
+tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
+tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
+tseq b s (SL l (a:as)) = do
+    (a',s0) <- tae b s a
+    (SL tϵ as', s1) <- tseq b s0 (SL l as)
+    (t, s2) <- cat (π b) s1 (aL a') tϵ
+    pure (SL t (a':as'), s2)
+-}
+
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
   where
@@ -653,10 +690,10 @@ cat c s (TS l0 r0) (TS l1 r1) = do
     (_, s') <- susc c s r0 l1
     pure (l0 --: r1, s')
 
-fr :: a -> T.Text -> UM a (Nm a)
+fr :: Monad m => a -> T.Text -> StateT Int m (Nm a)
 fr l t = state (\m -> let n=m+1 in (Nm t (U n) l, n))
 
-ftv, fsv, erv :: a -> T.Text -> UM a (T a)
+ftv, fsv, erv :: Monad m => a -> T.Text -> StateT Int m (T a)
 ftv l n = TV l <$> fr l n; fsv l n = SV l <$> fr l ("'" <> n)
 erv l n = Ρ l <$> fr l n <*> pure Nm.empty
 

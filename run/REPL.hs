@@ -4,9 +4,9 @@ import           A
 import           Control.Monad.IO.Class           (liftIO)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets, put, runStateT)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets, put, runState, runStateT)
 import qualified Data.IntMap                      as IM
-import           Data.List                        (isPrefixOf)
+import           Data.List                        (inits, isPrefixOf)
 import qualified Data.Map                         as M
 import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
@@ -17,7 +17,7 @@ import           Loc
 import           P
 import           Parse                            (pAtoms)
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hardline, vsep)
+import           Prettyprinter                    (Doc, Pretty (pretty), group, hardline, hsep, vsep, (<+>))
 import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
                                                    simpleCompletion)
@@ -36,9 +36,9 @@ type Repl = InputT (StateT X IO)
 names :: Monad m => StateT X m [String]
 names = do
     X (_,_,n,_) _ (_,_,b) <- get
-    pure ("dip":"dup":"swap":mapMaybe (fmap show.(n IM.!?)) (IM.keys b))
+    pure ("dip":"dup":"strcat":mapMaybe (fmap show.(n IM.!?)) (IM.keys b))
 
-lg=lift.gets
+ll=lift get;lg=lift.gets
 
 sRepl = runExceptT.flip runStateT (0,mempty,mempty,mempty)
 
@@ -68,6 +68,7 @@ loop = do
     inp <- getInputLine " "
     case words <$> inp of
         Just (":ty":e) -> printT (unwords e) *> loop
+        Just (":i":e)  -> try (unwords e) *> loop
         Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
         Just [":dbg"]  -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
         Just e         -> printA (unwords e) *> loop
@@ -75,20 +76,33 @@ loop = do
 
 na = faseq no
 
+try :: String -> Repl ()
+try src = do
+    (X l _ (b,c,ar)) <- ll
+    case pAtoms l (bytesl src) of
+        Left err -> pE err
+        Right ((i,_,_,_),at) ->
+            let tyctx=Ext (aLs<$>b) c ar
+                partials=tail$inits (aas at)
+                (steps,_)=runState (tdbg tyctx (na at)) i
+            in po$pStep (zip partials steps)
+  where pStep = vsep.map (\(a,te) -> hsep (pretty<$>a) <+> ":" <.> group (case te of Right t -> pretty t; Left e -> pretty e))
+
+
 printT :: String -> Repl ()
 printT src = do
-    (X l _ (b,c,ar)) <- lift get
+    (X l _ (b,c,ar)) <- ll
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) -> do
-            let tyctx = Ext (fmap aLs b) c ar
+            let tyctx = Ext (aLs<$>b) c ar
             case tAS i tyctx [] (na at) of
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
 
 printA :: String -> Repl ()
 printA src = do
-    (X l s c) <- lift get
+    (X l s c) <- ll
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,ii,ti,m),at) -> do
