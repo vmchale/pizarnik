@@ -7,7 +7,7 @@ endif
 syntax match pizarnikComment "\v#.*$" contains=@Spell
 syntax keyword pizarnikKeyword type
 syntax keyword pizarnikBuiltin dup dip
-syntax keyword pizarnikType Int Bool String
+syntax keyword pizarnikType Int Bool Str
 syntax keyword pizarnikVal True False
 syntax match pizarnikName "\v[a-z][a-zA-Z0-9]*"
 syntax match pizarnikTag "\v`[a-zA-Z][a-zA-Z0-9]*"
@@ -16,6 +16,7 @@ syntax match pizarnikType "\v[A-Z][a-zA-Z0-9]*"
 syntax match pizarnikSymbol "&"
 syntax match pizarnikSymbol "⁻¹"
 syntax match pizarnikKeyword "@"
+syntax match pizarnikString +"[^\"]*"+
 
 highlight link pizarnikName Identifier
 highlight link pizarnikComment Comment
@@ -26,5 +27,6 @@ highlight link pizarnikSymbol Special
 highlight link pizarnikKeyword Keyword
 highlight link pizarnikVal Constant
 highlight link pizarnikTag Constant
+highlight link pizarnikString String
 
 let b:current_syntax = 'pizarnik'
