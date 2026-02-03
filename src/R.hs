@@ -14,8 +14,6 @@ import           Control.Monad.Except             (throwError)
 import           Control.Monad.Trans.State.Strict (StateT, get, gets, modify, put, runStateT)
 import           Data.Bifunctor                   (first, second)
 import           Data.Functor                     (($>))
-import           Data.Functor.Const               (Const (..))
-import           Data.Functor.Identity            (Identity (..))
 import qualified Data.IntMap                      as IM
 import           Nm
 import           Nm.Map                           (NmMap (NmMap))
@@ -39,24 +37,20 @@ instance Pretty Ex where pretty (Ex v t a) = pBound v <##> pBound t <##> pBound 
 
 instance Show Ex where show=show.pretty
 
-type Lens a b = forall f. Functor f => (b -> f b) -> a -> f a
-
-view l = getConst.l Const
-set l x = runIdentity.l (\_ -> Identity x)
+data Lens a b = Lens { vw :: a -> b, set :: b -> a -> a }
 
 bfl,btl,bal :: Lens Ex Bd
-btl f (Ex ff t a) = (\x -> Ex ff x a) <$> f t
-bfl f (Ex ff t a) = (\x -> Ex x t a) <$> f ff
-bal f (Ex ff t a) = Ex ff t <$> f a
+btl = Lens bt (\x y -> y { bt=x })
+bfl = Lens bf (\x y -> y { bf = x })
+bal = Lens btt (\x y -> y { btt = x })
 
 bvl,bsl :: Lens Rs Bt
-bsl f (Rs m e t v) = Rs m e t <$> f v
-bvl f (Rs m e t v) = (\x -> Rs m e x v) <$> f t
+bsl = Lens bsv (\x y -> y { bsv = x})
+bvl = Lens btv (\x y -> y { btv = x})
 
 type RM x = StateT Rs (Either (RE x))
 
 runRM :: Int -> RM a (f a) -> Either (RE a) (Int, Ex, f a)
--- TODO: true, false special cases?
 runRM u = fmap (\(x,Rs u' b _ _) -> (u',b,x)).flip runStateT (Rs u (Ex IM.empty IM.empty IM.empty) IM.empty IM.empty)
 
 rTs :: Ex -> TSeq a -> RM a (TSeq a)
@@ -84,7 +78,7 @@ doLocal act = do
 frv :: Lens Rs Bt -> Nm a -> RM x (Nm a)
 frv l (Nm t (U i) x) = do
     st <- get
-    let bϵ=view l st
+    let bϵ=vw l st
     case IM.lookup i bϵ of
         Nothing -> let j=max_ st+1 in put (set l (IM.insert i j bϵ) (st {max_ = j})) $> Nm t (U j) x
         Just j  -> pure $ Nm t (U j) x
@@ -93,8 +87,8 @@ fr, frs :: Nm a -> RM x (Nm a)
 fr=frv bvl; frs=frv bsl
 
 frd :: Lens Ex Bd -> Ex -> Nm a -> RM a (Nm a)
-frd l b n@(Nm t (U i) x) | i `IM.member` view l b = throwError (D n)
-                         | otherwise = do {st <- get; let exϵ=ex st; bl=view l exϵ in if i `IM.member` bl then throwError (D n) else let j=max_ st+1 in put (st { max_ = j, ex=set l (IM.insert i j bl) exϵ }) $> Nm t (U j) x}
+frd l b n@(Nm t (U i) x) | i `IM.member` vw l b = throwError (D n)
+                         | otherwise = do {st <- get; let exϵ=ex st; bl=vw l exϵ in if i `IM.member` bl then throwError (D n) else let j=max_ st+1 in put (st { max_ = j, ex=set l (IM.insert i j bl) exϵ }) $> Nm t (U j) x}
 
 frt, frn, frtt :: Ex -> Nm a -> RM a (Nm a)
 frt=frd btl; frn=frd bfl; frtt=frd bal
