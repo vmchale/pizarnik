@@ -87,6 +87,8 @@ import Prettyprinter (Pretty (..), (<+>), concatWith, squotes)
     i { TokKw $$ L.I }
     type { TokKw $$ Ty }
 
+    com { TokCom _ $$ }
+
 %%
 
 many(p)
@@ -152,14 +154,27 @@ A :: { A AlexPosn }
 ASeq :: { ASeq AlexPosn }
      : many(A) {% fmap SL (lift get_pos) <*> pure (reverse $1) }
 
+DC :: { D Ann Ann }
+   : D { bimap (\x -> Ann x Nothing) (\x -> Ann x Nothing) $1 }
+
 D :: { D AlexPosn AlexPosn }
   : name colon TS defEq brackets(many(A)) { F $2 $1 $3 (SL $4 (reverse (snd $5))) }
   | type tyname many(name) eq T semicolon { TD $1 $2 (reverse $3) $5 }
+
+Imp :: { MN Ann }
+    : i modname { (unc $2) }
+    | com i modname { let l=ann $3 in $3 { ann = Ann l (Just $1) } }
+    | i com modname { let l=ann $3 in $3 { ann = Ann l (Just $2) } }
 
 M :: { M AlexPosn AlexPosn }
   : many(seq(i,modname)) many(D) { M (reverse $1) (reverse $2) }
 
 {
+
+data Ann = Ann AlexPosn (Maybe T.Text)
+
+unc :: Functor f => f AlexPosn -> f Ann
+unc = fmap (\loc -> Ann loc Nothing)
 
 σparsed = (locArms &&& mkΣ).reverse
 

@@ -180,12 +180,12 @@ instance Pretty (D a b) where
 am :: M a (TS b) -> Doc ann
 am (M _ ds) = concatWith (<##>) (anD<$>ds) <> hardline
 
-data M a b = M [MN] [D a b]
+data M a b = M [MN a] [D a b]
 
 instance Functor (M a) where fmap=second
 
 instance Bifunctor M where
-    bimap f g (M is d) = M is (map (bimap f g) d)
+    bimap f g (M is d) = M (map (f<$>) is) (map (bimap f g) d)
 
 instance Pretty (M a b) where
     pretty (M [] ds) = pDs ds

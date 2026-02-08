@@ -9,7 +9,6 @@
              , alexMonadScan
              , alexInitUserState
              , withAlexSt
-             , nMIdent
              -- * Lexer states
              , get_pos
              ) where
@@ -51,11 +50,12 @@ tokens :-
 
     <0,imp> {
         $white+                 ;
+        -- "#".*                   { tok (\p s -> alex $ TokCom p (mkText $ BSL.tail s)) }
         "#".*                   ;
     }
 
     <imp> {
-        @modname                { tok (\p s -> TokMN p <$> aus (nMIdent (mkText s))) `andBegin` 0 }
+        @modname                { tok (\p s -> TokMN p <$> aus (nMIdent p (mkText s))) `andBegin` 0 }
     }
 
     <0> {
@@ -138,7 +138,7 @@ constructor c t = tok (\p _ -> alex (c p t))
 sym = constructor TokS; kw = constructor TokKw
 builtin = constructor TokB
 
-type AlexUserState = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn), IM.IntMap MN)
+type AlexUserState = (Int, M.Map T.Text Int, IM.IntMap (Nm AlexPosn), IM.IntMap (MN (Maybe AlexPosn)))
 
 alexInitUserState :: AlexUserState
 alexInitUserState = (0, mempty, mempty, mempty)
@@ -149,12 +149,12 @@ aus f = Alex (Right . (\s -> let (s', x) = f (alex_ust s) in (s { alex_ust = s' 
 get_pos :: Alex AlexPosn
 get_pos = Alex $ \st -> Right (st, alex_pos st)
 
-nMIdent :: T.Text -> AlexUserState -> (AlexUserState, MN)
-nMIdent t = \st@(max', ns, us, ums) ->
+nMIdent :: AlexPosn -> T.Text -> AlexUserState -> (AlexUserState, MN AlexPosn)
+nMIdent pos t = \st@(max', ns, us, ums) ->
     case M.lookup t ns of
-        Just i -> (st, MN d (U i))
+        Just i -> (st, MN d (U i) pos)
         Nothing -> let i=max'+1; nM=MN d (U i)
-                   in ((i, M.insert t i ns, us, IM.insert i nM ums), nM)
+                   in ((i, M.insert t i ns, us, IM.insert i (nM (Just pos)) ums), nM pos)
     where d = NE.fromList (T.splitOn "/" t)
 
 nIdent :: AlexPosn -> T.Text -> Alex (Nm AlexPosn)
@@ -206,9 +206,10 @@ data Tok a = EOF { loc :: a }
            | TokT { loc :: a, tag :: !(Nm AlexPosn) }
            | TokTN { loc :: a, tyname :: !(Nm AlexPosn) }
            | TokSV { loc :: a, svn :: !(Nm AlexPosn) }
-           | TokMN { loc :: a, modname :: !MN }
+           | TokMN { loc :: a, modname :: !(MN AlexPosn) }
            | TokKw { loc :: a, tokKw :: !Kw }
            | TokStr { loc :: a, str :: T.Text }
+           | TokCom { loc :: a, com :: T.Text }
            deriving Functor
 
 instance Pretty (Tok a) where
@@ -223,6 +224,7 @@ instance Pretty (Tok a) where
     pretty (TokT _ t)   = pretty t
     pretty (TokKw _ k)  = "keyword" <+> sq k
     pretty (TokStr _ s) = dquotes (pretty s)
+    pretty (TokCom _ c) = "#" <> pretty c
 
 withAlexSt :: BSL.ByteString -> Int -> AlexUserState -> Alex a -> Either String (AlexUserState, a)
 withAlexSt inp scd ust (Alex f) = first alex_ust <$> f

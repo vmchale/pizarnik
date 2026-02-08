@@ -3,7 +3,7 @@ module TS ( tsort ) where
 import           Data.Graph (graphFromEdges, reverseTopSort)
 import           Nm
 
-tsort :: [(MN, [MN])] -> [MN]
+tsort :: [(MN a, [MN a])] -> [MN a]
 tsort adjL = snd3.f <$> reverseTopSort g
     where adjLG = fmap (\(x,y) -> ((),x,y)) adjL
           (g, f, _) = graphFromEdges adjLG

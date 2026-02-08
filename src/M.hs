@@ -6,6 +6,8 @@ import           Control.Monad.Trans.Except       (ExceptT, except)
 import           Control.Monad.Trans.State.Strict (StateT (StateT))
 import qualified Data.ByteString.Lazy             as BSL
 import qualified Data.IntMap                      as IM
+import qualified Data.List.NonEmpty               as NE
+import qualified Data.Map.Strict                  as M
 import qualified Data.Text                        as T
 import           Data.Tuple                       (swap)
 import           Imp
@@ -16,13 +18,20 @@ import           Parse
 
 type R = StateT AlexUserState (ExceptT (ParseE Loc) IO)
 
-data MS = MS (IM.IntMap (M Loc Loc)) [(MN, [MN])]
+data MS = MS (IM.IntMap (M Loc Loc)) [(MN Loc, [MN Loc])]
 
-rMN :: T.Text -> R MN
-rMN fp = mst $ pure.nMIdent (asMN fp)
+rMN :: T.Text -> R (MN Loc)
+rMN fp = mst $ pure.nmc (asMN fp)
   where
     asMN s | Just p <- T.stripSuffix ".piz" s = p
            | otherwise = error ("failed to read as module name: " ++ T.unpack s)
+
+    nmc t = \st@(max', ns, us, ums) ->
+        case M.lookup t ns of
+            Just i -> (st, MN d (U i) CLI)
+            Nothing -> let i=max'+1; nM=MN d (U i)
+                       in ((i, M.insert t i ns, us, IM.insert i (nM Nothing) ums), nM CLI)
+        where d = NE.fromList (T.splitOn "/" t)
 
 pRoot :: [FilePath] -- ^ Include dirs
       -> [FilePath] -- Modules
@@ -36,9 +45,9 @@ pRoot incls fps = do
     ([], mϵ) <- step initMs (concat is)
     pure (rootU, mϵ)
   where
-    step :: MS -> [MN] -> R ([MN], MS)
+    step :: MS -> [MN Loc] -> R ([MN Loc], MS)
     step st [] = pure ([], st)
-    step st@(MS mSt mDeps) (mn@(MN _ (U i)):mns)
+    step st@(MS mSt mDeps) (mn@(MN _ (U i) _):mns)
         | i `IM.member` mSt = step st mns
         | otherwise = do
             m@(M is _) <- pMIO incls mn
@@ -49,7 +58,7 @@ pRoot incls fps = do
 mst :: (AlexUserState -> ExceptT (ParseE Loc) IO (AlexUserState, a)) -> R a
 mst f = StateT $ fmap swap.f
 
-pMIO :: [FilePath] -> MN -> R (M Loc Loc)
+pMIO :: [FilePath] -> MN Loc -> R (M Loc Loc)
 pMIO incls mn = do {fp <- liftIO (resolveI incls mn); pIO fp}
 
 pIO :: FilePath -> R (M Loc Loc)

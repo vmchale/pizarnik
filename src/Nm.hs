@@ -10,14 +10,14 @@ import           Prettyprinter      (Doc, Pretty (..))
 
 newtype U = U { unU :: Int } deriving (Eq, Ord)
 
-data MN = MN { mN :: NonEmpty T.Text, mU :: !U }
+data MN a = MN { mN :: NonEmpty T.Text, mU :: !U, ann :: a } deriving Functor
 data Nm a = Nm { text :: T.Text, un :: !U, loc :: a } deriving Functor
 
 true = Nm "True" (U (-2))
 false = Nm "False" (U (-1))
 
-instance Eq MN where (==) (MN _ u) (MN _ u') = u == u'
-instance Ord MN where compare (MN _ u) (MN _ u') = compare u u'
+instance Eq (MN a) where (==) (MN _ u _) (MN _ u' _) = u == u'
+instance Ord (MN a) where compare (MN _ u _) (MN _ u' _) = compare u u'
 
 instance Eq (Nm a) where (==) (Nm _ u _) (Nm _ u' _) = u == u'
 
@@ -27,10 +27,10 @@ instance Pretty (Nm a) where
 
 instance Show (Nm a) where show=show.pretty
 
-instance Pretty MN where
-    pretty (MN t _) = intercalate "/" (toList (pretty <$> t))
+instance Pretty (MN a) where
+    pretty (MN t _ _) = intercalate "/" (toList (pretty <$> t))
 
-instance Show MN where show=show.pretty
+instance Show (MN a) where show=show.pretty
 
 intercalate :: Doc a -> [Doc a] -> Doc a
 intercalate x = mconcat . intersperse x

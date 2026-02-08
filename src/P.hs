@@ -53,7 +53,7 @@ e1 incls fp e = rRepl $ do
             liftEither (fst <$> rc i (naïve c) [] (faseq no at))
 
 -- TODO inefficient but I think this won't cause problems b/c we already renamed
-naïve :: [Tree (MN, M a (TS a), Cs a, Ar)] -> MC (TS a) a
+naïve :: [Tree (MN Loc, M a (TS a), Cs a, Ar)] -> MC (TS a) a
 naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, IM.fromDistinctAscList [(-2,0),(-1,0)] <> foldMap (fth4@<>) c)
   where snd4 (_,y,_,_)=y; thd4 (_,_,z,_)=z; fth4 (_,_,_,w)=w
 
@@ -62,7 +62,10 @@ rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (a
   where
     π (b,cϵ,a) = Ext (fmap aLs b) cϵ a
 
-tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN, M Loc (TS Loc), Cs Loc, Ar)]
+-- dbgS :: S a -> Doc ann
+-- dbgS = hsep.map (\a -> parens (pretty a <+> ":" <+> pretty (aL a)))
+
+tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
     (i,c,mns) <- rMs incls fp
     (u,_,_,_) <- get
@@ -81,17 +84,17 @@ tMs incls fp = do
 
 rMs :: [FilePath] -- ^ Include dirs
     -> [FilePath] -- ^ Root modules
-    -> RIO ([U], IM.IntMap (M Loc Loc), IM.IntMap MN)
+    -> RIO ([U], IM.IntMap (M Loc Loc), IM.IntMap (MN Loc))
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     st <- get
     let s=tsort ims
     (st',m) <- go (IS.fromList [ unU u | u <- rs ]) ms st IM.empty s
-    let dbgM=IM.fromList [ (i,mn) | mn@(MN _ (U i)) <- s ]
+    let dbgM=IM.fromList [ (i,mn) | mn@(MN _ (U i) _) <- s ]
     put st' $> (rs,m,dbgM)
   where
     go _ _ st _ [] = pure (st, IM.empty)
-    go rs ms (u,t,ii,m) mex (n@(MN _ (U i)):mns) = do
+    go rs ms (u,t,ii,m) mex (n@(MN _ (U i) _):mns) = do
         exc <- exs n deps
         (u',exϵ,md) <- lift $ except $ first RE $ rM u exc mp
         let st' = (if i `IS.member` rs then apply exϵ else id) (u',t,ii,m)
@@ -105,13 +108,13 @@ rMs incls fp = do
         -- FIXME: performance...
         fw m a = IM.mapKeys (\k -> IM.findWithDefault k k a) m
 
-mnlookup (MN _ (U i)) = m'lookup i
+mnlookup (MN _ (U i) _) = m'lookup i
 m'lookup=IM.findWithDefault (error"Internal error: module not found.")
 
 rRepl :: RIO a -> IO (Either (E Loc) a)
 rRepl = runExceptT.flip evalStateT (0,mempty,mempty,mempty)
 
-exs :: MN -> [Ex] -> RIO Ex
+exs :: MN Loc -> [Ex] -> RIO Ex
 exs n = foldM mx (Ex IM.empty IM.empty IM.empty)
   where
     mx :: Ex -> Ex -> RIO Ex
