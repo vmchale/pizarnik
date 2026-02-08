@@ -28,8 +28,8 @@ import           Nm
 import           Nm.Map                           (NmMap, nmlist)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, line, parens, punctuate,
-                                                   space, tupled, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, space,
+                                                   tupled, (<+>))
 
 infixl 9 <:>
 infixr 0 --:
