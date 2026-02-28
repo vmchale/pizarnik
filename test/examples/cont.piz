@@ -1,0 +1,4 @@
+@prelude/fn
+
+fac : Int -- Int
+    := [ dup 0 = [[1 +] [dup 1 - fac *]] dip { True^ drop & False^ nip } $ ]

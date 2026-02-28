@@ -22,6 +22,7 @@ main = defaultMain $
           , eEx ["examples/parity.piz"] "`even `even add `odd `odd add" "`even `even"
           , eEx ["test/examples/dep.piz"] "x ors" "True"
           , eEx ["examples/fact.piz"] "7 fac" "5040"
+          , eEx ["test/examples/cont.piz"] "7 fac" "5040"
           ]
         , testGroup "ty"
             ( tE "test/data/pmfail.piz" "test/data/pmfail.piz:3:12: {a `just ⊕ `nil} ⊀ {a `just}"
