@@ -17,7 +17,7 @@ import           Loc
 import           P
 import           Parse                            (pAtoms)
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), group, hardline, hsep, vsep, (<+>))
+import           Prettyprinter                    (Doc, Pretty (pretty), flatAlt, group, hardline, hsep, indent, vsep, (<+>))
 import           S
 import           System.Console.Haskeline         (InputT, Settings (historyFile), completeFilename, defaultSettings, fallbackCompletion, getInputLine, runInputT, setComplete,
                                                    simpleCompletion)
@@ -86,7 +86,8 @@ try src = do
                 partials=tail$inits (aas at)
                 (steps,_)=runState (tdbg tyctx (na at)) i
             in po$pStep (zip partials steps)
-  where pStep = vsep.map (\(a,te) -> hsep (pretty<$>a) <+> ":" <.> group (case te of Right t -> pretty t; Left e -> pretty e))
+  where pStep = vsep.map (\(a,te) -> group (hsep (pretty<$>a) <+> ":" <^> group (case te of Right t -> pretty t; Left e -> pretty e)))
+        x <^> y = flatAlt (x<#>indent 4 y) (x<+>y)
 
 
 printT :: String -> Repl ()
