@@ -1,0 +1,2 @@
+pad : Str Int -- Str
+    := [ dup 0 = { True^ _ & False^ [" " strcat] dip 1 - pad } ]
