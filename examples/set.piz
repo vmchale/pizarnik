@@ -1,0 +1,13 @@
+@prelude/fn
+@prelude/ord
+
+type Set o = { `nil +. Set(o) o Set(o) `branch };
+
+insert : Int Set(Int) -- Set(Int)
+       := [ { `nil^ [`nil] dip `nil `branch
+            & `branch^ (14) dup2 cmpInt
+                { `eq^ (23) drop `branch
+                & `lt^ (123) insert `branch 
+                & `gt^ (143) [insert] dip2 `branch
+                }
+            } ]
