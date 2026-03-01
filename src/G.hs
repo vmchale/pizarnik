@@ -4,10 +4,11 @@ module G ( Sn, sn
          , gn, gp
          ) where
 
-import qualified Data.Array    as A
-import           Data.Bits     (Bits (complement, setBit, shiftL, shiftR, testBit, (.&.), (.|.)))
-import           Data.List     (foldl')
-import           Prettyprinter (Pretty (pretty), parens)
+import qualified Data.Array     as A
+import           Data.Bifunctor (second)
+import           Data.Bits      (Bits (complement, setBit, shiftL, shiftR, testBit, (.&.), (.|.)))
+import           Data.List      (foldl')
+import           Prettyprinter  (Pretty (pretty), parens)
 
 newtype Sn=Sn Int
 
@@ -18,14 +19,9 @@ instance Pretty Sn where
               where
                 n = gn p
 
-                step v j =
-                    case next j of
-                        Nothing -> []
-                        Just j' -> let (v',cyc) = orb v j' in cyc:step v' j'
-                  where
-                    next i | i==n = Nothing
-                           | testBit v i = next (i+1)
-                           | otherwise = Just i
+                step v j | j==n = []
+                         | testBit v j = step v (j+1)
+                         | otherwise = let (v',cyc) = orb v j in cyc:step v' j
 
                 orb :: Word -> Int -> (Word, [Int])
                 orb v j | testBit v j = (v, [])
