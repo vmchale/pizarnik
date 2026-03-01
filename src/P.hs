@@ -88,7 +88,7 @@ rMs :: [FilePath] -- ^ Include dirs
 rMs incls fp = do
     (rs, MS ms ims) <- mapStateT (withExceptT PE) $ pRoot incls fp
     st <- get
-    let s=tsort ims
+    let s=tsort ims rs
     (st',m) <- go (IS.fromList [ unU u | u <- rs ]) ms st IM.empty s
     let dbgM=IM.fromList [ (i,mn) | mn@(MN _ (U i) _) <- s ]
     put st' $> (rs,m,dbgM)
