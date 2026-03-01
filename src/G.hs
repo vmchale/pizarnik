@@ -25,7 +25,7 @@ instance Pretty Sn where
 
                 orb :: Word -> Int -> (Word, [Int])
                 orb v j | testBit v j = (v, [])
-                        | otherwise = let (r, c) = orb (setBit v j) (p!j) in (r, j:c)
+                        | otherwise = second (j:) $ orb (setBit v j) (p!j)
 
 sn :: Int -> Sn
 sn n = Sn$foldl' (\acc ix -> acc .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
