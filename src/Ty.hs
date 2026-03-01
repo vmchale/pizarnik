@@ -717,7 +717,7 @@ ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do
-    ns <- traverse (\_ -> ftv l "a") (indices p)
+    ns <- traverse (\_ -> ftv l "a") [1..gn p]
     pure (L (ns --: reverse (p `gp` reverse ns)) (S p), s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}

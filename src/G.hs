@@ -1,5 +1,4 @@
 module G ( Sn, sn
-         , indices
          , setIx
          , gn, gp
          ) where
@@ -29,9 +28,6 @@ instance Pretty Sn where
 
 sn :: Int -> Sn
 sn n = Sn$foldl' (\acc ix -> acc .|. ix `shiftL` (ix*4)) (n `shiftL` 40) [1..n]
-
-indices :: Sn -> [Int]
-indices x = [1..gn x]
 
 setIx :: Int -> Int -> Sn -> Sn
 setIx ix n (Sn x) = Sn (x .&. complement (0xf `shiftL` (ix*4)) .|. n `shiftL` (ix*4))
