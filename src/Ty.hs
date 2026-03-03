@@ -31,6 +31,7 @@ infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
+infix 4 ?
 
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
@@ -324,21 +325,21 @@ sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
 sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
     let n0=length t0d; n1=length t1d in
-    case compare n0 n1 of
+    case n0?n1 of
         GT -> let (uws, res) = splitFromLeft n1 t0
               in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
         _  -> let (uws, res) = splitFromLeft n0 t1
               in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
 sv u c s t0@(SV _ sn0:t0d) t1 =
     let n0=length t0d; n1=length t1 in
-    case compare n0 n1 of
+    case n0?n1 of
         GT -> throwError$LE t0 t1
         _  -> let (uws, res) = splitFromLeft n0 t1
         -- TODO: why iSV vs. ς?
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
 sv u c s t0 t1@(SV _ sn1:t1d) =
     let n0=length t0; n1=length t1d in
-    case compare n0 n1 of
+    case n0?n1 of
         LT -> throwError$LE t1 t0
         _  -> let (uws, res) = splitFromLeft n1 t0
               in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) res t1d
@@ -862,5 +863,7 @@ onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 
 foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
+
+(?) = compare
 
 ie=error"internal error."
