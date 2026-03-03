@@ -6,8 +6,9 @@ type Set o = { `nil +. Set(o) o Set(o) `branch };
 insert : Int Set(Int) -- Set(Int)
        := [ { `nil^ [`nil] dip `nil `branch
             & `branch^ (14) dup2 cmpInt
-                { `eq^ (23) drop `branch
-                & `lt^ (13) insert `branch
-                & `gt^ (14) [insert] dip2 `branch
+                { `eq^ (342) drop `branch
+                & `lt^ (123) insert (13) `branch
+                & `gt^ (124) insert (23) `branch
                 }
-            } ]
+            }
+          ]
