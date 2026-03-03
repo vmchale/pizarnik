@@ -75,6 +75,8 @@ loop = do
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
+na = faseq no
+
 pTs = vsep.pT []
 
 pT _ []              = []
@@ -96,11 +98,8 @@ try src = do
             let tyctx=Ext (aLs<$>b) c ar
                 (steps,_)=runState (tdbg tyctx (na at)) i
             in po$pTs steps
-  where na = faseq no
 
-
-
-printT :: String -> Repl ()
+printA, printT :: String -> Repl ()
 printT src = do
     (X l _ (b,c,ar)) <- ll
     case pAtoms l (bytesl src) of
@@ -111,7 +110,6 @@ printT src = do
                 Right ((_, SL a _),_) -> pE a
                 Left err              -> pE err
 
-printA :: String -> Repl ()
 printA src = do
     (X l s c) <- ll
     case pAtoms l (bytesl src) of
