@@ -635,8 +635,8 @@ sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
     γ sϵ tl []     = pure (tl, sϵ)
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
-tdbg :: Ext a -> ASeq a -> State Int (Forest (Either (TE a) (TS a)))
-tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap ((s@*)<$>)) a')}
+tdbg :: Ext a -> ASeq a -> State Int (Forest (Either (TE a) (A a, TS a)))
+tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap (second (s@*)<$>)) a')}
   where
     c=π b
 
@@ -650,25 +650,26 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap ((s@*)<$>)) a')}
     dbgψ s as = do
         (as',s') <- dMs s (aas as)
         -- maybe this is stupid? we have [Forest] for as' for a reason...
-        let enN m = Node (rootLabel$last m) m
+        -- we drop constructor tags here which is not wise
+        let enN = map (\m -> Node (rootLabel$last m) m)
         case partitionEithers (rootLabel.last<$>as') of
-            ([], a'') -> let sigs = map (peekS s') a'' in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right ψt) (map enN as'), s''); Left e -> pure (Node (Left e) (map enN as'), s')}
-            (e:es, _) -> pure (Node (Left e) (map enN as' ++ (ll.Left<$>es)), s')
+            ([], a'') -> let sigs = map (peekS s') (snd<$>a'') in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right (undefined, ψt)) (enN as'), s''); Left e -> pure (Node (Left e) (enN as'), s')}
+            (e:es, _) -> pure (Node (Left e) (enN as' ++ (ll.Left<$>es)), s')
 
-    dbg sϵ t []            = pure ([], sϵ) -- [ll$Right t], sϵ)
-    dbg sϵ t (Pat _ as:aa)  = do
+    dbg sϵ _ []            = pure ([], sϵ) -- [ll$Right t], sϵ)
+    dbg sϵ t (a@(Pat _ as):aa)  = do
         (as', s) <- dbgψ sϵ as
         case rootLabel as' of
-            Right tt -> do
+            Right (_,tt) -> do
                 step <- r $ cat c s t tt
-                case step of Right (t',s') -> first (Node (Right t') (subForest as'):) <$> dbg s' t' aa
-            Left _ -> pure ([as'], sϵ)
+                case step of Right (t',s') -> first (Node (Right (a,t')) (subForest as'):) <$> dbg s' t' aa
+            -- Left _ -> pure ([as'], sϵ)
     dbg sϵ t (a:aa)         = do
         step <- r $ do
             (a',s) <- tae b sϵ a
             -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
             cat c s t (aL a')
-        case step of Right (t',s) -> first (ll (Right t'):) <$> dbg s t' aa; Left e -> pure ([ll$Left e], sϵ)
+        case step of Right (t',s) -> first (ll (Right (a,t')):) <$> dbg s t' aa; Left e -> pure ([ll$Left e], sϵ)
 
     r :: UM a x -> State Int (Either (TE a) x)
     r x = state (\i -> let y=runStateT x i in case y of {Left e -> (Left e,i); Right (z,j) -> (Right z,j)})

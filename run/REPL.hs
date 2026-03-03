@@ -75,10 +75,17 @@ loop = do
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
-na = faseq no
+pTs = vsep.pT []
 
-pT (Node x xs) = indent 4 (vsep (pT<$>xs)) <#> pn x
-  where pn = either pretty pretty
+pT _ []              = []
+pT c (Node x xs:xss) =
+    case x of
+        Right (a,t) -> let c'=c++[a] in tr (pan c' t:pT c' xss)
+        Left e      -> tr [pretty e]
+  where tr | null xs = id | otherwise = (indent 4 (pTs xs):)
+
+        pan e t = group (hsep (pretty<$>e) <+> ":" <^> group (pretty t))
+        s <^> t = flatAlt (t<#>indent 4 t) (s<+>t)
 
 try :: String -> Repl ()
 try src = do
@@ -87,11 +94,10 @@ try src = do
         Left err -> pE err
         Right ((i,_,_,_),at) ->
             let tyctx=Ext (aLs<$>b) c ar
-                partials=tail$inits (aas at)
                 (steps,_)=runState (tdbg tyctx (na at)) i
-            in po$vsep (pT<$>steps) -- pStep (zip partials steps)
-  where pan e t = group (hsep (pretty<$>e) <+> ":" <^> group (pretty t))
-        x <^> y = flatAlt (x<#>indent 4 y) (x<+>y)
+            in po$pTs steps
+  where na = faseq no
+
 
 
 printT :: String -> Repl ()
