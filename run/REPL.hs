@@ -12,6 +12,7 @@ import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
+import           Data.Tree                        (Tree (Node))
 import           L
 import           Loc
 import           P
@@ -76,6 +77,9 @@ loop = do
 
 na = faseq no
 
+pT (Node x xs) = indent 4 (vsep (pT<$>xs)) <#> pn x
+  where pn = either pretty pretty
+
 try :: String -> Repl ()
 try src = do
     (X l _ (b,c,ar)) <- ll
@@ -85,8 +89,8 @@ try src = do
             let tyctx=Ext (aLs<$>b) c ar
                 partials=tail$inits (aas at)
                 (steps,_)=runState (tdbg tyctx (na at)) i
-            in po$pStep (zip partials steps)
-  where pStep = vsep.map (\(a,te) -> group (hsep (pretty<$>a) <+> ":" <^> group (case te of Right t -> pretty t; Left e -> pretty e)))
+            in po$vsep (pT<$>steps) -- pStep (zip partials steps)
+  where pan e t = group (hsep (pretty<$>e) <+> ":" <^> group (pretty t))
         x <^> y = flatAlt (x<#>indent 4 y) (x<+>y)
 
 

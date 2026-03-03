@@ -11,12 +11,14 @@ import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
+import           Data.Either                      (partitionEithers)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.List                        (foldl')
 import qualified Data.Text                        as T
+import           Data.Tree                        (Forest, Tree (..))
 import           F
 import           G
 import           Nm
@@ -633,34 +635,45 @@ sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
     γ sϵ tl []     = pure (tl, sϵ)
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
-tdbg :: Ext a -> ASeq a -> State Int [Either (TE a) (TS a)]
-tdbg b (SL l as) = do {a <- fsv l "A"; (t,s) <- dbg mempty ([a] --: [a]) as; pure (map (fmap (s@*)) t)}
+tdbg :: Ext a -> ASeq a -> State Int (Forest (Either (TE a) (TS a)))
+tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap ((s@*)<$>)) a')}
   where
-    dbg sϵ tl []            = pure ([Right tl], sϵ)
+    c=π b
+
+    ll x = Node x []
+
+    dM s (SL l as) = do {a <- fsv l "A"; (t,s') <- dbg s ([a] --: [a]) as; pure (t, s')}
+
+    dMs s []     = pure ([], s)
+    dMs s (a:aa) = do {(a',s') <- dM s a; first (a':)<$>dMs s' aa}
+
+    dbgψ s as = do
+        (as',s') <- dMs s (aas as)
+        -- maybe this is stupid? we have [Forest] for as' for a reason...
+        let enN m = Node (rootLabel$last m) m
+        case partitionEithers (rootLabel.last<$>as') of
+            ([], a'') -> let sigs = map (peekS s') a'' in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right ψt) (map enN as'), s''); Left e -> pure (Node (Left e) (map enN as'), s')}
+            (e:es, _) -> pure (Node (Left e) (map enN as' ++ (ll.Left<$>es)), s')
+
+    dbg sϵ t []            = pure ([], sϵ) -- [ll$Right t], sϵ)
+    dbg sϵ t (Pat _ as:aa)  = do
+        (as', s) <- dbgψ sϵ as
+        case rootLabel as' of
+            Right tt -> do
+                step <- r $ cat c s t tt
+                case step of Right (t',s') -> first (Node (Right t') (subForest as'):) <$> dbg s' t' aa
+            Left _ -> pure ([as'], sϵ)
     dbg sϵ t (a:aa)         = do
         step <- r $ do
             (a',s) <- tae b sϵ a
-            -- TODO: if we fail at cat rather than tae, pass substitution from tae forward?
-            cat (π b) s t (aL a')
-        case step of Right (t',s) -> first (Right t':) <$> dbg s t' aa; Left e -> pure ([Left e], sϵ)
+            -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
+            cat c s t (aL a')
+        case step of Right (t',s) -> first (ll (Right t'):) <$> dbg s t' aa; Left e -> pure ([ll$Left e], sϵ)
 
     r :: UM a x -> State Int (Either (TE a) x)
     r x = state (\i -> let y=runStateT x i in case y of {Left e -> (Left e,i); Right (z,j) -> (Right z,j)})
 
-pc₁ :: Subst a -> ASeq (TS a) -> Doc ann
-pc₁ s (SL t as) = hsep (pretty<$>as) <:> pretty (s@*t)
-  where
-    x <:> y = x <+> ":" <+> y
-
 {-
-traceCat :: Subst a -> ASeq (TS a) -> (A b, TS a) -> ASeq (TS a) -> x -> x
-traceCat s l (a,t1) as = traceShow tc₀ where
-    tc₀ = pc₁ s l
-        <#> pretty a <+> ":" <+> pretty (s@*t1)
-        <#> "----"
-        <#> indent 4 (pc₁ s as)
-        <#> hardline
-
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
 tseq b s (SL l (a:as)) = do
