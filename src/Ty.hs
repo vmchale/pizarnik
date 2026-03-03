@@ -647,23 +647,25 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap (second (s@*)<$>)) a')}
     dMs s []     = pure ([], s)
     dMs s (a:aa) = do {(a',s') <- dM s a; first (a':)<$>dMs s' aa}
 
-    dbgψ s as = do
+    dbgψ p s as = do
         (as',s') <- dMs s (aas as)
         -- maybe this is stupid? we have [Forest] for as' for a reason...
         -- we drop constructor tags here which is not wise
         let enN = map (\m -> Node (rootLabel$last m) m)
         case partitionEithers (rootLabel.last<$>as') of
-            ([], a'') -> let sigs = map (peekS s') (snd<$>a'') in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right (undefined, ψt)) (enN as'), s''); Left e -> pure (Node (Left e) (enN as'), s')}
+            ([], a'') -> let sigs = map (peekS s') (snd<$>a'') in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right (p, ψt)) (enN as'), s''); Left e -> pure (Node (Left e) (enN as'), s')}
             (e:es, _) -> pure (Node (Left e) (enN as' ++ (ll.Left<$>es)), s')
 
-    dbg sϵ _ []            = pure ([], sϵ) -- [ll$Right t], sϵ)
+    dbg sϵ _ []            = pure ([], sϵ)
     dbg sϵ t (a@(Pat _ as):aa)  = do
-        (as', s) <- dbgψ sϵ as
+        (as', s) <- dbgψ a sϵ as
         case rootLabel as' of
             Right (_,tt) -> do
                 step <- r $ cat c s t tt
-                case step of Right (t',s') -> first (Node (Right (a,t')) (subForest as'):) <$> dbg s' t' aa
-            -- Left _ -> pure ([as'], sϵ)
+                case step of
+                    Right (t',s') -> first (Node (Right (a,t')) (subForest as'):) <$> dbg s' t' aa
+                    Left e        -> pure ([as', Node (Left e) []], sϵ)
+            Left _ -> pure ([as'], sϵ)
     dbg sϵ t (a:aa)         = do
         step <- r $ do
             (a',s) <- tae b sϵ a
