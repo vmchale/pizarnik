@@ -23,6 +23,9 @@ main = defaultMain $
           , eEx ["test/examples/dep.piz"] "x ors" "True"
           , eEx ["examples/fact.piz"] "7 fac" "5040"
           , eEx ["test/examples/cont.piz"] "7 fac" "5040"
+          , eEx ["test/examples/set.piz", "examples/set.piz"]
+              "x 3 x member 6 x member 7 x member"
+              "{`nil 1 {`nil 2 {{{`nil 3 `nil `branch} 5 `nil `branch} 6 {`nil 10 `nil `branch} `branch} `branch} `branch} True True False"
           ]
         , testGroup "ty"
             ( tE "test/data/pmfail.piz" "test/data/pmfail.piz:3:12: {a `just ⊕ `nil} ⊀ {a `just}"
