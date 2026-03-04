@@ -25,7 +25,7 @@ import           Nm
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (pretty), hsep, (<+>))
+import           Prettyprinter                    (Pretty (pretty), (<+>))
 import           Q
 import           Ty.A
 

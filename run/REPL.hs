@@ -6,7 +6,7 @@ import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (runExceptT)
 import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets, put, runState, runStateT)
 import qualified Data.IntMap                      as IM
-import           Data.List                        (inits, isPrefixOf)
+import           Data.List                        (isPrefixOf)
 import qualified Data.Map                         as M
 import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
