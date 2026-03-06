@@ -34,7 +34,7 @@ gt : Ord -- Bool
 ```
 
 Pattern-match exhaustiveness checking in the presence of named or-patterns
-is still a matter of insisting on precise inverses. Had we written
+is [still a matter of insisting on precise inverses](./inv.html). Had we written
 
 ```pizarnik
 lte : `lt  --
