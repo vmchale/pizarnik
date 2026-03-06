@@ -250,7 +250,7 @@ uus=sv uu;usc=ctx'ize uus
 su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 su _ s t@(Ρ _ n0 _) (Ρ _ n1 _) | n0==n1 = pure (t,s)
-su _ s (TT _ tt) (TV _ n) = do {(n',g) <- nρ n (Nm.singleton tt []); pure (n',g s)}
+su c s (TT l tt) (TV _ n) = do {r <- lT (ars c) tt; ρ <- pad l r; (n',g) <- nρ n (Nm.singleton tt ρ); pure (n',g s)}
 su _ s (Σ _ σ) (TV _ n) = do {(n',g) <- nρ n σ; pure (n',g s)}
 su _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 su _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
