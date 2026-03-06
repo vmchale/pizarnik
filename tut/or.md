@@ -49,3 +49,43 @@ We would be confronted with:
 ```
 prelude/ord.piz:8:6: {`lt ⊕ `eq ⊕ `gt} ⊀ {`lt ⊕ `gt}
 ```
+
+<!-- better example would be like doing something with bound variable, then stitching those together (with exhaustiveness checking -->
+
+We can define something like or-patterns binding variables, allowing reuse of negative
+and positive aspect, viz.
+
+```{.pizarnik include="../test/examples/or.piz" startLine="4"}
+```
+
+Exhaustiveness checking works, again from insisting on precise inverses:
+
+```pizarnik
+left : { a `left } -- a
+     := [ { `left⁻¹ } ]
+
+maybeLeft : These(a,b) -- Maybe(a)
+          := [ { left `just & `right⁻¹ drop `nothing } ]
+```
+
+yields
+
+```
+test/examples/badOr.piz:9:13: {a `left ⊕ b `right ⊕ a b `both} ⊀ {a `left ⊕ b `right}
+```
+
+and
+
+```pizarnik
+left : { a `left ⊕ a b `both } -- a
+     := [ { `left⁻¹ & `both⁻¹ nip } ]
+
+maybeLeft : These(a,b) -- Maybe(a)
+          := [ { left `just } ]
+```
+
+yields
+
+```
+test/examples/badOr2.piz:9:13: {a `left ⊕ b `right ⊕ a b `both} ⊀ {a `left ⊕ a b `both}
+```
