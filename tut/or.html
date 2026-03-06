@@ -292,8 +292,17 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-res
 <div class="sourceCode" id="cb4"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">gt</span> : <span class="dt">Ord</span> -- <span class="dt">Bool</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>   := [ { <span class="fu">lte</span> <span class="dt">False</span> &amp; <span class="cn">`gt</span>⁻¹ <span class="dt">True</span> } ]</span></code></pre></div>
-<!-- atomicity... allows us to combine unto what is essentially or-patterns -->
-<!-- mention pattern match exhaustiveness checking still works? -->
+<p>Pattern-match exhaustiveness checking in the presence of named
+or-patterns is still a matter of insisting on precise inverses. Had we
+written</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">lte</span> : <span class="cn">`lt</span>  --</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>   := [ <span class="cn">`lt</span>⁻¹ ]</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="fu">gt</span> : <span class="dt">Ord</span> -- <span class="dt">Bool</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>   := [ { <span class="fu">lte</span> <span class="dt">False</span> &amp; <span class="cn">`gt</span>⁻¹ <span class="dt">True</span> } ]</span></code></pre></div>
+<p>We would be confronted with:</p>
+<pre><code>prelude/ord.piz:8:6: {`lt ⊕ `eq ⊕ `gt} ⊀ {`lt ⊕ `gt}</code></pre>
 <div id="refs" class="references csl-bib-body hanging-indent"
 role="list">
 <div id="ref-munchmaccagnoni2009" class="csl-entry" role="listitem">

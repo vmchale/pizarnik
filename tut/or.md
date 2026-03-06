@@ -1,6 +1,9 @@
-% Or-Patterns
-% V. E. McHale
-% 18 Oct. 2025
+---
+title: Or-Patterns
+author: V. E. McHale
+date: 18 Oct. 2025
+bibliography: ty.bib
+---
 
 Begin by defining `Ord`:
 
@@ -30,5 +33,19 @@ gt : Ord -- Bool
    := [ { lte False & `gt⁻¹ True } ]
 ```
 
-<!-- atomicity... allows us to combine unto what is essentially or-patterns -->
-<!-- mention pattern match exhaustiveness checking still works? -->
+Pattern-match exhaustiveness checking in the presence of named or-patterns
+is still a matter of insisting on precise inverses. Had we written
+
+```pizarnik
+lte : `lt  --
+   := [ `lt⁻¹ ]
+
+gt : Ord -- Bool
+   := [ { lte False & `gt⁻¹ True } ]
+```
+
+We would be confronted with:
+
+```
+prelude/ord.piz:8:6: {`lt ⊕ `eq ⊕ `gt} ⊀ {`lt ⊕ `gt}
+```
