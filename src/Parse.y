@@ -205,9 +205,11 @@ parseErr t = throwE.Unexpected t
 data ParseE a = Unexpected !(Tok a) [String] | LexErr String | AnonymousArm !a deriving Functor
 
 instance Pretty a => Pretty (ParseE a) where
-    pretty (Unexpected t v) = pretty (loc t) <+> "Unexpected" <+> pretty t <> "." <+> "Expected one of" <+> concatWith (\x y -> x <> ", " <> y) (squotes.pretty<$>v)
+    pretty (Unexpected t v) = ep (loc t) ("Unexpected" <+> pretty t <> "." <+> "Expected one of" <+> concatWith (\x y -> x <> ", " <> y) (squotes.pretty<$>v))
     pretty (LexErr s)       = pretty (T.pack s)
-    pretty (AnonymousArm l) = pretty l <+> "Sum type variants must be terminated by a tag"
+    pretty (AnonymousArm l) = ep l "Sum type variants must be terminated by a tag"
+
+ep l = ((pretty l <> ":") <+>)
 
 instance Pretty a => Show (ParseE a) where show=show.pretty
 
