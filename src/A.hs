@@ -233,7 +233,7 @@ instance Pretty (A a) where
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
     pretty (Ca _ as) = braces (hsep (pretty<$>reverse as))
 
-pA = concatWith (\x y -> x <+> "&" <> line <> y)
+pA = concatWith (\x y -> x <#> "&" <+> y)
 
 pSeq :: P0 a => [a] -> Doc ann
 pSeq = hsep.map p0
