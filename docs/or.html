@@ -303,7 +303,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb5-1"><
 <span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>   := [ { <span class="fu">lte</span> <span class="dt">False</span> &amp; <span class="cn">`gt</span>⁻¹ <span class="dt">True</span> } ]</span></code></pre></div>
 <p>We would be confronted with:</p>
 <pre><code>prelude/ord.piz:8:6: {`lt ⊕ `eq ⊕ `gt} ⊀ {`lt ⊕ `gt}</code></pre>
-<!-- better example would be like doing something with bound variable, then stitching those together (with exhaustiveness checking -->
+<!-- better example would be like doing something with bound variable, then stitching those together? "choice" as "if ... then" idk -->
 <p>We can define something like or-patterns binding variables, allowing
 reuse of negative and positive aspect, viz.</p>
 <div class="sourceCode" id="cb7" data-startFrom="4"><pre
@@ -317,8 +317,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-res
 <span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a><span class="fu">hasLeft</span> : <span class="dt">These</span>(<span class="fu">a</span>,<span class="fu">b</span>) -- <span class="dt">Bool</span></span>
 <span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>        := [ { <span class="fu">left</span> <span class="fu">drop</span> <span class="dt">True</span> &amp; <span class="cn">`right</span>⁻¹ <span class="fu">drop</span> <span class="dt">False</span> } ]</span></code></pre></div>
-<p>Exhaustiveness checking works, again from insisting on precise
-inverses:</p>
+<p>Inexhaustive patterns are still caught, i.e.</p>
 <div class="sourceCode" id="cb8"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">left</span> : { <span class="fu">a</span> <span class="cn">`left</span> } -- <span class="fu">a</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>     := [ { <span class="cn">`left</span>⁻¹ } ]</span>

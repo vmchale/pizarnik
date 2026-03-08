@@ -8,7 +8,6 @@ import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
 import qualified Data.Map                         as M
-import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
@@ -29,15 +28,16 @@ import           Ty
 repl :: [FilePath] -> IO ()
 repl fps = runRepl fps loop
 
--- TODO: include names in state for completions
 data X = X !AlexUserState (S Loc) (MC (TS Loc) Loc)
 
 type Repl = InputT (StateT X IO)
 
 names :: Monad m => StateT X m [String]
 names = do
-    X (_,_,n,_) _ (_,_,b) <- get
-    pure ("dip":"dup":"strcat":mapMaybe (fmap show.(n IM.!?)) (IM.keys b))
+    X (_,_,n,_) _ (x,_,b) <- get
+    let boo (-2) = "True"; boo (-1) = "False"
+        boo u = show (n IM.! u)
+    pure ("dip":"dup":"strcat":map boo (IM.keys b<>IM.keys x))
 
 ll=lift get;lg=lift.gets
 

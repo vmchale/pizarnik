@@ -58,7 +58,7 @@ and positive aspect, viz.
 ```{.pizarnik include="../test/examples/or.piz" startLine="4"}
 ```
 
-Exhaustiveness checking works, again from insisting on precise inverses:
+Inexhaustive patterns are still caught, i.e.
 
 ```pizarnik
 left : { a `left } -- a
