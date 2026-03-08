@@ -528,12 +528,12 @@ lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
                             | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
-                               | otherwise = do {(_,g) <- nρ n (σ0<>σ1); g<$>mσ lt c σ0 σ1} -- [tag:fresh]
+                               | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                               | otherwise = sf t0 t1
 lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
 -- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t) TODO?
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
-                                   -- FIXME: we do exactly the opposite in [ref:fresh]
                                    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
@@ -566,7 +566,7 @@ uU c x ts = Σ x <$> foldMapM f ts where
         -> TS a -- ^ signature
         -> UM a (Subst a)
 μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
-lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s l0 l1; mc lt c s' r0 r1} -- TODO: why flip lt instead of l1 l0...?
+lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc lt c s r0 r1; mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s' l0 l1} -- right must substitute first to "fill out" ρ
 
 {-# SCC mtsc #-}
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> UM a (Subst a)
