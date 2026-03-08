@@ -173,19 +173,7 @@ peekS s (TS l r) = TS (peek s l) (peek s r)
 (@>) s (Σ x ts) = Σ x (fmap (s@@) ts)
 (@>) _ SV{} = error"Internal error: (@>) applied to stack variable "
 
-so :: T a -> IS.IntSet
-so (SV _ n)        = NmSet.singleton n
-so (TA _ t₀ t₁)    = so t₀<>so t₁
-so TP{}            = IS.empty
-so (UU _ ts )      = so@<>ts
-so (QT _ (TS l r)) = so@<>l <> so@<>r
-so TT{}            = IS.empty
-so TC{}            = IS.empty
-so (Σ _ a)         = foldMap (so@<>) a
-so (Ρ _ _ σ)       = foldMap (so@<>) σ
-so TV{}            = IS.empty
-
-occ :: T a -> IS.IntSet
+occ, so :: T a -> IS.IntSet
 occ (TV _ n)        = NmSet.singleton n
 occ (TA _ t0 t1)    = occ t0<>occ t1
 occ TP{}            = IS.empty
@@ -196,6 +184,17 @@ occ TC{}            = IS.empty
 occ SV{}            = IS.empty
 occ (Σ _ a)         = foldMap (occ@<>) a
 occ (Ρ _ n a)       = NmSet.insert n$foldMap (occ@<>) a
+
+so TT{}            = IS.empty
+so TC{}            = IS.empty
+so (SV _ n)        = NmSet.singleton n
+so (TA _ t₀ t₁)    = so t₀<>so t₁
+so TP{}            = IS.empty
+so (UU _ ts )      = so@<>ts
+so (QT _ (TS l r)) = so@<>l <> so@<>r
+so (Σ _ a)         = foldMap (so@<>) a
+so (Ρ _ _ σ)       = foldMap (so@<>) σ
+so TV{}            = IS.empty
 
 occρ :: Nm a -> Nm.NmMap (TSeq a) -> Bool
 occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
