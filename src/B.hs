@@ -20,10 +20,7 @@ lC :: Nm a -> Cs a -> ([Nm a], T a)
 lC n@(Nm _ (U i) _) = IM.findWithDefault (error("Internal error. Type synonym '" ++ show n ++ "' not in scope")) i
 
 bS :: Β a -> T a -> Either (BE a) (T a)
-bS st (TV _ n@(Nm _ (U j) _)) =
-    case IM.lookup j st of
-        Nothing -> Left $ TCA n
-        Just t  -> Right t
+bS st (TV _ n@(Nm _ (U j) _)) | Just t <- IM.lookup j st = Right t | otherwise = Left $ TCA n
 -- avoid TCA errors not by user when substituting
 bS st t@(TA x t0 t1) | Just (th,ts) <- unA t = foldl (TA x) th <$> traverse (bS st) ts -- avoid expanding infinite (e.g. List(a))
                      | otherwise = TA x <$> bS st t0 <*> bS st t1
