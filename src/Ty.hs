@@ -347,12 +347,12 @@ ctx'ize us c s = us c s `onM` (rwAr (ars c).peek s)
 ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
           | otherwise = nρ n σ
 
--- fan out
 nρ n@(Nm t _ l) σ = do
     n' <- fr l t
     let t'=Ρ l n' σ
     pure (t', iTV n t')
 
+-- fan out
 φ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
