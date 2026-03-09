@@ -6,10 +6,10 @@ type Set o = { `nil +. Set(o) o Set(o) `branch };
 insert : Int Set(Int) -- Set(Int)
        := [ { `nil^ [`nil] dip `nil `branch
             & `branch^ (14) dup2 cmpInt
-                { `eq^ (342) drop `branch
-                & `gt^ (123) insert (13) `branch
-                & `lt^ (124) insert (23) `branch
-                }
+                { `eq^ (342) drop
+                & `gt^ (123) insert (13)
+                & `lt^ (124) insert (23)
+                } `branch
             }
           ]
 
