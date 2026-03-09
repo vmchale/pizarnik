@@ -567,22 +567,16 @@ liftClone :: TS a -> UM a (TS a)
 liftClone ts = StateT $ \u -> let (w, ts') = cloneSig u ts in Right (ts',w)
 
 lC :: Cs a -> Nm a -> UM a (T a)
-lC c n@(Nm _ (U i) l) = do
-    case IM.lookup i c of
-        Just ([],t) -> pure (t$>l)
-        Nothing     -> throwError$IS n
+lC c n@(Nm _ (U i) l) | Just ([],t) <- IM.lookup i c = pure (t$>l)
+                      | otherwise = throwError$IS n
 
 lT :: Ar -> Nm a -> UM a Int
-lT ar n@(Nm _ (U u) _) = do
-    case IM.lookup u ar of
-        Just i  -> pure i
-        Nothing -> throwError$AM n
+lT ar n@(Nm _ (U u) _) | Just i <- IM.lookup u ar = pure i
+                       | otherwise = throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> UM a (TS a)
-lA c n@(Nm _ (U i) l) = do
-    case IM.lookup i c of
-        Just ts -> (l<$) <$> liftClone ts
-        Nothing -> throwError$IS n
+lA c n@(Nm _ (U i) l) | Just ts <- IM.lookup i c = (l<$) <$> liftClone ts
+                      | otherwise = throwError$IS n
 
 tM :: Ext a -> M a a -> UM a (M a (TS a), Ext a)
 tM b (M is ds) = first (M is) <$> tD b ds
