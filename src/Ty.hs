@@ -484,7 +484,7 @@ mσ u c σ0 σ1 =
 μ c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
 μ c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; μ c t0 t1}
 μ c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; μ c t0 t1}
-μ _ TP{} TP{} = pure mempty
+μ _ t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure mempty | otherwise = mf t0 t1
 μ c (QT _ ts0) (QT _ ts1) = μs c mempty ts0 ts1
 μ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 μ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure mempty
