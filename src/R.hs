@@ -147,7 +147,7 @@ nmMapKeys f (NmMap x a) = NmMap (IM.mapKeys f x) (IM.mapKeys f a)
 t0s b = traverse (t0 b)
 
 t0 :: Ex -> T a -> RM a (T a)
-t0 b (TT x n) = TV x<$>frtt b n; t0 b (Σ x ts) = Σ x <$> fkeys b ts
+t0 b (TT x n) = TT x<$>frtt b n; t0 b (Σ x ts) = Σ x <$> fkeys b ts
 t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
 t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> t0s b ts
 t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
