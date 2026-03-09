@@ -24,7 +24,7 @@ source-repository head
 
 common warnings
     default-language:   Haskell2010
-    default-extensions: OverloadedStrings LambdaCase
+    default-extensions: OverloadedStrings LambdaCase OrPatterns
     ghc-options:
         -Wall -Wincomplete-uni-patterns -Wincomplete-record-updates
         -Wredundant-constraints -Widentities -Wcpp-undef

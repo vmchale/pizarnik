@@ -40,13 +40,11 @@ instance Show Ex where show=show.pretty
 data Lens a b = Lens { vw :: a -> b, set :: b -> a -> a }
 
 bfl,btl,bal :: Lens Ex Bd
-btl = Lens bt (\x y -> y { bt=x })
-bfl = Lens bf (\x y -> y { bf = x })
+btl = Lens bt (\x y -> y { bt = x }); bfl = Lens bf (\x y -> y { bf = x })
 bal = Lens btt (\x y -> y { btt = x })
 
 bvl,bsl :: Lens Rs Bt
-bsl = Lens bsv (\x y -> y { bsv = x})
-bvl = Lens btv (\x y -> y { btv = x})
+bsl = Lens bsv (\x y -> y { bsv = x}); bvl = Lens btv (\x y -> y { btv = x})
 
 type RM x = StateT Rs (Either (RE x))
 
@@ -113,9 +111,8 @@ lA b n                   = lD btt b n
 
 rA :: Ex -> A a -> RM a (A a)
 rA b (V x n)           = V x <$> lV b n
-rA _ a@B{}             = pure a
+rA _ a@(B{};L{})       = pure a
 rA b (C x tt)          = C x <$> lA b tt
-rA _ a@L{}             = pure a
 rA b (Q x as)          = Q x <$> rAs b as
 rA b (Inv x a)         = Inv x <$> rA b a
 rA b (Pat x (SL l αs)) = Pat x <$> (SL l <$> traverse (rAs b) αs)
@@ -150,7 +147,7 @@ t0 :: Ex -> T a -> RM a (T a)
 t0 b (TT x n) = TT x<$>frtt b n; t0 b (Σ x ts) = Σ x <$> fkeys b ts
 t0 b (QT x (TS l r)) = QT x <$> (TS <$> t0s b l <*> t0s b r)
 t0 b (TA x t t') = TA x <$> t0 b t <*> t0 b t'; t0 b (UU x ts) = UU x <$> t0s b ts
-t0 _ t@TC{} = pure t; t0 _ t@TV{} = pure t; t0 _ t@TP{} = pure t
+t0 _ t@(TC{};TV{};TP{}) = pure t
 
 rD0 :: Ex -> D a a -> RM a (D a a)
 rD0 b (F l n t as)  = F l <$> frn b n <*> pure t <*> pure as
