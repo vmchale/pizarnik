@@ -11,7 +11,6 @@ import qualified Data.Map                         as M
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
-import           Data.Tree                        (Tree (Node))
 import           L
 import           Loc
 import           P
@@ -79,15 +78,14 @@ na = faseq no
 
 pTs = vsep.pT []
 
-pT _ []              = []
-pT c (Node x xs:xss) =
-    case x of
-        Right (a,t) -> let c'=c++[a] in tr (pan c' t:pT c' xss)
-        Left e      -> tr [pretty e]
-  where tr | null xs = id | otherwise = (indent 4 (pTs xs):)
+pT _ []                        = []
+pT c (TN (a, Right t):ts)      = let c'=c++[a] in pan c' t:pT c' ts
+pT c (TN (a, Left e):_)        = let c'=c++[a] in [pan c' e]
+pT c (TArm (a, Right t) as:ts) = let c'=c++[a] in cas as ++ nl<>pan c' t:pT c' ts
+pT c (TArm (a, Left e) as:_)   = let c'=c++[a] in cas as ++ [nl<>pan c' e]
 
-        pan e t = group (hsep (pretty<$>e) <+> ":" <^> group (pretty t))
-        s <^> t = flatAlt (t<#>indent 4 t) (s<+>t)
+pan e t = group (hsep (pretty<$>e) <+> ":" <^> group (pretty t))
+s <^> t = flatAlt (t<#>indent 4 t) (s<+>t); cas=map ((nl<>).indent 4.pTs); nl=hardline
 
 try :: String -> Repl ()
 try src = do

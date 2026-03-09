@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( TE, Ext (..), tM, tAS, tdbg ) where
+module Ty ( TE, Ext (..), tM, tAS, rty, tdbg, TN (..) ) where
 
 import           A
 import           B
@@ -18,7 +18,6 @@ import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.List                        (foldl')
 import qualified Data.Text                        as T
-import           Data.Tree                        (Forest, Tree (..))
 import           F
 import           G
 import           Nm
@@ -610,56 +609,49 @@ sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
     γ sϵ tl []     = pure (tl, sϵ)
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
-tdbg :: Ext a -> ASeq a -> State Int (Forest (Either (TE a) (A a, TS a)))
-tdbg b aA = do {(a',s) <- dM mempty aA; pure (fmap (fmap (second (s@*)<$>)) a')}
+data TN a = TN { can :: a } | TArm { can :: a, ρs :: [[TN a]] }
+          | TQ { can :: a, qs :: [TN a] } deriving Functor
+
+type AP a = (A a, Either (TE a) (TS a))
+
+tdbg :: Ext a -> ASeq a -> State Int [TN (AP a)]
+tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second (second (s@*)))) a')}
   where
     c=π b
 
-    ll x = Node x []
-
     dM s (SL l as) = do {a <- fsv l "A"; (t,s') <- dbg s ([a] --: [a]) as; pure (t, s')}
 
-    dMs s []     = pure ([], s)
-    dMs s (a:aa) = do {(a',s') <- dM s a; first (a':)<$>dMs s' aa}
-
-    dbgψ p s as = do
-        (as',s') <- dMs s (aas as)
-        -- maybe this is stupid? we have [Forest] for as' for a reason...
-        -- we drop constructor tags here which is not wise
-        let enN = map (\m -> Node (rootLabel$last m) m)
-        case partitionEithers (rootLabel.last<$>as') of
-            ([], a'') -> let sigs = map (peekS s') (snd<$>a'') in do {step <- r $ dU c s' (aLs as) sigs; case step of Right (ψt,s'') -> pure (Node (Right (p, ψt)) (enN as'), s''); Left e -> pure (Node (Left e) (enN as'), s')}
-            (e:es, _) -> pure (Node (Left e) (enN as' ++ (ll.Left<$>es)), s')
+    χ []                = ([],[])
+    χ ((a, Right t):as) = second ((a,t):) $ χ as
+    χ ((a, Left e):as)  = first ((a,e):) $ χ as
 
     dbg sϵ _ []            = pure ([], sϵ)
-    dbg sϵ t (a@(Pat _ as):aa)  = do
-        (as', s) <- dbgψ a sϵ as
-        case rootLabel as' of
-            Right (_,tt) -> do
-                step <- r $ cat c s t tt
+    dbg sϵ t (a@(Pat _ as):aa) = do
+        (as',s) <- mS dM sϵ (aas as)
+        (tp,as'',s') <- case χ (can.last<$>as') of
+            ([], a'') -> do step <- r $ dU c s (aLs as) sigs
+                            case step of
+                                Right (ψt, s') -> pure (Right ψt, as', s')
+                                Left e         -> pure (Left e, as', s)
+                         where sigs = map (peekS s) (snd<$>a'')
+                         -- FIXME: maybe graft on aes
+            ((_,e):ae, _) -> pure (Left e, as', s)
+        case tp of
+            Right tt -> do
+                step <- r $ cat c s' t tt
                 case step of
-                    Right (t',s') -> first (Node (Right (a,t')) (subForest as'):) <$> dbg s' t' aa
-                    Left e        -> pure ([as', Node (Left e) []], sϵ)
-            Left _ -> pure ([as'], sϵ)
+                    Right (t', s'') -> first (TArm (a, Right t') as'':) <$> dbg s'' t' aa
+                    Left e          -> pure ([TArm (a, Left e) as''], s')
+            Left e -> pure ([TArm (a, Left e) as''], s')
     dbg sϵ t (a:aa)         = do
         step <- r $ do
             (a',s) <- tae b sϵ a
             -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
             cat c s t (aL a')
-        case step of Right (t',s) -> first (ll (Right (a,t')):) <$> dbg s t' aa; Left e -> pure ([ll$Left e], sϵ)
+        case step of Right (t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa; Left e -> pure ([TN (a, Left e)], sϵ)
 
     r :: UM a x -> State Int (Either (TE a) x)
     r x = state (\i -> let y=runStateT x i in case y of {Left e -> (Left e,i); Right (z,j) -> (Right z,j)})
-
-{-
-tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq _ s (SL l [])     = do {a <- fsv l "A"; pure (SL ([a] --: [a]) [], s)}
-tseq b s (SL l (a:as)) = do
-    (a',s0) <- tae b s a
-    (SL tϵ as', s1) <- tseq b s0 (SL l as)
-    (t, s2) <- cat (π b) s1 (aL a') tϵ
-    pure (SL t (a':as'), s2)
--}
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
@@ -731,7 +723,7 @@ ta b s (C l tt)        = do
     ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
-    (as', s0) <- tS b s (aas as)
+    (as', s0) <- mS (tseq b) s (aas as)
     let sigs = map (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
@@ -840,9 +832,9 @@ dU c s x tss = do
     q t | Just{} <- unA t = lΒ c t
     q t = pure t
 
-tS :: Ext a -> Subst a -> [ASeq a] -> UM a ([ASeq (TS a)], Subst a)
-tS _ s []     = pure ([], s)
-tS b s (a:as) = do {(a',s') <- tseq b s a; first (a':) <$> tS b s' as}
+mS :: Monad m => (Subst a -> b -> m (c, Subst a)) -> Subst a -> [b] -> m ([c], Subst a)
+mS _ s []     = pure ([], s)
+mS f s (a:as) = do {(a',s') <- f s a; first (a':)<$>mS f s' as}
 
 zS op s (t0:t0s) (t1:t1s) = do {(t',s') <- op s t0 t1; first (t':) <$> zS op s' t0s t1s}
 zS _ s [] []              = pure ([], s)
