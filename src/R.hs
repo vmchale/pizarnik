@@ -105,9 +105,8 @@ lD g b n@(Nm t (U j) x) = do
 
 lT, lV,lA :: Ex -> Nm a -> RM a (Nm a)
 lT=lD bt; lV=lD bf
-lA _ n@(Nm _ (U (-1)) _) = pure n
-lA _ n@(Nm _ (U (-2)) _) = pure n
-lA b n                   = lD btt b n
+lA _ n@(Nm _ (U (-1;-2)) _) = pure n
+lA b n                      = lD btt b n
 
 rA :: Ex -> A a -> RM a (A a)
 rA b (V x n)           = V x <$> lV b n
