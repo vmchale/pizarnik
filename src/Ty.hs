@@ -490,7 +490,7 @@ mσ u c σ0 σ1 =
 μ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure mempty
                            | otherwise = mf t0 t1
 μ _ t0 t1@TP{} = mf t0 t1; μ _ t0 t1@QT{} = mf t0 t1
-μ _ t0 t1@Σ{} = mf t0 t1
+μ _ t0 t1@Σ{} = mf t0 t1; μ _ t0 t1@TT{} = mf t0 t1
 μ _ SV{} _ = ie; μ _ _ SV{} = ie
 
 -- ≺
@@ -500,42 +500,36 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
-lt _ t0 t1@(Ρ _ n σ) | Nm.null σ = c1 n t0 t1
 lt _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
 lt _ t0 t1@TV{} = sf t0 t1
 lt _ t0@TV{} t1 = sf t0 t1
-lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
 -- [tag:expand]
 lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; lt c t0' t1}
 lt c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; lt c t0 t1'}
+lt c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; lt c t0 t1}
+lt c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; lt c t0 t1}
+lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
+lt _ (TP _ l0) (TP _ l1) | l0==l1 = pure mempty
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     | occρ n σ1 = throwError$O t0 t1
+    -- [tag:right]
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
     | otherwise = sf t0 t1
-    -- TODO: Σ, TT
-lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty
-                            | otherwise = sf t0 t1
+lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty | otherwise = sf t0 t1
+lt _ t0@(Σ _ a) t1@(TT _ n) | Just [] <- Nm.lookup n a = pure mempty | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
+                               -- FIXME: [ref:right] binds a variable hm
                                | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                | otherwise = sf t0 t1
-lt _ t@QT{} (Ρ _ n σ) | Nm.null σ = pure (sTV n t)
--- lt _ (Ρ _ n σ) t@QT{} | Nm.null σ = pure (sTV n t) TODO?
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
                                    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
-lt _ t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure mempty
-                               | otherwise = sf t0 t1
-lt c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; lt c t0 t1}
-lt c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; lt c t0 t1}
-lt _ t0@TP{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TP{} = sf t0 t1
-lt _ t0@TP{} t1@TT{} = sf t0 t1; lt _ t0@TT{} t1@TP{} = sf t0 t1
-lt _ t0@TT{} t1@QT{} = sf t0 t1; lt _ t0@QT{} t1@TT{} = sf t0 t1
-lt _ t0@TP{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@TP{} = sf t0 t1
-lt _ t0@QT{} t1@Σ{} = sf t0 t1; lt _ t0@Σ{} t1@QT{} = sf t0 t1
+lt _ t0@TP{} t1 = sf t0 t1; lt _ t0 t1@TP{} = sf t0 t1
+lt _ t0@QT{} t1 = sf t0 t1; lt _ t0 t1@QT{} = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 {-# SCC uU #-}
