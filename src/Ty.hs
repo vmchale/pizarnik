@@ -615,7 +615,7 @@ data TN a = TN { can :: a } | TArm { can :: a, ρs :: [[TN a]] }
 type AP a = (A a, Either (TE a) (TS a))
 
 tdbg :: Ext a -> ASeq a -> State Int [TN (AP a)]
-tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second (second (s@*)))) a')}
+tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')}
   where
     c=π b
 
@@ -634,8 +634,7 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second (second (s@*))))
                                 Right (ψt, s') -> pure (Right ψt, as', s')
                                 Left e         -> pure (Left e, as', s)
                          where sigs = map (peekS s) (snd<$>a'')
-                         -- FIXME: maybe graft on aes
-            ((_,e):ae, _) -> pure (Left e, as', s)
+            ((_,e):_, _) -> pure (Left e, as', s)
         case tp of
             Right tt -> do
                 step <- r $ cat c s' t tt
