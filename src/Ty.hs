@@ -33,7 +33,6 @@ infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
-infix 4 ?
 
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
@@ -326,26 +325,23 @@ si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
-sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d) =
-    let n0=length t0d; n1=length t1d in
-    case n0?n1 of
-        GT -> let (uws, res) = splitFromLeft n1 t0
-              in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
-        _  -> let (uws, res) = splitFromLeft n0 t1
-              in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
-sv u c s t0@(SV _ sn0:t0d) t1 =
-    let n0=length t0d; n1=length t1 in
-    case n0?n1 of
-        GT -> throwError$LE t0 t1
-        _  -> let (uws, res) = splitFromLeft n0 t1
-        -- TODO: why iSV vs. ς?
-              in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
-sv u c s t0 t1@(SV _ sn1:t1d) =
-    let n0=length t0; n1=length t1d in
-    case n0?n1 of
-        LT -> throwError$LE t1 t0
-        _  -> let (uws, res) = splitFromLeft n1 t0
-              in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) res t1d
+sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d)
+    | n0>n1 = let (uws, res) = t0/|n1 in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
+    | otherwise = let (uws, res) = t1/|n0 in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
+  where
+    n0=length t0d; n1=length t1d
+sv u c s t0@(SV _ sn0:t0d) t1
+    -- TODO: why iSV vs. ς?
+    | n1>=n0 = let (uws,res) = t1/|n0 in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
+    | otherwise = throwError$LE t0 t1
+
+  where
+    n0=length t0d; n1=length t1
+sv u c s t0 t1@(SV _ sn1:t1d)
+    | n0>=n1 = let (uws, res) = t0/|n1 in first (uws++) <$> ctx'ize (sv u) c (iSV sn1 uws s) res t1d
+    | otherwise = throwError$LE t1 t0
+  where
+    n0=length t0; n1=length t1d
 sv u c s (t0:ts0) (t1:ts1) = do
     (t',s') <- u c s t0 t1
     first (t':) <$> ctx'ize (sv u) c s' ts0 ts1
@@ -446,19 +442,15 @@ ms :: (Nt a -> T a -> T a -> UM a (Subst a))
    -> TSeq a -- ^ signature
    -> UM a (Subst a)
 ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
-    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-               in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    -- FIXME: eat based on constructor arity?
+    | n0<=n1 = let (uws, res) = t1/|n0 in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
     | otherwise = throwError$LE t0e t1e
   where n0=length t0;n1=length t1
 ms u c s t0e@(SV _ n:t0) t1
-    | n0<=n1 = let (uws, res) = splitFromLeft n0 t1
-               in mc u c (iSV n uws s) t0 res
+    | n0<=n1 = let (uws, res) = t1/|n0 in mc u c (iSV n uws s) t0 res
     | otherwise = throwError$LE t0e t1
   where n0=length t0;n1=length t1
 ms u c s t0 t1e@(SV _ n:t1)
-    | n0>=n1 = let (uws, res) = splitFromLeft n1 t0
-               in mc u c (iSV n uws s) res t1
+    | n0>=n1 = let (uws, res) = t0/|n1 in mc u c (iSV n uws s) res t1
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
@@ -880,7 +872,5 @@ onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 
 foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
-
-(?) = compare
 
 ie=error"internal error."
