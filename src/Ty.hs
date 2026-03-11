@@ -151,12 +151,10 @@ peekS s (TS l r) = TS (peek s l) (peek s r)
 
 {-# SCC (@>) #-}
 (@>) :: Subst a -> T a -> T a
-(@>) _ t@TP{}          = t
-(@>) _ t@TT{}          = t
-(@>) _ t@TC{}          = t
-(@>) s (TA x t0 t1)    = TA x (s@>t0) (s@>t1)
-(@>) s (QT x sig)      = QT x (s@*sig)
-(@>) s (UU x ts)       = UU x (map (s@>) ts)
+(@>) _ t@(TP{};TT{};TC{}) = t
+(@>) s (TA x t0 t1)       = TA x (s@>t0) (s@>t1)
+(@>) s (QT x sig)         = QT x (s@*sig)
+(@>) s (UU x ts)          = UU x (map (s@>) ts)
 (@>) s t@(TV _ (Nm _ (U u) _)) =
     case IM.lookup u (tvs s) of
         Nothing -> t
@@ -520,16 +518,14 @@ lt _ SV{} _ = ie; lt _ _ SV{} = ie
 {-# SCC uU #-}
 uU :: Cs a -> a -> [T a] -> UM a (T a)
 uU c x ts = Σ x <$> foldMapM f ts where
-    f (TT _ n)   = pure (Nm.singleton n [])
-    f (Σ _ σ)    = pure σ
-    f (TC _ n)   = f =<< lC c n
-    f t          | Just{} <- unA t = f =<< lΒ c t
-    f (UU _ ts_) = foldMapM f ts_
+    f (TT _ n)    = pure (Nm.singleton n [])
+    f (Σ _ σ)     = pure σ
+    f (TC _ n)    = f =<< lC c n
+    f t           | Just{} <- unA t = f =<< lΒ c t
+    f (UU _ ts_)  = foldMapM f ts_
     -- FIXME: unions on variables? (could end up being instantiated wrong...)
-    f SV{}       = ie
-    f Ρ{}        = ie
-    f TP{}       = throwError$Bare (UU x ts)
-    f QT{}       = throwError$Bare (UU x ts)
+    f (SV{};Ρ{})  = ie
+    f (TP{};QT{}) = throwError$Bare (UU x ts)
 
 μs, lts :: Nt a -> Subst a
         -> TS a -- ^ inferred
