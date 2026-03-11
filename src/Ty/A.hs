@@ -42,7 +42,7 @@ cloneSig u = (\(ts,RT uϵ _ _) -> (uϵ,ts)).flip runState (RT u IM.empty IM.empt
 cloneSigM :: TS a -> RM (TS a)
 cloneSigM (TS tl tr) = TS <$> traverse cT tl <*> traverse cT tr
   where
-    cT t@TP{} = pure t; cT t@TT{} = pure t; cT t@TC{} = pure t
+    cT t@(TP{};TT{};TC{}) = pure t
     cT (TV x n) = TV x <$> tryTV n; cT (SV x n) = SV x <$> trySV n
     cT (QT x ts) = QT x <$> cloneSigM ts
     cT (TA x t ts) = TA x <$> cT t <*> cT ts
