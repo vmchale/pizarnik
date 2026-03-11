@@ -228,10 +228,8 @@ uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
 uu c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; uu c s t0 t1}
 uu _ s te@(Ρ _ n σ) t = nv s n σ t (UF te t) (O te t)
 uu _ s t te@(Ρ _ n σ) = nv s n σ t (UF t te) (O t te)
-uu _ _ t0@TP{} t1 = throwError$UF t0 t1
-uu _ _ t0 t1@TP{} = throwError$UF t0 t1
-uu _ _ t0@QT{} t1 = throwError$UF t0 t1
-uu _ _ t0 t1@QT{} = throwError$UF t0 t1
+uu _ _ t0@(TP{};QT{}) t1 = throwError$UF t0 t1
+uu _ _ t0 t1@(TP{};QT{}) = throwError$UF t0 t1
 uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
 
 uus=sv uu;usc=ctx'ize uus
@@ -293,9 +291,7 @@ su c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; su c s t0 t1}
 su c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; su c s t0 t1}
 su _ s t te@(Ρ _ n σ) = nv s n σ t (CF t te) (O t te)
 su _ s te@(Ρ _ n σ) t = nv s n σ t (CF te t) (O te t)
-su _ _ t0@QT{} t1 = cf t0 t1; su _ _ t0 t1@QT{} = cf t0 t1
-su _ _ t0@TP{} t1 = cf t0 t1; su _ _ t0 t1@TP{} = cf t0 t1
-su _ _ t0@TT{} t1 = cf t0 t1; su _ _ t0 t1@TT{} = cf t0 t1
+su _ _ t0@(QT{};TP{};TT{}) t1 = cf t0 t1; su _ _ t0 t1@(QT{};TP{};TT{}) = cf t0 t1
 su _ _ SV{} _ = ie; su _ _ _ SV{} = ie
 
 uσ u c s l σ0 σ1 =
@@ -521,8 +517,7 @@ lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
                                    | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
-lt _ t0@TP{} t1 = sf t0 t1; lt _ t0 t1@TP{} = sf t0 t1
-lt _ t0@QT{} t1 = sf t0 t1; lt _ t0 t1@QT{} = sf t0 t1
+lt _ t0@(TP{};QT{}) t1 = sf t0 t1; lt _ t0 t1@(TP{};QT{}) = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie
 
 {-# SCC uU #-}
@@ -705,14 +700,8 @@ ta _ s (L l (S p)) = do
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
 ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
-ta _ s (B l Plus)      = pure (ib l Plus, s)
-ta _ s (B l Minus)     = pure (ib l Minus, s)
-ta _ s (B l Mul)       = pure (ib l Mul, s)
-ta _ s (B l Div)       = pure (ib l Div, s)
-ta _ s (B l Rem)       = pure (ib l Rem, s)
-ta _ s (B l Eq)        = pure (rel l Eq, s)
-ta _ s (B l Gt)        = pure (rel l Gt, s)
-ta _ s (B l Lt)        = pure (rel l Lt, s)
+ta _ s (B l op@(Plus{};Minus{};Mul{};Div{};Rem{})) = pure (ib l op, s)
+ta _ s (B l r@(Eq{};Gt{};Lt{})) = pure (rel l r, s)
 ta _ s (B l Cat)       = pure (B ([TP l StrT, TP l StrT] --: [TP l StrT]) Cat, s)
 ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q ([] --: [QT l (aLs as')]) as', s')}
 ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (r--:l) a', s')}
