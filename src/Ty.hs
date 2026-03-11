@@ -622,7 +622,7 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
             Right tt ->
                 r (cat c s' t tt)
                     (\(t',s'') -> first (TArm (a, Right t') as':) <$> dbg s'' t' aa)
-                    (\e -> ([TArm (a, Left e) as'], s'))
+                    (\e        -> ([TArm (a, Left e) as'], s'))
             Left e -> pure ([TArm (a, Left e) as'], s')
     dbg sϵ t (a@(Q l as₀):aa) = do
         (as',s) <- dM sϵ as₀
@@ -630,13 +630,15 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
               ([], a'')    -> let qt = [] --: [QT l (snd (last a''))] in
                               r (cat c s t qt)
                                   (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
-                                  (\e -> ([TN (a, Left e)], s))
-              ((_,e):_, _) -> pure ([TN (a, Left e)], s)
+                                  ((,s).ls a)
+              ((_,e):_, _) -> pure (ls a e, s)
     dbg sϵ t (a:aa)         =
             -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
         r (do {(a',s) <- tae b sϵ a; cat c s t (aL a')})
             (\(t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa)
-            (\e -> ([TN (a, Left e)], sϵ))
+            ((,sϵ).ls a)
+
+    ls a e = [TN (a, Left e)]
 
     r :: UM a x -> (x -> State Int c) -> (TE a -> c) -> State Int c
     r x act err = do {i <- get; let y=runStateT x i in case y of {Left e -> pure (err e); Right (z,j) -> put j *> act z}}
