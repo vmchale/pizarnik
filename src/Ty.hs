@@ -345,15 +345,21 @@ nρ n@(Nm t _ l) σ = do
 
 -- fan out
 φ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
-φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
-                            | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-φ _ s (Σ _ as) (TT x n) = pure (Σ x (Nm.insert n [] as), s)
-φ _ s (TT x n) (Σ _ as) = pure (Σ x (Nm.insert n [] as), s)
-φ _ s (Σ x σ0) (Σ _ σ1) = pure (Σ x (σ0<>σ1), s)
 φ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (t, iTV n1 t s)
 φ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 φ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+φ _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
+                                | otherwise = φf t0 t1
+φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
+                            | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
+φ _ s t0@(Σ _ as) t1@(TT x n) | Just (_:_) <- Nm.lookup n as = φf t0 t1
+                              | otherwise = pure (Σ x (Nm.insert n [] as), s)
+φ _ s t0@(TT x n) t1@(Σ _ as) | Just (_:_) <- Nm.lookup n as = φf t0 t1
+                              | otherwise = pure (Σ x (Nm.insert n [] as), s)
+φ c s (Σ x σ₀) (Σ _ σ₁) = do
+    (ς,s') <- φσ c s x σ₀ σ₁
+    pure (Σ x (σ₀<>σ₁<>ς), s')
 φ c s t@(Σ _ as) (Ρ x n σ) = do
     (ς, s') <- φσ c s x σ as
     (n',g) <- ρc n (σ<>as<>ς) t
@@ -394,8 +400,6 @@ nρ n@(Nm t _ l) σ = do
 φ c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; φ c s t0 t1}
 φ _ s t te@(Ρ _ n σ) = nv s n σ t (ΦF t te) (O t te)
 φ _ s te@(Ρ _ n σ) t = nv s n σ t (ΦF te t) (O t te)
-φ _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
-                                | otherwise = φf t0 t1
 φ c s t0@QT{} t1@QT{} = uu c s t0 t1
 φ _ _ t0@TP{} t1 = φf t0 t1
 φ _ _ t0 t1@TP{} = φf t0 t1
