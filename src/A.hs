@@ -28,8 +28,8 @@ import           Nm
 import           Nm.Map                           (NmMap, nmlist)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, line, parens, punctuate, space,
-                                                   tupled, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, parens, punctuate, space, tupled,
+                                                   (<+>))
 
 infixl 9 <:>
 infixr 0 --:
@@ -144,14 +144,14 @@ instance Functor T where
 psv=fr sr
 
 instance PT (T a) where
-    pp t@TP{} = pure t; pp t@TT{} = pure t
-    pp t@TC{} = pure t; pp t@Ρ{} = pure t
-    pp (TV x n)        = TV x <$> fr vr n
-    pp (SV x n)        = SV x <$> fr sr n
-    pp (TA x t₀ t₁)    = TA x <$> pp t₀ <*> pp t₁
-    pp (QT x (TS l r)) = QT x <$> (TS <$> traverse pp l <*> traverse pp r)
-    pp (UU x ts)       = UU x <$> traverse pp ts
-    pp (Σ x a)         = Σ x <$> traverse (traverse pp) a
+    pp t@(TP{};TT{};TC{}) = pure t
+    pp (Ρ x n σ)          = Ρ x n <$> traverse (traverse pp) σ
+    pp (TV x n)           = TV x <$> fr vr n
+    pp (SV x n)           = SV x <$> fr sr n
+    pp (TA x t₀ t₁)       = TA x <$> pp t₀ <*> pp t₁
+    pp (QT x (TS l r))    = QT x <$> (TS <$> traverse pp l <*> traverse pp r)
+    pp (UU x ts)          = UU x <$> traverse pp ts
+    pp (Σ x a)            = Σ x <$> traverse (traverse pp) a
 
 instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
 
