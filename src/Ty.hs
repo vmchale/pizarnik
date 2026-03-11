@@ -11,7 +11,6 @@ import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
-import           Data.Either                      (partitionEithers)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
@@ -616,36 +615,41 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
 
     dM s (SL l as) = do {a <- fsv l "A"; (t,s') <- dbg s ([a] --: [a]) as; pure (t, s')}
 
-    χ []                = ([],[])
-    χ ((a, Right t):as) = second ((a,t):) $ χ as
-    χ ((a, Left e):as)  = first ((a,e):) $ χ as
-
     dbg sϵ _ []            = pure ([], sϵ)
     dbg sϵ t (a@(Pat _ as):aa) = do
         (as',s) <- mS dM sϵ (aas as)
-        (tp,as'',s') <- case χ (can.last<$>as') of
-            ([], a'') -> do step <- r $ dU c s (aLs as) sigs
-                            case step of
-                                Right (ψt, s') -> pure (Right ψt, as', s')
-                                Left e         -> pure (Left e, as', s)
+        (tp,s') <- case χ (can.last<$>as') of
+            ([], a'') -> r (dU c s (aLs as) sigs)
+                                (\(ψt, s') -> pure (Right ψt, s'))
+                                (\e        -> (Left e, s))
                          where sigs = map (peekS s) (snd<$>a'')
-            ((_,e):_, _) -> pure (Left e, as', s)
+            ((_,e):_, _) -> pure (Left e, s)
         case tp of
-            Right tt -> do
-                step <- r $ cat c s' t tt
-                case step of
-                    Right (t', s'') -> first (TArm (a, Right t') as'':) <$> dbg s'' t' aa
-                    Left e          -> pure ([TArm (a, Left e) as''], s')
-            Left e -> pure ([TArm (a, Left e) as''], s')
-    dbg sϵ t (a:aa)         = do
-        step <- r $ do
-            (a',s) <- tae b sϵ a
+            Right tt ->
+                r (cat c s' t tt)
+                    (\(t',s'') -> first (TArm (a, Right t') as':) <$> dbg s'' t' aa)
+                    (\e -> ([TArm (a, Left e) as'], s'))
+            Left e -> pure ([TArm (a, Left e) as'], s')
+    dbg sϵ t (a@(Q l as₀):aa) = do
+        (as',s) <- dM sϵ as₀
+        case χ (can<$>as') of
+              ([], a'')    -> let qt = [] --: [QT l (snd (last a''))] in
+                              r (cat c s t qt)
+                                  (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
+                                  (\e -> ([TN (a, Left e)], s))
+              ((_,e):_, _) -> pure ([TN (a, Left e)], s)
+    dbg sϵ t (a:aa)         =
             -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
-            cat c s t (aL a')
-        case step of Right (t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa; Left e -> pure ([TN (a, Left e)], sϵ)
+        r (do {(a',s) <- tae b sϵ a; cat c s t (aL a')})
+            (\(t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa)
+            (\e -> ([TN (a, Left e)], sϵ))
 
-    r :: UM a x -> State Int (Either (TE a) x)
-    r x = state (\i -> let y=runStateT x i in case y of {Left e -> (Left e,i); Right (z,j) -> (Right z,j)})
+    r :: UM a x -> (x -> State Int c) -> (TE a -> c) -> State Int c
+    r x act err = do {i <- get; let y=runStateT x i in case y of {Left e -> pure (err e); Right (z,j) -> put j *> act z}}
+
+    χ []                = ([],[])
+    χ ((a, Right t):as) = second ((a,t):) $ χ as
+    χ ((a, Left e):as)  = first ((a,e):) $ χ as
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
