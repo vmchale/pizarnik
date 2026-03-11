@@ -812,10 +812,8 @@ dU c s x tss = do
           where nms=map fst as
 
 βt :: Cs a -> TS a -> UM a (TS a)
-βt c (TS l r) = TS <$> βs c l <*> βs c r
-
-βs :: Cs a -> TSeq a -> UM a (TSeq a)
-βs c = traverse q where
+βt c (TS l r) = TS <$> traverse q l <*> traverse q r
+  where
     q (TC _ n) = q =<< lC c n
     q t | Just{} <- unA t = lΒ c t
     q t = pure t
