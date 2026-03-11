@@ -54,9 +54,7 @@ instance PT (TE a) where
     pp (LE ts₀ ts₁) = LE <$> traverse pp ts₀ <*> traverse pp ts₁
     pp (LF t₀ t₁) = LF <$> pp t₀ <*> pp t₁; pp (ΦF t₀ t₁) = ΦF <$> pp t₀ <*> pp t₁
     pp (CF t₀ t₁) = CF <$> pp t₀ <*> pp t₁; pp (MF t₀ t₁) = MF <$> pp t₀ <*> pp t₁
-    pp e@AM{} = pure e; pp e@IS{} = pure e
-    pp e@Bare{} = pure e; pp e@PM{} = pure e
-    pp e@BE{} = pure e
+    pp e@(AM{};IS{};Bare{};PM{};BE{}) = pure e
 
 tLs :: TSeq a -> a
 tLs = tL.head
