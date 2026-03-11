@@ -119,8 +119,7 @@ type TSeq a = [T a]
 -- TODO: :-- at data level
 (--:) = TS
 
-instance Functor TS where
-    fmap f (TS l r) = TS (map (fmap f) l) (map (fmap f) r)
+instance Functor TS where fmap f (TS l r) = TS (map (fmap f) l) (map (fmap f) r)
 
 tTS f (TS l r) = TS <$> traverse f l <*> traverse f r
 
