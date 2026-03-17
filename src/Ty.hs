@@ -76,8 +76,7 @@ instance Pretty a => Pretty (TE a) where
         p0 (Bare t)     = tc t$"Bare union:" <+> sq t
 
 tn n p = pretty (Nm.loc n) <> ":" <+> p
-tc t p = pretty (tL t) <> ":" <+> p
-tsc t p = pretty (tLs t) <> ":" <+> p
+tc t p = pretty (tL t) <> ":" <+> p; tsc t p = pretty (tLs t) <> ":" <+> p
 
 data TSt a = TSt !Int !(Ext a)
 
@@ -656,10 +655,7 @@ tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
         tγ s1 (SL t' (al++[a'])) aa
 
 (/|) :: [a] -> Int -> ([a], [a])
-xs /| n = splitFromLeft n xs
-
-splitFromLeft :: Int -> [a] -> ([a], [a])
-splitFromLeft n xs | nl <- length xs = splitAt (nl-n) xs
+xs /| n | nl <- length xs = splitAt (nl-n) xs
 
 {-# SCC cat #-}
 cat :: Nt a -> Subst a -> TS a -> TS a -> UM a (TS a, Subst a)
