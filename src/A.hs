@@ -11,7 +11,7 @@ module A ( A (..)
          , faseq
          , PT (..)
          , ppt, psv
-         , unA
+         , tun
          , am
          , tTS
          , pASeq
@@ -157,8 +157,11 @@ instance PT (TS a) where pp (TS l r) = TS <$> traverse pp l <*> traverse pp r
 ʙ :: a -> T a
 ʙ x = Σ x (Nm.fromDistinctAscList [(true x, []), (false x, [])])
 
-unA :: T a -> Maybe (T a, [T a])
-unA t | (th@TC{}:a) <- tunroll t = Just (th,a) | otherwise = Nothing
+-- Hutton §16.6
+tun :: T a -> Maybe (T a, [T a])
+tun = g [] where g s th@TC{}      = Just (th, s)
+                 g s (TA _ t0 t1) = g (t1:s) t0
+                 g _ _            = Nothing
 
 data D a b = TD a (Nm a) [Nm a] (T a) | F b (Nm b) (TS a) (ASeq b)
 

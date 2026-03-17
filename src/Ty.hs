@@ -113,16 +113,10 @@ mf, cf, sf, φf :: T a -> T a -> UM a b
 mf t0 t1 = throwError$MF t0 t1; sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
 
--- Hutton §16.6
-tun :: T a -> Maybe (Nm a, [T a])
-tun = g [] where g s (TC _ n)     = Just (n, s)
-                 g s (TA _ t0 t1) = g (t1:s) t0
-                 g _ _            = Nothing
-
 lΒ :: Cs a -> T a -> UM a (T a)
 lΒ cϵ = liftEither . first BE . tCtx
   where
-    tCtx tϵ | Just (n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
+    tCtx tϵ | Just (TC _ n,s) <- tun tϵ = β cϵ n s | otherwise = Right tϵ
 
 {-# SCC (@*) #-}
 (@*) :: Subst a -> TS a -> TS a
@@ -197,11 +191,11 @@ uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
 uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
 uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-uu c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+uu c s t0 t1 | Just (th@(TC _ n0), a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = do
     (a',s') <- zS (uu c) s a0 a1
     pure (roll th a',s')
-uu c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; uu c s t0 t1}
-uu c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; uu c s t0 t1}
+uu c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; uu c s t0' t1}
+uu c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; uu c s t0 t1'}
 uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
                                    | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
@@ -244,13 +238,13 @@ su c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
     (r',s₁) <- susc c s₀ r0 r1
     pure (QT x (l' --: r'), s₁)
     -- [tag:constant]
-su c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+su c s t0 t1 | Just (th@(TC _ n0), a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = do
     (a',s') <- zS (su c) s a0 a1
     pure (roll th a',s')
 su c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; su c s t0 t1}
 su c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; su c s t0 t1}
-su c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
-su c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
+su c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
+su c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
 su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
     -- TODO propagate back?
     (ς,s') <- sσ c s x σ0 σ1
@@ -384,13 +378,13 @@ nρ n@(Nm t _ l) σ = do
             -- FIXME: propagates back too much?
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
-φ c s t0 t1 | Just (th@(TC _ n0), a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = do
+φ c s t0 t1 | Just (th@(TC _ n0), a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = do
     (a',s') <- zS (φ c) s a0 a1
     pure (roll th a',s')
 φ c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; φ c s t0 t1}
 φ c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; φ c s t0 t1}
-φ c s t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; φ c s t0' t1}
-φ c s t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
+φ c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; φ c s t0' t1}
+φ c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
 φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
     (ς, s') <- φσ c s x σ0 σ1
     -- FIXME: propagates back too much?
@@ -465,11 +459,11 @@ mσ u c σ0 σ1 =
 μ c (Σ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1
 μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later
 -- TODO: this proceeds the same as [ref:expand] in expanding constants...
-μ c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms μ c mempty a0 a1
+μ c t0 t1 | Just (TC _ n0, a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = ms μ c mempty a0 a1
 μ c (TC _ n) t1 = do {t0 <- lC (tβ c) n; μ c t0 t1}
 μ c t0 (TC _ n) = do {t1 <- lC (tβ c) n; μ c t0 t1}
-μ c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; μ c t0' t1}
-μ c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
+μ c t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; μ c t0' t1}
+μ c t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; μ c t0 t1'}
 μ c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; μ c t0 t1}
 μ c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; μ c t0 t1}
 μ _ t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure mempty | otherwise = mf t0 t1
@@ -488,15 +482,16 @@ lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
 lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
+lt _ t0@(TV _ n) t1 = c1 n t1 t0
 lt _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
 lt _ t0 t1@TV{} = sf t0 t1
 lt _ t0@TV{} t1 = sf t0 t1
 -- [tag:expand]
-lt c t0 t1 | Just (TC _ n0, a0) <- unA t0, Just (TC _ n1, a1) <- unA t1, n0==n1 = ms lt c mempty a0 a1
+lt c t0 t1 | Just (TC _ n0, a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
 lt c t0 (TC _ n) = do {t1 <- lC (tβ c) n; lt c t0 t1}
-lt c t0 t1 | Just{} <- unA t0 = do {t0' <- lΒ (tβ c) t0; lt c t0' t1}
-lt c t0 t1 | Just{} <- unA t1 = do {t1' <- lΒ (tβ c) t1; lt c t0 t1'}
+lt c t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; lt c t0' t1}
+lt c t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; lt c t0 t1'}
 lt c (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; lt c t0 t1}
 lt c t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; lt c t0 t1}
 lt c (QT _ ts0) (QT _ ts1) = lts c mempty ts0 ts1
@@ -525,7 +520,7 @@ uU c x ts = Σ x <$> foldMapM f ts where
     f (TT _ n)    = pure (Nm.singleton n [])
     f (Σ _ σ)     = pure σ
     f (TC _ n)    = f =<< lC c n
-    f t           | Just{} <- unA t = f =<< lΒ c t
+    f t           | Just{} <- tun t = f =<< lΒ c t
     f (UU _ ts_)  = foldMapM f ts_
     -- FIXME: unions on variables? (could end up being instantiated wrong...)
     f (SV{};Ρ{})  = ie
@@ -818,7 +813,7 @@ dU c s x tss = do
 βt c (TS l r) = TS <$> traverse q l <*> traverse q r
   where
     q (TC _ n) = q =<< lC c n
-    q t | Just{} <- unA t = lΒ c t
+    q t | Just{} <- tun t = lΒ c t
     q t = pure t
 
 mS :: Monad m => (Subst a -> b -> m (c, Subst a)) -> Subst a -> [b] -> m ([c], Subst a)

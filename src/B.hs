@@ -22,7 +22,7 @@ lC n@(Nm _ (U i) _) = IM.findWithDefault (error("Internal error. Type synonym '"
 bS :: Β a -> T a -> Either (BE a) (T a)
 bS st (TV _ n@(Nm _ (U j) _)) | Just t <- IM.lookup j st = Right t | otherwise = Left $ TCA n
 -- avoid TCA errors not by user when substituting
-bS st t@(TA x t0 t1) | Just (th,ts) <- unA t = foldl (TA x) th <$> traverse (bS st) ts -- avoid expanding infinite (e.g. List(a))
+bS st t@(TA x t0 t1) | Just (th,ts) <- tun t = foldl (TA x) th <$> traverse (bS st) ts -- avoid expanding infinite (e.g. List(a))
                      | otherwise = TA x <$> bS st t0 <*> bS st t1
 bS st (Σ x tss) = Σ x <$> traverse (traverse (bS st)) tss
 bS st (QT x sig) = QT x <$> tTS (bS st) sig
