@@ -634,15 +634,16 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
               ([], a'')    -> let qt = [] --: [QT l (snd (last a''))] in
                               r (cat c s t qt)
                                   (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
-                                  ((,s).ls a)
-              ((_,e):_, _) -> pure (ls a e, s)
+                                  ((,s).lq a as')
+                                  -- this ends up with e.g. [1+] : ['A Int -- 'A Int] rather than padding...
+              ((_,e):_, _) -> pure (lq a as' e, s)
     dbg sϵ t (a:aa)         =
             -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
         r (do {(a',s) <- tae b sϵ a; cat c s t (aL a')})
             (\(t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa)
             ((,sϵ).ls a)
 
-    ls a e = [TN (a, Left e)]
+    ls a e = [TN (a, Left e)]; lq a as' e = [TQ (a, Left e) as']
 
     r :: UM a x -> (x -> State Int c) -> (TE a -> c) -> State Int c
     r x act err = do {i <- get; let y=runStateT x i in case y of {Left e -> pure (err e); Right (z,j) -> put j *> act z}}
@@ -652,13 +653,13 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
     χ ((a, Left e):as)  = first ((a,e):) $ χ as
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq b s (SL l as) = do {a <- fsv l "A"; tγ s (SL ([a] --: [a]) []) as}
+tseq b s (SL l as) = do {a <- fsv l "A"; (SL t x, s') <- tγ s (SL ([a] --: [a]) []) as; pure (SL t (reverse x), s')}
   where
     tγ sϵ c []              = pure (c, sϵ)
     tγ sϵ (SL t al) (a:aa) = do
         (a',s0) <- tae b sϵ a
         (t',s1) <- cat (π b) s0 t (aL a')
-        tγ s1 (SL t' (al++[a'])) aa
+        tγ s1 (SL t' (a':al)) aa
 
 (/|) :: [a] -> Int -> ([a], [a])
 xs /| n | nl <- length xs = splitAt (nl-n) xs
