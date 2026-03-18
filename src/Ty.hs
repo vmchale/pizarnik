@@ -596,7 +596,7 @@ cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx
 cA _=pure ()
 
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> UM a (TS a, Subst a)
-sseq b l s as = do {a <- fsv l "A"; γ s ([a] --: [a]) as}
+sseq b l s as = do {ᴀ <- fsv l "A"; γ s ([ᴀ] --: [ᴀ]) as}
   where
     γ sϵ tl []     = pure (tl, sϵ)
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
@@ -611,7 +611,7 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
   where
     c=π b
 
-    dM s (SL l as) = do {a <- fsv l "A"; (t,s') <- dbg s ([a] --: [a]) as; pure (t, s')}
+    dM s (SL l as) = do {ᴀ <- fsv l "A"; (t,s') <- dbg s ([ᴀ] --: [ᴀ]) as; pure (t, s')}
 
     dbg sϵ _ []            = pure ([], sϵ)
     dbg sϵ t (a@(Pat _ as):aa) = do
