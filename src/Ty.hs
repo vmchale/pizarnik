@@ -31,6 +31,7 @@ infixl 7 \-
 infixr 6 @>
 infixl 6 @@
 infixr 6 @*
+infix 4 ?
 
 data Nt a = Nt { tβ :: Cs a, ars :: Ar }
 π (Ext _ c r) = Nt c r
@@ -302,9 +303,11 @@ si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
-sv u c s t0@(SV _ sn0:t0d) t1@(SV _ sn1:t1d)
-    | n0>n1 = let (uws, res) = t0/|n1 in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
-    | otherwise = let (uws, res) = t1/|n0 in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
+sv u c s t0@(s0@(SV _ sn0):t0d) t1@(s1@(SV _ sn1):t1d) =
+    case n0?n1 of
+        EQ -> ctx'ize (sv u) c (iSV sn0 [s1]$iSV sn1 [s0] s) t0d t1d
+        GT -> let (uws, res) = t0/|n1 in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
+        LT -> let (uws, res) = t1/|n0 in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
   where
     n0=length t0d; n1=length t1d
 sv u c s t0@(SV _ sn0:t0d) t1
@@ -414,17 +417,20 @@ rwAr ar = under (fmap reverse . g . reverse)
 
 mc u c s = ms u c s `onM` (rwAr (ars c).peek s)
 
--- TODO: check agreement w.r.t. previous agreements... e.g.
--- a b c
--- d e d
+-- 'A ['A ρ₂ -- 'A] {`nil ⊕ ρ₁ ρ₂ `cons}
+-- 'B ['B a -- 'B] List(a)
+--
+-- same length... then tieing off 'A=ø is sus...
 ms :: (Nt a -> T a -> T a -> UM a (Subst a))
    -> Nt a -> Subst a
    -> TSeq a -- ^ inferred
    -> TSeq a -- ^ signature
    -> UM a (Subst a)
-ms u c s t0e@(SV _ nm₀:t0) t1e@(SV _ nm₁:t1)
-    | n0<=n1 = let (uws, res) = t1/|n0 in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
-    | otherwise = throwError$LE t0e t1e
+ms u c s t0e@(t0ϵ@(SV _ nm₀):t0) t1e@(t1ϵ@(SV _ nm₁):t1) =
+    case n0?n1 of
+        EQ -> mc u c (iSV nm₀ [t1ϵ]$iSV nm₁ [t0ϵ] s) t0 t1
+        LT -> let (uws, res) = t1/|n0 in mc u c (iSV nm₀ []$iSV nm₁ uws s) t0 res
+        GT -> throwError$LE t0e t1e
   where n0=length t0;n1=length t1
 ms u c s t0e@(SV _ n:t0) t1
     | n0<=n1 = let (uws, res) = t1/|n0 in mc u c (iSV n uws s) t0 res
@@ -828,3 +834,5 @@ onM g f x y = do {x' <- f x; y' <- f y; g x' y'}
 foldMapM f = foldM (\x y -> (x `mappend`) <$> f y) mempty
 
 ie=error"internal error."
+
+(?) = compare
