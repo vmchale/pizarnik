@@ -298,14 +298,14 @@ type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
 -- if we have A, B [B c -- A b] (say) then say A=0
-si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = throwError (Os n₀ t) --  if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
 si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
 sv u c s t0@(s0@(SV _ sn0):t0d) t1@(s1@(SV _ sn1):t1d) =
     case n0?n1 of
-        EQ -> ctx'ize (sv u) c (iSV sn0 [s1]$iSV sn1 [s0] s) t0d t1d
+        EQ -> ctx'ize (sv u) c (iSV sn0 [s1] s) t0d t1d
         GT -> let (uws, res) = t0/|n1 in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
         LT -> let (uws, res) = t1/|n0 in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
   where
