@@ -28,8 +28,8 @@ import           Nm
 import           Nm.Map                           (NmMap, nmlist)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, parens, punctuate, space, tupled,
-                                                   (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, parens, punctuate, softline',
+                                                   space, (<+>))
 
 infixl 9 <:>
 infixr 0 --:
@@ -235,7 +235,7 @@ instance Pretty (A a) where
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
     pretty (Ca _ as) = braces (hsep (pretty<$>reverse as))
 
-pA = concatWith (\x y -> x <> softline <> "&" <+> y)
+pA = concatWith (\x y -> x <> softline' <> "&" <+> y)
 
 pSeq :: P0 a => [a] -> Doc ann
 pSeq = hsep.map p0
