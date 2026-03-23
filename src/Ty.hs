@@ -631,10 +631,12 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
     dbg sϵ t (a@(Q l as₀):aa) = do
         (as',s) <- dM sϵ as₀
         case χ (can<$>as') of
-              ([], a'')    -> let qt = [] --: [QT l (snd (last a''))] in
-                              r (cat c s t qt)
-                                  (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
-                                  ((,s).lq a as')
+              ([], a'')    -> do
+                  ᴀ <- fsv l "A"
+                  let qt = [ᴀ] --: [ᴀ,QT l (snd (last a''))]
+                  r (cat c s t qt)
+                      (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
+                      ((,s).lq a as')
                                   -- this ends up with e.g. [1+] : ['A Int -- 'A Int] rather than padding...
               ((_,e):_, _) -> pure (lq a as' e, s)
     dbg sϵ t (a:aa)         =
