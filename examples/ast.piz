@@ -35,18 +35,24 @@ desugar : Int Syn -- Int AST
 printName : Name -- Str
           := [ { `name⁻¹ nip } ]
 
+parens : Str -- Str
+       := [ ["("] dip strcat ")" strcat ]
+
+brackets : Str -- Str
+         := [ ["["] dip strcat "]" strcat ]
+
 printAbs : [a -- Str] AbsAST(a) -- Str
          := [ { `var⁻¹ printName nip
-              & `lam⁻¹ printName ["λ"] dip strcat "." strcat [$] dip swap strcat
-              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (231) [$] dip swap [["("] dip strcat] dip ")" strcat strcat
+              & `lam⁻¹ printName ["λ"] dip strcat "." strcat [swap $] dip swap strcat
+              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip strcat
               }
             ]
 
 printDExpr : DExpr -- Str
            := [ { `resVar⁻¹ { `x⁻¹ "x" & `y⁻¹ "y" }
-                & `dfn⁻¹ printDExpr ["["] dip strcat "]" strcat
+                & `dfn⁻¹ printDExpr brackets
                 & [[printDExpr]] dip printAbs
                 }
               ]
 
-# another upside: anything that works on a Syn will work on an AST (e.g. stripping comments, pretty-printer...) AS IT SHOULD
+# anything that works on a Syn should work on an AST (e.g. stripping comments, pretty-printer...)
