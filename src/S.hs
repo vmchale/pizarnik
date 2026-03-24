@@ -36,9 +36,11 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
     where bt l True= ta l
           bt l False = fa l
 
+-- AbsAst(DExpr) (basically needs to be aware enough to β-reduce w/ synonyms...
+
 (≺) :: T a -> T a -> Bool
-(TT _ tt₀) ≺ (TT _ tt₁) | tt₀==tt₁ = True
-(TT _ tt) ≺ (Σ _ σ)     | tt `Nm.member` σ = True
+(TT _ tt₀) ≺ (TT _ tt₁) = tt₀==tt₁
+(TT _ tt) ≺ (Σ _ σ)     = tt `Nm.member` σ
 _ ≺ _                   = False
 
 ψ :: MC (TS a) b -> [ASeq (TS a)] -> S a -> S a
