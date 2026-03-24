@@ -8,6 +8,7 @@ import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, gets
 import qualified Data.IntMap                      as IM
 import           Data.List                        (isPrefixOf)
 import qualified Data.Map                         as M
+import           Data.Maybe                       (mapMaybe)
 import qualified Data.Text                        as T
 import qualified Data.Text.Lazy                   as TL
 import           Data.Text.Lazy.Encoding          (encodeUtf8)
@@ -34,9 +35,9 @@ type Repl = InputT (StateT X IO)
 names :: Monad m => StateT X m [String]
 names = do
     X (_,_,n,_) _ (x,_,b) <- get
-    let boo (-2) = "True"; boo (-1) = "False"
-        boo u = show (n IM.! u)
-    pure ("dip":"dup":"strcat":map boo (IM.keys b<>IM.keys x))
+    let boo (-2) = Just "True"; boo (-1) = Just "False"
+        boo u = fmap show (n IM.!? u)
+    pure ("dip":"dup":"strcat":mapMaybe boo (IM.keys b<>IM.keys x))
 
 ll=lift get;lg=lift.gets
 
