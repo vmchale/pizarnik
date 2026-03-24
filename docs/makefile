@@ -2,8 +2,12 @@ MAKEFLAGS += -j
 
 docs: index.html
 
-index.html: index.md perm.html inv.html ne.html or.html exp.html
+index.html: index.md perm.html inv.html ne.html or.html exp.html err.html
 	pandoc -s $< -o $@
+	# minhtml --minify-css --minify-js $@ -o $@
+
+err.html: ../tut/err.html
+	ln -f $< $@
 
 or.html: ../tut/or.html
 	ln -f $< $@
