@@ -61,7 +61,7 @@ _ ≺ _                   = False
 ι c (B _ Eq) as            = ib c (==) as
 ι c (B _ Gt) as            = ib c (>) as
 ι c (B _ Lt) as            = ib c (<) as
-ι c (B _ Cat) (a0:a1:as)   = let (s0,_)=s_ c a0; (s1,t)=s_ c a1 in L t (Str$s0<>s1):as
+ι c (B _ Cat) (a0:a1:as)   = let (s0,_)=s_ c a0; (s1,t)=s_ c a1 in L t (Str$s1<>s0):as
 ι c (B _ Ap) (Q _ a:as)    = r c (aas a) as
 ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
