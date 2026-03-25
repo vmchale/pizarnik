@@ -39,17 +39,17 @@ foldr : [ a b -- b ] b List(a) -- b
            & `cons⁻¹ [dup] dip3 (152)(23) [$] dip2 (23) foldr } ]
 ```
 
-The same `foldr` works on nonempty lists and lists and `head` only works on nonempty lists. Had we written `head : List(a) -- a`:
+The same `foldr` works on nonempty lists and lists while `head` only works on nonempty lists. Had we written `head : List(a) -- a`:
 
 ```
-5:17: {`nil ⊕ List(a) a `cons} ⊀ {ρ₁ a `cons}
+5:17: {`nil ⊕ List(a) a `cons} ⊀ {List(a) a `cons}
 ```
 
 # Or-Patterns
 
 `&` (with) gives us the functionality of or-patterns:
 
-```
+```pizarnik
 @prelude/fn
 
 type Ord = {`lt ⊕ `eq ⊕ `gt};
