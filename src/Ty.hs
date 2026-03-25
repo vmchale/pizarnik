@@ -20,6 +20,7 @@ import qualified Data.Text                        as T
 import           F
 import           G
 import           Nm
+import           Nm.Map                           (NmMap (NmMap), (!?))
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
@@ -177,7 +178,7 @@ so (QT _ (TS l r))       = so@<>l <> so@<>r
 so (Σ _ a)               = foldMap (so@<>) a
 so (Ρ _ _ σ)             = foldMap (so@<>) σ
 
-occρ :: Nm a -> Nm.NmMap (TSeq a) -> Bool
+occρ :: Nm a -> NmMap (TSeq a) -> Bool
 occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
@@ -272,7 +273,7 @@ su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
 su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
                               -- TODO: should we check TT has arity 0?
-su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- Nm.lookup n σ = pure (t0, mempty)
+su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- σ!?n = pure (t0, mempty)
                               | otherwise = cf t0 t1
 su _ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure (t0, mempty)
                               | otherwise = cf t0 t1
@@ -330,7 +331,7 @@ sv _ _ _ [] t1 = throwError$LE t1 []
 
 ctx'ize us c s = us c s `onM` (rwAr (ars c).peek s)
 
-ρc :: Nm a -> Nm.NmMap (TSeq a) -> T a -> UM a (T a, Subst a -> Subst a)
+ρc :: Nm a -> NmMap (TSeq a) -> T a -> UM a (T a, Subst a -> Subst a)
 ρc n σ te | occρ n σ = throwError $ O (TV (Nm.loc n) n) te
           | otherwise = nρ n σ
 
@@ -349,9 +350,9 @@ nρ n@(Nm t _ l) σ = do
                                 | otherwise = φf t0 t1
 φ _ s t@(TT x n0) (TT _ n1) | n0==n1 = pure (t,s)
                             | otherwise = pure (Σ x (Nm.fromList [(n0,[]),(n1,[])]), s)
-φ _ s t0@(Σ _ as) t1@(TT x n) | Just (_:_) <- Nm.lookup n as = φf t0 t1
+φ _ s t0@(Σ _ as) t1@(TT x n) | Just (_:_) <- as!?n = φf t0 t1
                               | otherwise = pure (Σ x (Nm.insert n [] as), s)
-φ _ s t0@(TT x n) t1@(Σ _ as) | Just (_:_) <- Nm.lookup n as = φf t0 t1
+φ _ s t0@(TT x n) t1@(Σ _ as) | Just (_:_) <- as!?n = φf t0 t1
                               | otherwise = pure (Σ x (Nm.insert n [] as), s)
 φ c s (Σ x σ₀) (Σ _ σ₁) = do
     (ς,s') <- φσ c s x σ₀ σ₁
@@ -506,8 +507,8 @@ lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     -- [tag:right]
     | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
     | otherwise = sf t0 t1
-lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- Nm.lookup n a = pure mempty | otherwise = sf t0 t1
-lt _ t0@(Σ _ a) t1@(TT _ n) | Just [] <- Nm.lookup n a = pure mempty | otherwise = sf t0 t1
+lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
+lt _ t0@(Σ _ a) t1@(TT _ n) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
                                -- FIXME: [ref:right] binds a variable hm
                                | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
@@ -546,15 +547,15 @@ liftClone :: TS a -> UM a (TS a)
 liftClone ts = StateT $ \u -> let (w, ts') = cloneSig u ts in Right (ts',w)
 
 lC :: Cs a -> Nm a -> UM a (T a)
-lC c n@(Nm _ (U i) l) | Just ([],t) <- IM.lookup i c = pure (t$>l)
+lC c n@(Nm _ (U i) l) | Just ([],t) <- c IM.!? i = pure (t$>l)
                       | otherwise = throwError$IS n
 
 lT :: Ar -> Nm a -> UM a Int
-lT ar n@(Nm _ (U u) _) | Just i <- IM.lookup u ar = pure i
+lT ar n@(Nm _ (U u) _) | Just i <- ar IM.!? u = pure i
                        | otherwise = throwError$AM n
 
 lA :: IM.IntMap (TS a) -> Nm a -> UM a (TS a)
-lA c n@(Nm _ (U i) l) | Just ts <- IM.lookup i c = (l<$) <$> liftClone ts
+lA c n@(Nm _ (U i) l) | Just ts <- c IM.!? i = (l<$) <$> liftClone ts
                       | otherwise = throwError$IS n
 
 tM :: Ext a -> M a a -> UM a (M a (TS a), Ext a)
@@ -828,8 +829,8 @@ mS f s (a:as) = do {(a',s') <- f s a; first (a':)<$>mS f s' as}
 zS op s (t0:t0s) (t1:t1s) = do {(t',s') <- op s t0 t1; first (t':) <$> zS op s' t0s t1s}
 zS _ s [] []              = pure ([], s)
 
-eqKeys :: Nm.NmMap a -> Nm.NmMap b -> Bool
-eqKeys (Nm.NmMap x0 _) (Nm.NmMap x1 _) = IM.keys x0==IM.keys x1
+eqKeys :: NmMap a -> NmMap b -> Bool
+eqKeys (NmMap x0 _) (NmMap x1 _) = IM.keys x0==IM.keys x1
 
 onM :: Monad m => (b -> b -> m c) -> (a -> m b) -> a -> a -> m c
 onM g f x y = do {x' <- f x; y' <- f y; g x' y'}

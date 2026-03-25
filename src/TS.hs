@@ -35,7 +35,7 @@ tsr g = ord.prune.map flower
 
 tsort :: [(MN a, [MN a])] -> [U] -> [MN a]
 tsort adjL rs = (tbl IM.!) <$> tsr g (unU<$>rs)
-    where g = A.array (1,m) (map (\(mn,is) -> (mi mn, mi<$>is)) adjL)
+    where g = A.array (1,m) (map (\(mn,is) -> (mi mn, map mi is)) adjL)
           (m,tbl) = let al = map ((\mn -> (mi mn,mn)).fst) adjL
                         in (maximum (fst<$>al), IM.fromList al)
           mi=unU.mU

@@ -2,7 +2,8 @@ module Nm.Map ( NmMap (..)
               , insert
               , member
               , keys
-              , Nm.Map.lookup
+              , lookup
+              , (!?)
               , Nm.Map.null
               , singleton
               , empty
@@ -22,7 +23,10 @@ import qualified Data.IntMap    as IM
 import qualified Data.Text      as T
 import           Nm
 import           Pr
+import           Prelude        hiding (lookup)
 import           Prettyprinter  (Pretty (pretty), vsep)
+
+infixl 9 !?
 
 data NmMap a = NmMap { xx :: !(IM.IntMap a), context :: IM.IntMap T.Text }
 
@@ -46,6 +50,8 @@ member (Nm _ (U i) _) (NmMap x _) = i `IM.member` x
 
 lookup :: Nm a -> NmMap b -> Maybe b
 lookup (Nm _ (U i) _) (NmMap x _) = IM.lookup i x
+
+x !? n = lookup n x
 
 empty :: NmMap a
 empty = NmMap IM.empty IM.empty
