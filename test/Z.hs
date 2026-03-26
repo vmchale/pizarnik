@@ -22,6 +22,7 @@ main = defaultMain $
           , eEx ["examples/parity.piz"] "`even `even add `odd `odd add" "`even `even"
           , eEx ["test/examples/dep.piz"] "x ors" "True"
           , eEx ["examples/fact.piz"] "7 fac" "5040"
+          , eEx ["examples/peano.piz"] "`Z `S `S `Z `S `S `S mul toInt" "6"
           , eEx ["test/examples/cont.piz"] "7 fac" "5040"
           , eEx ["test/examples/set.piz", "examples/set.piz"]
               "x 3 x member 6 x member 7 x member"
