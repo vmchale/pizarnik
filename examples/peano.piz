@@ -1,0 +1,12 @@
+@prelude/fn
+
+type Nat = { `Z ⊕ Nat `S };
+
+toInt : Nat -- Int
+      := [ { `Z^ 0 & `S^ toInt 1 + } ]
+
+add : Nat Nat -- Nat
+    := [ { `Z⁻¹ & `S⁻¹ [`S] dip add } ]
+
+mul : Nat Nat -- Nat
+    := [ { `Z⁻¹ drop `Z & `S⁻¹ [dup] dip mul add } ]

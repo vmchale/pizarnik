@@ -209,8 +209,7 @@ uu c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
                                 | otherwise = throwError$UF t0 t1
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
-                                     | eqKeys σ0 σ1 = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
-                                     -- TODO: Ρ, Σ case above only requires one be a submap... perhaps this is too strict?
+                                     | otherwise = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
 uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
                                  | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
