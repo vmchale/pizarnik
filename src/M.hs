@@ -24,7 +24,7 @@ rMN :: T.Text -> R (MN Loc)
 rMN fp = mst $ pure.nmc (asMN fp)
   where
     asMN s | Just p <- T.stripSuffix ".piz" s = p
-           | otherwise = error ("failed to read as module name: " ++ T.unpack s)
+           | otherwise = error (T.unpack ("failed to read as module name: " <> s))
 
     nmc t = \st@(max', ns, us, ums) ->
         case M.lookup t ns of
