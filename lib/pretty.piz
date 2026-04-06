@@ -1,2 +1,5 @@
 parens : Str -- Str
        := [ ["("] dip strcat ")" strcat ]
+
+parenthesize : Str Bool -- Str
+             := [ { True^ parens & False^ } ]
