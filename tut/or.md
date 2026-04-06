@@ -2,7 +2,6 @@
 title: Or-Patterns
 author: V. E. McHale
 date: 18 Oct. 2025
-bibliography: ty.bib
 ---
 
 Begin by defining `Ord`:
@@ -50,7 +49,7 @@ We would be confronted with:
 prelude/ord.piz:8:6: {`lt ⊕ `eq ⊕ `gt} ⊀ {`lt ⊕ `gt}
 ```
 
-<!-- better example would be like doing something with bound variable, then stitching those together (with exhaustiveness checking -->
+<!-- better example would be like doing something with bound variable, then stitching those together? "choice" as "if ... then" idk -->
 
 We can define something like or-patterns binding variables, allowing reuse of negative
 and positive aspect, viz.
@@ -89,3 +88,5 @@ yields
 ```
 test/examples/badOr2.piz:9:13: {a `left ⊕ b `right ⊕ a b `both} ⊀ {a `left ⊕ a b `both}
 ```
+
+# Reference

@@ -2,6 +2,7 @@
 
   - [Non-Empty Lists](./ne.html)
   - [Solving the Expression Problem](./exp.html)
+  - [Error Hierarchies](./err.html)
 
 # Theory
 
