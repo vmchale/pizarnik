@@ -24,6 +24,8 @@ main = defaultMain $
           , eEx ["examples/fact.piz"] "7 fac" "5040"
           , eEx ["examples/peano.piz"] "`Z `S `S `Z `S `S `S mul toInt" "6"
           , eEx ["test/examples/cont.piz"] "7 fac" "5040"
+          , eEx ["examples/systemT.piz"] "`N `N `A `N `A printTy" "\"(ℕ → ℕ) → ℕ\""
+          , eEx ["examples/systemT.piz"] "`N `N `N `A `A printTy" "\"ℕ → ℕ → ℕ\""
           , eEx ["test/examples/set.piz", "examples/set.piz"]
               "x 3 x member 6 x member 7 x member"
               "{`nil 1 {`nil 2 {{{`nil 3 `nil `branch} 5 `nil `branch} 6 {`nil 10 `nil `branch} `branch} `branch} `branch} True True False"

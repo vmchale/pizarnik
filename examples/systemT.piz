@@ -1,0 +1,32 @@
+@prelude/fn
+@lib/pretty
+
+type Nat = { `Z ⊕ Nat `S };
+
+type Var = Str;
+
+type Term = Nat ∪ { Var `var ⊕ Term Term `ap ⊕ Term Var `lam ⊕ Nat Term Term `rec };
+
+type Ty = { `N ⊕ Ty Ty `A };
+
+prettyTy : Ty Bool -- Str
+         := [ swap { `N^ drop "ℕ"
+                   & `A^ [True prettyTy " → " strcat] dip False prettyTy strcat swap parenthesize
+                   }
+            ]
+
+printTy : Ty -- Str
+        := [ False prettyTy ]
+
+prettyTerm : Term Int -- Str
+           := [ swap { `Z⁻¹ drop "Z"
+                     & `S⁻¹ ["S "] dip 11 prettyTerm strcat swap 10 > parenthesize # note prettyTerm can be applied to Nat :)
+                     & `var⁻¹ nip
+                     & `ap⁻¹ [10 prettyTerm] dip 11 prettyTerm strcat swap 10 > parenthesize
+                     & `lam⁻¹ ["λ"] dip strcat "." strcat swap 2 prettyTerm strcat swap 1 > parenthesize
+                     & `rec⁻¹ [11 prettyTerm " "] dip2 [11 prettyTerm strcat strcat] dip 11 prettyTerm [" " strcat] dip strcat nip "rec " strcat
+                     }
+              ]
+
+printTerm : Term -- Str
+          := [ 0 prettyTerm ]
