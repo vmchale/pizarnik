@@ -1,0 +1,2 @@
+parens : Str -- Str
+       := [ ["("] dip strcat ")" strcat ]

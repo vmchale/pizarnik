@@ -211,7 +211,7 @@ tunroll = flip tg [] where tg (TA _ t t') s = tg t (t':s)
 instance P0 (T a) where
     p0 (TV _ n) = pretty n; p0 (TP _ pty) = pretty pty; p0 (TC _ n) = pretty n
     p0 (QT _ ts) = brackets (p0 ts); p0 (SV _ n) = pretty n
-    p0 (TT _ n) = pretty n; p0 (Σ _ ts) = pΣ (pNM (\(u,tsϵ) -> hsep (map p0 tsϵ) <> pretty u) ts)
+    p0 (TT _ n) = pretty n; p0 (Σ _ ts) = pΣ (pNM (\(u,tsϵ) -> hsep (map p0 tsϵ) <+> pretty u) ts)
     p0 t@TA{} | (h:a) <- tunroll t = p0 h <> parens (hsep (p0<$>a))
     p0 (Ρ _ n σ) = pρ n (pΡ σ)
     p0 (UU _ t) = concatWith (\x y -> x <+> "∪" <+> y) (p0<$>t)
