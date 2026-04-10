@@ -12,7 +12,7 @@ suppose various parts of a program can fail in specific, overlapping ways.
 ```
 
 With `tyE` we can raise a `` `scope`` error while typechecking. `handleRewrite`
-allows us to (locally) handle a `` `scope`` error being forced to handle
+allows us to (locally) handle a `` `scope`` error without being forced to handle
 a `` `unificationFailed`` where it will not occur.
 
 Since `handleTypeError` is inexhaustive, however, we are faced with:
