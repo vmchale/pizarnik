@@ -1,7 +1,15 @@
+# no need for "state monad" just leave it on stack (multiple returns)
+# though it would be interesting to think of left-context as a monad?
+
+# "forbid the question" aspect of negation aka "ban this pattern match arm from being taken"
+
 type Reg = {`x0 ⊕ `x1 ⊕ `x2 ⊕ `x3 ⊕ `x4 ⊕ `x5 ⊕ `x6 ⊕ `x7 ⊕ `x8 ⊕ `x9 ⊕ `x10 ⊕
            `x11 ⊕ `x12 ⊕ `x13 ⊕ `x14 ⊕ `x15 ⊕ `x16 ⊕ `x17 ⊕ `x18 ⊕ `x19 ⊕ `x20 ⊕
            `x21 ⊕ `x22 ⊕ `x23};
 type VReg = {`q0 ⊕ `q1 ⊕ `q2 ⊕ `q3 ⊕ `q4 ⊕ `q5 ⊕ `q6 ⊕ `q7};
+
+type AbsReg = {Int `temp};
+type VAbsReg = {Int `vtemp};
 
 # CFE FTemp Double vs. CFE F2Temp (Double, Double) etc.
 type BinOp = { `add ⊕ `sub ⊕ `mult ⊕ `div };
@@ -14,3 +22,10 @@ type Const2 = { Int Int `K2 };
 
 type Exp1 = { Exp Fn `specialfn } ∪ Exp(Reg, Int);
 type VExp = Exp(VReg, Const2);
+
+# type Aarch64Common r = { r r `add ⊕ r r `sub ⊕ r r `mul ⊕ r r `div };
+
+# PROBLEM: with type variables, now `add would be same constructor?
+# type Aarch64 v r = { Aarch64Common(r) `scalar ⊕ Aarch64Common(v) `vector ⊕ Reg Reg `tst };
+
+type Aarch64Isn v r = { r r `add ⊕ r r `sub ⊕ r r `mul ⊕ r r `div ⊕ v v `vadd };
