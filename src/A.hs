@@ -28,8 +28,8 @@ import           Nm
 import           Nm.Map                           (NmMap, nmlist)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, group, hardline, hsep, parens, punctuate, softline',
-                                                   space, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, parens, punctuate,
+                                                   softline, space, (<+>))
 
 infixl 9 <:>
 infixr 0 --:
@@ -219,7 +219,10 @@ instance P0 (T a) where
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
-pΣ = group.align.braces.fillSep.punctuate " ⊕"
+br x = flatAlt ("{ " <> x <> softline <> "}") ("{" <> x <> "}")
+
+-- fillCat?
+pΣ = group.align.br.hsep.punctuate (softline <> "⊕")
 
 pΡ :: NmMap (TSeq a) -> [Doc ann]
 pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map p0 t)})
@@ -235,7 +238,8 @@ instance Pretty (A a) where
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
     pretty (Ca _ as) = braces (hsep (pretty<$>reverse as))
 
-pA = concatWith (\x y -> x <> softline' <> "&" <+> y)
+-- TODO: maybe depth-aware...
+pA = concatWith (\x y -> x <> softline <> "&" <+> y)
 
 pSeq :: P0 a => [a] -> Doc ann
 pSeq = hsep.map p0
