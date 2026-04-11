@@ -1,4 +1,4 @@
-type Either a b = { a `left ⊕ b `right };
+@lib/either
 
 type RewriteError = { `scope };
 
