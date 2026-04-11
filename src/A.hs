@@ -219,9 +219,8 @@ instance P0 (T a) where
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
-br x = flatAlt ("{ " <> x <> softline <> "}") ("{" <> x <> "}")
+br x = flatAlt ("{ " <> x <#> "}") ("{" <> x <> "}")
 
--- fillCat?
 pΣ = group.align.br.hsep.punctuate (softline <> "⊕")
 
 pΡ :: NmMap (TSeq a) -> [Doc ann]
