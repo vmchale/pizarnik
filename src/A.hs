@@ -219,9 +219,11 @@ instance P0 (T a) where
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
-br x = flatAlt ("{ " <> x <#> "}") ("{" <> x <> "}")
+br'd = group.align.br
+  where
+    br x = flatAlt ("{ " <> x <#> "}") ("{" <> x <> "}")
 
-pΣ = group.align.br.hsep.punctuate (softline <> "⊕")
+pΣ = br'd.concatWith (\x y -> x <> softline <> "⊕" <+> y)
 
 pΡ :: NmMap (TSeq a) -> [Doc ann]
 pΡ = punctuate ", ".pNM (\(n,t) -> pretty n <> case t of {[] -> mempty; _ -> ":" <+> hsep (map p0 t)})
@@ -233,7 +235,7 @@ instance Show (T a) where show=show.pretty
 
 instance Pretty (A a) where
     pretty (B _ b) = pretty b; pretty (Q _ as) = brackets (pASeq as)
-    pretty (L _ l) = pretty l; pretty (Pat _ as) = group (braces (align (pA (map pASeq (aas as)))))
+    pretty (L _ l) = pretty l; pretty (Pat _ as) = br'd (pA (map pASeq (aas as)))
     pretty (C _ n) = pretty n; pretty (V _ n) = pretty n; pretty (Inv _ a) = pretty a <> "⁻¹"
     pretty (Ca _ as) = braces (hsep (pretty<$>reverse as))
 
