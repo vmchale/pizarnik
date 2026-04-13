@@ -9,7 +9,7 @@ evocative syntax for pattern-matching.
 
 Extensible cases are atoms, and typeable.
 
-```
+```pizarnik
 type B = {`t ⊕ `f};
 
 if : a b `t -- a
@@ -24,7 +24,7 @@ choice : a a B -- a
 
 # [(Not) Subtypes](https://brianmckenna.org/blog/row_polymorphism_isnt_subtyping)
 
-```
+```pizarnik
 @prelude/fn
 
 type List a = { `nil ⊕ List(a) a `cons };
@@ -110,15 +110,16 @@ map1 : [a -- b] Both(a,c) -- Both(b,c)
         ]
 ```
 
-# Writing
+# Justification
 
 ## Examples
 
   - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
   - [Solving the Expression Problem](https://vmchale.github.io/pizarnik/exp.html)
+  - [Error Hierarchies](https://vmchale.github.io/pizarnik/err.html)
 
 ## Theory
 
-  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
   - [Pattern-Matching as Inverse](https://vmchale.github.io/pizarnik/inv.html)
   - [Or-Patterns](https://vmchale.github.io/pizarnik/or.html)
+  - [Permutations in Stack Programming](https://vmchale.github.io/pizarnik/perm.html)
