@@ -108,6 +108,7 @@ instance Functor A where
     fmap f (Q x as) = Q (f x) (faseq f as)
     fmap f (Pat x (SL y ys)) = Pat (f x) (SL (f y) (map (faseq f) ys))
     fmap f (Inv x a) = Inv (f x) (f<$>a)
+    fmap f (Ca t a) = Ca (f t) (map (fmap f) a)
 
 data Prim = Int | StrT deriving Eq
 
