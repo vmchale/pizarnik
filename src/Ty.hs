@@ -15,7 +15,6 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
-import           Data.List                        (foldl')
 import qualified Data.Text                        as T
 import           F
 import           G

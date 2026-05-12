@@ -6,7 +6,6 @@ module G ( Sn, sn
 import qualified Data.Array     as A
 import           Data.Bifunctor (second)
 import           Data.Bits      (Bits (complement, setBit, shiftL, shiftR, testBit, (.&.), (.|.)))
-import           Data.List      (foldl')
 import           Prettyprinter  (Pretty (pretty), parens)
 
 newtype Sn=Sn Int

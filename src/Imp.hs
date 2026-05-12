@@ -2,7 +2,6 @@ module Imp ( resolveI ) where
 
 import           Control.Exception  (Exception, throwIO)
 import           Control.Monad      (filterM)
-import           Data.List          (foldl')
 import           Data.List.NonEmpty (NonEmpty ((:|)))
 import qualified Data.Text          as T
 import           Data.Typeable      (Typeable)
