@@ -1,8 +1,9 @@
 module TS ( tsort ) where
 
-import qualified Data.Array  as A
-import qualified Data.IntMap as IM
-import qualified Data.IntSet as IS
+import           Control.Monad.ST (ST, runST)
+import qualified Data.Array       as A
+import qualified Data.Array.ST    as ST
+import qualified Data.IntMap      as IM
 import           Nm
 
 data Tree a = Node a [Tree a]
@@ -18,6 +19,9 @@ ord = reverse.ps [] where
 
     p es (Node x xs) = x:ps es xs
 
+(!) :: ST.STArray s Int Bool -> Int -> ST s Bool
+xs ! n = ST.readArray xs n
+
 tsr :: Graph -> [N] -> [N]
 tsr g = ord.prune.map flower
   where
@@ -25,13 +29,17 @@ tsr g = ord.prune.map flower
     flower x = Node x (map flower (g A.! x))
 
     prune :: [Tree N] -> [Tree N]
-    prune = fst.snip IS.empty where
-        snip :: IS.IntSet -> [Tree N] -> ([Tree N], IS.IntSet)
-        snip s [] = ([], s)
-        snip v (Node x ts:us) | x `IS.member` v = snip v us
-                              | otherwise = let (ts',v') = snip (IS.insert x v) ts
-                                                (us',v'') = snip v' us
-                                            in (Node x ts' : us', v'')
+    prune f = runST $ do
+        seen <- ST.newArray (l,n) False
+        let snip [] = pure []
+            snip (Node x ts:us) = do
+                b <- seen ! x
+                if b
+                    then snip us
+                    else do {ST.writeArray seen x True; ts' <- snip ts; us' <- snip us; pure (Node x ts' : us')}
+        snip f
+
+    (l,n) = A.bounds g
 
 tsort :: [(MN a, [MN a])] -> [U] -> [MN a]
 tsort adjL rs = (tbl IM.!) <$> tsr g (unU<$>rs)
