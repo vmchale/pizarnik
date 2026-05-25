@@ -561,6 +561,12 @@ tM b (M is ds) = first (M is) <$> tD b ds
 
 tD :: Ext a -> [D a a] -> UM a ([D a (TS a)], Ext a)
 tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b)) ds}
+  -- where x₀@(Ext f₀ t₀ _) </> x₁@(Ext f₁ t₁ _) | IM.disjoint f₀ f₁ &&IM.disjoint t₀ t₁ = x₀<>x₁
+
+rty :: Int -> Ext a -> a -> [A (TS a)] -> Either (TE a) ([A (TS a)], Int)
+rty u b x s = flip runStateT u $ do
+    (t,s0) <- tseq b mempty (SL x (map ($>x) (reverse s)))
+    pure (aas (faseq (s0@*) t))
 
 tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
 tAS u b s a = flip runStateT u $ do

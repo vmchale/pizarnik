@@ -57,13 +57,14 @@ naïve :: [Tree (MN Loc, M a (TS a), Cs a, Ar)] -> MC (TS a) a
 naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, IM.fromDistinctAscList [(-2,0),(-1,0)] <> foldMap (fth4@<>) c)
   where snd4 (_,y,_,_)=y; thd4 (_,_,z,_)=z; fth4 (_,_,_,w)=w
 
-rc :: Int -> MC (TS a) a -> S a -> ASeq a -> Either (E a) (S a, Int)
-rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (r c (aas a) s,u)) =<< first TyE (tAS i (π c) s at)
-  where
-    π (b,cϵ,a) = Ext (fmap aLs b) cϵ a
+ac :: Int -> Ext Loc -> S Loc -> (S Loc, Int)
+ac i c s = case rty i c Ret s of Left{}-> error"internal error?"; Right s'->s'
 
--- dbgS :: S a -> Doc ann
--- dbgS = hsep.map (\a -> parens (pretty a <+> ":" <+> pretty (aL a)))
+rc :: Int -> MC (TS Loc) Loc -> S Loc -> ASeq Loc -> Either (E Loc) (S Loc, Int)
+rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (t (r c (aas a) s) u)) =<< first TyE (tAS i e s at)
+  where
+    e = let (b,cϵ,a)=c in Ext (fmap aLs b) cϵ a
+    t sϵ j = ac j e sϵ
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
