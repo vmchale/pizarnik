@@ -566,7 +566,7 @@ tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b))
 rty :: Int -> Ext a -> a -> [A (TS a)] -> Either (TE a) ([A (TS a)], Int)
 rty u b x s = flip runStateT u $ do
     (t,s0) <- tseq b mempty (SL x (map ($>x) (reverse s)))
-    pure (aas (faseq (s0@*) t))
+    pure (reverse (aas (faseq (s0@*) t)))
 
 tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
 tAS u b s a = flip runStateT u $ do
