@@ -1,23 +1,25 @@
 module S ( MC, F, S, lm, r, stack ) where
 
 import           A
+import           B
+import           Control.Exception (throw)
 import           D
-import           Data.Functor  (($>))
-import qualified Data.IntMap   as IM
-import           Data.List     (find)
+import           Data.Functor      (($>))
+import qualified Data.IntMap       as IM
+import           Data.List         (find)
 import           F
 import           G
 import           Nm
-import qualified Nm.Map        as Nm
+import qualified Nm.Map            as Nm
 import           Pr
-import           Prettyprinter (Doc, pretty)
+import           Prettyprinter     (Doc, pretty)
 
 type S a = [A (TS a)]
 
 type F a = IM.IntMap (ASeq a)
 type MC a b = (F a, Cs b, Ar)
 
-r :: MC (TS a) b -> [A (TS a)] -> S a -> S a
+r :: MC (TS a) a -> [A (TS a)] -> S a -> S a
 r e as = thread (map (ι e) (reverse as))
 
 lm :: M b a -> F a
@@ -36,21 +38,22 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
     where bt l True= ta l
           bt l False = fa l
 
--- AbsAst(DExpr) (basically needs to be aware enough to β-reduce w/ synonyms...
 
-(≺) :: T a -> T a -> Bool
-(TT _ tt₀) ≺ (TT _ tt₁) = tt₀==tt₁
-(TT _ tt) ≺ (Σ _ σ)     = tt `Nm.member` σ
-_ ≺ _                   = False
-
-ψ :: MC (TS a) b -> [ASeq (TS a)] -> S a -> S a
-ψ c aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
+ψ :: MC (TS a) a -> [ASeq (TS a)] -> S a -> S a
+ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
   where
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
     u (Ca _ (C{}:cs)) = (cs++); u C{} = id
 
-ι :: MC (TS a) b -> A (TS a) -> S a -> S a
+    (TT _ tt₀) ≺ (TT _ tt₁) = tt₀==tt₁
+    (TT _ tt) ≺ (Σ _ σ)     = tt `Nm.member` σ
+    t₀ ≺ t₁ | Just (TC _ n, s) <- tun t₀, Right t₀' <- β cϵ n s = t₀' ≺ t₁
+    t₀ ≺ t₁ | Just (TC _ n, s) <- tun t₁, Right t₁' <- β cϵ n s = t₀ ≺ t₁'
+    _ ≺ _                   = False
+
+
+ι :: MC (TS a) a -> A (TS a) -> S a -> S a
 ι _ (B _ Dup) (a:as)       = a:a:as
 ι _ (B _ Un) (_:as)        = as
 ι c (B _ Plus) as          = i2 c (+) as
