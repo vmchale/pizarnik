@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( TE, Ext (..), tM, tAS, rty, tdbg, TN (..) ) where
+module Ty ( TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
 
 import           A
 import           B
@@ -701,6 +701,7 @@ ib l = B ([TP l Int, TP l Int] --: [TP l Int])
 rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
+ta b s (Ca x as) = first (\(SL t as) -> Ca t as)<$>tseq b s (SL x as)
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do

@@ -66,7 +66,7 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
 ι c (B _ Lt) as            = ib c (<) as
 ι c (B _ Cat) (a0:a1:as)   = let (s0,_)=s_ c a0; (s1,t)=s_ c a1 in L t (Str$s1<>s0):as
 ι c (B _ Ap) (Q _ a:as)    = r c (aas a) as
-ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as
+ι c (B _ Dip) (Q _ f:a:as) = a:r c (aas f) as -- FIXME: e.g. 15 5 nip leaves 5 on stack but still with type 'A Int -- 'A Int Int...
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in gp p x++a_
 ι _ a@L{} as               = a:as
 ι _ a@Q{} as               = a:as
