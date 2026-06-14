@@ -5,7 +5,7 @@ module Ty ( TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
 import           A
 import           B
 import           C
-import           Control.Monad                    (foldM, when)
+import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
@@ -23,7 +23,7 @@ import           Nm.Map                           (NmMap (NmMap), (!?))
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Pretty (pretty), (<+>))
+import           Prettyprinter                    (Pretty (pretty), align, hsep, indent, vsep, (<+>))
 import           Q
 import           Ty.A
 
@@ -725,6 +725,57 @@ ta b s (Pat l as)      = do
     let sigs = map (peekS s0.aLs) as'
     (t, s1) <- dU (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
+
+data Tr a = K (NmMap (TSeq a, Tr a)) | Lb (TSeq a)
+data Ψ a = Ψ (NmMap (TSeq a, Ψ a)) | Lbs (TS a)
+
+instance PT (Tr a) where
+    pp (Lb ts) = Lb <$> traverse pp ts
+    pp (K as)  = K <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
+
+instance PT (Ψ a) where
+    pp (Lbs ts) = Lbs <$> pp ts
+    pp (Ψ as)   = Ψ <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
+
+instance Pretty (Tr a) where
+    pretty=p.ppt where
+      p (Lb ts) = hsep (map p0 ts)
+      p (K as)  = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
+
+instance Pretty (Ψ a) where
+    pretty=p.ppt where
+      p (Lbs sig) = p0 sig
+      p (Ψ as)    = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
+
+      -- maybe keep some structure amongs lefts? unify/fan-out right
+      -- but maybe we could narrow step-by-step...
+tab :: Nt a -> [TS a] -> UM a (Ψ a)
+tab c = fmap (Ψ . fmap (\(ts,q,r) -> pushdown r (ts,q))) . graft <=< traverse tst
+  where
+    -- viewL :: TSeq a -> UM a (Tr a)
+    viewL (TT _ tt:ts) = do
+        n <- lψ tt
+        when (length ts<n) $ throwError (error"nyi")
+        let (a,r) = splitAt n ts
+        l <- viewL r
+        pure (K (Nm.singleton tt (a, l)))
+    viewL (Σ _ σ:ts)   = do
+        l <- viewL ts
+        pure (K ((,l) <$> σ))
+    viewL (t:ts) | Just{} <- tun t = do {t' <- lΒ (tβ c) t; viewL (t':ts)}
+    viewL ts = pure (Lb ts)
+
+    tst (TS l r) = (,r) <$> viewL (reverse l)
+
+    graft :: [(Tr a, TSeq a)] -> UM a (NmMap (TSeq a, Tr a, TSeq a))
+    graft ((K a, r):ts) = (((\(w,z) -> (w,z,r))<$>a)<>) <$> graft ts
+    graft ((Lb t, _):_) = throwError (PM t)
+    graft []            = pure Nm.empty
+
+    pushdown r (ts, Lb l) = (ts, Lbs (TS (reverse l) r))
+    pushdown r (ts, K as) = (ts, Ψ (fmap (pushdown r) as))
+
+    lψ = lT (ars c)
 
 pad :: a -> Int -> UM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
