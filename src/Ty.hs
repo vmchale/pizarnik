@@ -183,8 +183,8 @@ occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 roll = foldr (\t₀ -> TA (tL t₀) t₀)
 
 nv s n σ t e eo | n `NmSet.member` occ t = throwError eo
-                 | Nm.null σ = pure (t, iTV n t s)
-                 | otherwise = throwError e
+                | Nm.null σ = pure (t, iTV n t s)
+                | otherwise = throwError e
 
 uu :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
