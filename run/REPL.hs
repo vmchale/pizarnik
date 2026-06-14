@@ -71,7 +71,8 @@ loop = do
         Just (":ty":e) -> printT (unwords e) *> loop
         Just (":i":e)  -> try (unwords e) *> loop
         Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
-        Just [":dbg"]  -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
+        Just [":dump"] -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
+        Just [":st"]   -> do {(X _ s _) <- ll; dbg s; loop}
         Just e         -> printA (unwords e) *> loop
         Nothing        -> pure ()
 
@@ -121,6 +122,9 @@ printA src = do
                     lift $ put (X (i',ii,ti,m) s' c)
                     stackpp s'
                 Left err -> pE err
+
+dbg = po.d.reverse where
+    d = vsep.map (\a -> pretty a <+> ":" <+> pretty (aL a))
 
 stackpp=po.stack
 
