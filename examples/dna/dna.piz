@@ -1,0 +1,1 @@
+type Dna = { `a ⊕ `c ⊕ `g ⊕ `t };

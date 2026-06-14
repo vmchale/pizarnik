@@ -9,6 +9,7 @@ foldl : 'B [ 'B a -- 'B ] List(a) -- 'B
            & `cons⁻¹ [dup] dip2 (142) [$] dip2 foldl
            }
          ]
+
 head : NE(a) -- a
      := [ { `cons⁻¹ nip } ]
 
@@ -20,3 +21,6 @@ concat : List(a) List(a) -- List(a)
            & `cons^ (132) concat swap `cons
            }
          ]
+
+replicate : a Int -- List(a)
+          := [ dup 0 = { True^ drop2 `nil & False^ 1 - [dup] dip replicate swap `cons } ]
