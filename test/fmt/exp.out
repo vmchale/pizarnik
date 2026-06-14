@@ -13,12 +13,12 @@ type BinOp = {`add ⊕ `sub ⊕ `mult ⊕ `div};
 
 type Fn = {`even ⊕ `odd};
 
-type Exp r x = {x `const ⊕ Exp(r x) Exp(r x) BinOp `bin};
+type Exp r x = {x `const ⊕ Exp(r, x) Exp(r, x) BinOp `bin};
 
 type Const2 = {Int Int `K2};
 
-type Exp1 = {Exp Fn `specialfn} ∪ Exp(Reg Int);
+type Exp1 = {Exp Fn `specialfn} ∪ Exp(Reg, Int);
 
-type VExp = Exp(VReg Const2);
+type VExp = Exp(VReg, Const2);
 
 type Aarch64Isn v r = {r r `add ⊕ r r `sub ⊕ r r `div ⊕ r r `mul ⊕ v v `vadd};
