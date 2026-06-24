@@ -5,6 +5,7 @@ module Ty ( TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
 import           A
 import           B
 import           C
+import           Control.Arrow                    ((&&&))
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
@@ -16,14 +17,14 @@ import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import qualified Data.Text                        as T
-import           F
+import           Data.Tuple                       (swap)
 import           G
 import           Nm
 import           Nm.Map                           (NmMap (NmMap), (!?))
 import qualified Nm.Map                           as Nm
 import qualified Nm.Set                           as NmSet
 import           Pr
-import           Prettyprinter                    (Pretty (pretty), align, hsep, indent, vsep, (<+>))
+import           Prettyprinter                    (Pretty (pretty), hsep, indent, vsep, (<+>))
 import           Q
 import           Ty.A
 
@@ -45,13 +46,13 @@ data TE a = BE (BE a) | O (T a) (T a) | Os (Nm a) (TSeq a)
           | PM (TSeq a)
           | LE (TSeq a) (TSeq a)
           | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
-          | UF (T a) (T a) | MF (T a) (T a) | Bare (T a)
-          | AM (Nm a) | IS (Nm a)
+          | UF (T a) (T a) | MF (T a) (T a) | Ϙ (T a) (T a)
+          | Bare (T a) | AM (Nm a) | IS (Nm a)
           deriving Functor
 
 instance PT (TE a) where
     pp (UF t₀ t₁) = UF <$> pp t₀ <*> pp t₁; pp (O t₀ t₁) = O <$> pp t₀ <*> pp t₁
-    pp (Os n ts)  = Os <$> psv n <*> traverse pp ts
+    pp (Os n ts)  = Os <$> psv n <*> traverse pp ts; pp (Ϙ t₀ t₁) = Ϙ <$> pp t₀ <*> pp t₁
     pp (LE ts₀ ts₁) = LE <$> traverse pp ts₀ <*> traverse pp ts₁
     pp (LF t₀ t₁) = LF <$> pp t₀ <*> pp t₁; pp (ΦF t₀ t₁) = ΦF <$> pp t₀ <*> pp t₁
     pp (CF t₀ t₁) = CF <$> pp t₀ <*> pp t₁; pp (MF t₀ t₁) = MF <$> pp t₀ <*> pp t₁
@@ -61,20 +62,22 @@ tLs :: TSeq a -> a
 tLs = tL.head
 
 instance Pretty a => Pretty (TE a) where
-    pretty=p0.ppt where
-        p0 (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
-        p0 (AM n)       = tn n$"unknown arity:" <+> sq n
-        p0 (BE e)       = pretty e
-        p0 (PM ts)      = tsc ts"Pattern match arms must begin with an inverse constructor."
-        p0 (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
-        p0 (Os n t)     = tn n$"occurs check failed:" <+> sq n <> "," <+> sqs t
-        p0 (LF t0 t1)   = tc t0$pretty t0 <+> "⊀" <+> pretty t1
-        p0 (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
-        p0 (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <+> sq t1
-        p0 (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
-        p0 (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
-        p0 (IS n)       = tn n (sq n <+> "not in scope.")
-        p0 (Bare t)     = tc t$"Bare union:" <+> sq t
+    pretty=p.ppt where
+        p (LE ts0 ts1) = tsc ts0$"length mismatch:" <+> sq ts0 <+> "and" <+> sq ts1
+        p (AM n)       = tn n$"unknown arity:" <+> sq n
+        p (BE e)       = pretty e
+        p (PM ts)      = tsc ts"Pattern match arms must begin with an inverse constructor."
+        p (O t₀ t₁)    = tc t₀$"occurs check failed:" <+> sq t₀ <> "," <+> sq t₁
+        p (Os n t)     = tn n$"occurs check failed:" <+> sq n <> "," <+> sqs t
+        p (LF t0 t1)   = tc t0$pretty t0 <.> "⊀" <.> pretty t1
+        p (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
+        p (CF t0 t1)   = tc t0$sq t0 <.> "is not an acceptable argument, expected" <.> sq t1
+        p (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
+        p (Ϙ t0 t1)    = tc t0$sq t0 <> "," <+> sq t1 <+> "are disjoint"
+        p (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
+        p (IS n)       = tn n (sq n <+> "not in scope.")
+        p (Bare t)     = tc t$"Bare union:" <+> sq t
+instance Pretty a => Show (TE a) where show=show.pretty
 
 tn n p = pretty (Nm.loc n) <> ":" <+> p
 tc t p = pretty (tL t) <> ":" <+> p; tsc t p = pretty (tLs t) <> ":" <+> p
@@ -109,9 +112,10 @@ ci :: Nm a -> T a -> T a -> Subst a -> UM a (Subst a)
 ci (Nm _ (U u) _) t te s | u `IS.member` occ t = throwError $ O te t
                          | otherwise = pure (mapTV (IM.insert u t) s)
 
-mf, cf, sf, φf :: T a -> T a -> UM a b
+mf, cf, sf, φf, ϙf  :: T a -> T a -> UM a b
 mf t0 t1 = throwError$MF t0 t1; sf t0 t1 = throwError$LF t0 t1
 φf t0 t1 = throwError$ΦF t0 t1; cf t0 t1 = throwError$CF t0 t1
+ϙf t0 t1 = throwError$Ϙ t0 t1
 
 lΒ :: Cs a -> T a -> UM a (T a)
 lΒ cϵ = liftEither . first BE . tCtx
@@ -198,17 +202,17 @@ uu c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; uu c s t0' t1}
 uu c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; uu c s t0 t1'}
 uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
                                    | otherwise = throwError$UF t0 t1
-uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> uσ uus c s l as₀ as₁ -- shouldn't have stack vars hm
+uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> ua c s l as₀ as₁ -- shouldn't have stack vars hm
                                  | otherwise = throwError$UF t0 t1
 uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
-                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
+                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- ua c s l as σ; second ($s') <$> nρ n σ'}
                                 | otherwise = throwError$UF t0 t1
 uu c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
-                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- uσ uus c s l as σ; second ($s') <$> nρ n σ'}
+                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- ua c s l as σ; second ($s') <$> nρ n σ'}
                                 | otherwise = throwError$UF t0 t1
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
-                                     | otherwise = do {(σ,s') <- uσ uus c s l σ0 σ1; second ($s') <$> nρ n0 σ}
+                                     | otherwise = do {(σ,s') <- ua c s l σ0 σ1; second ($s') <$> nρ n0 σ}
 uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
                                  | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
@@ -220,10 +224,10 @@ uu _ _ t0@(TP{};QT{}) t1 = throwError$UF t0 t1
 uu _ _ t0 t1@(TP{};QT{}) = throwError$UF t0 t1
 uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
 
-uus=sv uu;usc=ctx'ize uus
+uus=sv uu;usc=ctx'ize uus;ua=uσ uus
 
 {-# SCC su #-}
--- "subsumes"
+-- "subsumes" ≺
 su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 su _ s t@(Ρ _ n0 _) (Ρ _ n1 _) | n0==n1 = pure (t,s)
@@ -395,7 +399,10 @@ nρ n@(Nm t _ l) σ = do
 φ c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; φ c s t0 t1}
 φ _ s t te@(Ρ _ n σ) = nv s n σ t (ΦF t te) (O t te)
 φ _ s te@(Ρ _ n σ) t = nv s n σ t (ΦF te t) (O t te)
-φ c s t0@QT{} t1@QT{} = uu c s t0 t1
+φ c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do
+    (l',s') <- ϙs c s l0 l1
+    (r',s'') <- φsc c s' r0 r1
+    pure (QT x (l' --: r'), s'')
 φ _ _ t0@TP{} t1 = φf t0 t1
 φ _ _ t0 t1@TP{} = φf t0 t1
 φ _ _ t0@TT{} t1@QT{} = φf t0 t1
@@ -404,12 +411,27 @@ nρ n@(Nm t _ l) σ = do
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
 
--- FIXME: eat into stack var when present
+-- "pin"/intersect
+ϙ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
+ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+ϙ _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
+                                  | otherwise = ϙf t0 t1
+ϙ _ s t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure (t0,s)
+                                | otherwise = ϙf t0 t1
+ϙ c s t0@(Σ l a0) t1@(Σ _ a1) | eqKeys a0 a1 = first (Σ l) <$> ϙσ c s l a0 a1
+                              | otherwise = ϙf t0 t1
+ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+ϙ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
+ϙ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+
+ϙs=sv ϙ;ϙsc=ctx'ize ϙs; ϙσ = uσ ϙs
+
+-- TODO: eat into stack var when present?
 rwAr :: Ar -> TSeq a -> UM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
-    where g (tt@(TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else (tt:) <$> g ts}
-          g (t:ts)           = (t:)<$>g ts
-          g []               = pure []
+    where g ((TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else ie}
+          g (t:ts)        = (t:)<$>g ts
+          g []            = pure []
 
           under f (t@SV{}:ts) = (t:)<$>f ts
           under f ts          = f ts
@@ -440,6 +462,9 @@ ms u c s t0 t1e@(SV _ n:t1)
     | otherwise = throwError$LE t1e t0
   where n0=length t0; n1=length t1
 ms u c s (t0:t0s) (t1:t1s) = do {s' <- u c t0 t1; mc u c (s<>s') t0s t1s}
+-- FIXME: check for clashes ^ e.g.
+-- a b c
+-- d e d
 ms _ _ s [] [] = pure s
 ms _ _ _ t0 [] = throwError$LE t0 []
 ms _ _ _ [] t1 = throwError$LE t1 []
@@ -576,12 +601,10 @@ tAS u b s a = flip runStateT u $ do
     pure (s2@*t2, faseq (s2@*) t1)
   where n=π b
 
-{-# SCC tD0 #-}
 tD0 :: D a a -> TM a ()
 tD0 (F _ n ts _)  = iFn n ts
 tD0 (TD _ n vs t) = iTD n vs t *> cA t
 
-{-# SCC tD1 #-}
 tD1 :: Ext a -> D a a -> UM a (D a (TS a))
 tD1 _ (TD x n vs t) = pure (TD x n vs t)
 tD1 c (F _ n ts as) = do
@@ -619,20 +642,7 @@ tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')
     dM s (SL l as) = do {ᴀ <- fsv l "A"; (t,s') <- dbg s ([ᴀ] --: [ᴀ]) as; pure (t, s')}
 
     dbg sϵ _ []            = pure ([], sϵ)
-    dbg sϵ t (a@(Pat _ as):aa) = do
-        (as',s) <- mS dM sϵ (aas as)
-        (tp,s') <- case χ (can.last<$>as') of
-            ([], a'') -> r (dU c s (aLs as) sigs)
-                                (\(ψt, s') -> pure (Right ψt, s'))
-                                (\e        -> (Left e, s))
-                         where sigs = map (peekS s) (snd<$>a'')
-            ((_,e):_, _) -> pure (Left e, s)
-        case tp of
-            Right tt ->
-                r (cat c s' t tt)
-                    (\(t',s'') -> first (TArm (a, Right t') as':) <$> dbg s'' t' aa)
-                    (\e        -> ([TArm (a, Left e) as'], s'))
-            Left e -> pure ([TArm (a, Left e) as'], s')
+    dbg _ _ (Pat{}:_) = error "nyi"
     dbg sϵ t (a@(Q l as₀):aa) = do
         (as',s) <- dM sϵ as₀
         case χ (can<$>as') of
@@ -723,160 +733,86 @@ ta b s (C l tt)        = do
 ta b s (Pat l as)      = do
     (as', s0) <- mS (tseq b) s (aas as)
     let sigs = map (peekS s0.aLs) as'
-    (t, s1) <- dU (π b) s0 l sigs
-    pure (Pat t (SL t as'), s1)
+    q <- tab (π b) sigs
+    (t, s) <- tψ (π b) s0 l q
+    pure (Pat t (SL t as'), s)
 
-data Tr a = K (NmMap (TSeq a, Tr a)) | Lb (TSeq a)
-data Ψ a = Ψ (NmMap (TSeq a, Ψ a)) | Lbs (TS a)
+newtype TR a = TR [T a]
+data Ψ f a = Ψ (NmMap (TSeq a, Ψ f a)) | Lb (f a)
 
-instance PT (Tr a) where
-    pp (Lb ts) = Lb <$> traverse pp ts
-    pp (K as)  = K <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
+prs :: Ψ TS a -> [TSeq a]
+prs (Lb (TS _ r)) = [r]
 
-instance PT (Ψ a) where
-    pp (Lbs ts) = Lbs <$> pp ts
-    pp (Ψ as)   = Ψ <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
+tl1 :: Ψ TS a -> [TSeq a]
+tl1 (Lb (TS l _)) = [l]
 
-instance Pretty (Tr a) where
+instance PT (f a) => PT (Ψ f a) where
+    pp (Lb ts) = Lb <$> pp ts
+    pp (Ψ as)  = Ψ <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
+
+instance (PT (f a), P0 (f a)) => Pretty (Ψ f a) where
     pretty=p.ppt where
-      p (Lb ts) = hsep (map p0 ts)
-      p (K as)  = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
+      p (Lb ts) = p0 ts
+      p (Ψ as)  = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
 
-instance Pretty (Ψ a) where
-    pretty=p.ppt where
-      p (Lbs sig) = p0 sig
-      p (Ψ as)    = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
+instance (PT (f a), P0 (f a)) => Show (Ψ f a) where show=show.pretty
 
-      -- maybe keep some structure amongs lefts? unify/fan-out right
-      -- but maybe we could narrow step-by-step...
-tab :: Nt a -> [TS a] -> UM a (Ψ a)
-tab c = fmap (Ψ . fmap (\(ts,q,r) -> pushdown r (ts,q))) . graft <=< traverse tst
+tab :: Nt a -> [TS a] -> UM a (Ψ TS a)
+tab c = (Ψ<$>) . graft <=< traverse tst
   where
-    -- viewL :: TSeq a -> UM a (Tr a)
     viewL (TT _ tt:ts) = do
         n <- lψ tt
         when (length ts<n) $ throwError (error"nyi")
         let (a,r) = splitAt n ts
         l <- viewL r
-        pure (K (Nm.singleton tt (a, l)))
+        pure (Ψ (Nm.singleton tt (a, l)))
     viewL (Σ _ σ:ts)   = do
         l <- viewL ts
-        pure (K ((,l) <$> σ))
+        pure (Ψ ((,l) <$> σ))
+    viewL (UU{}:ts)=error"nyi"
+    -- viewL (t@TV{}:ts)=error"nyi"
+    viewL (Ρ{}:ts)=error"nyi"
     viewL (t:ts) | Just{} <- tun t = do {t' <- lΒ (tβ c) t; viewL (t':ts)}
-    viewL ts = pure (Lb ts)
+    viewL ts = pure (Lb (TR ts))
 
     tst (TS l r) = (,r) <$> viewL (reverse l)
 
-    graft :: [(Tr a, TSeq a)] -> UM a (NmMap (TSeq a, Tr a, TSeq a))
-    graft ((K a, r):ts) = (((\(w,z) -> (w,z,r))<$>a)<>) <$> graft ts
-    graft ((Lb t, _):_) = throwError (PM t)
-    graft []            = pure Nm.empty
+    alt :: NmMap (TSeq a, Ψ TS a) -> NmMap (TSeq a, Ψ TS a) -> NmMap (TSeq a, Ψ TS a)
+    alt = Nm.unionWith f where f (l0, Ψ q0) (_, Ψ q1) = (l0, Ψ$alt q0 q1)
+    -- TODO: does this work with depth three..
 
-    pushdown r (ts, Lb l) = (ts, Lbs (TS (reverse l) r))
-    pushdown r (ts, K as) = (ts, Ψ (fmap (pushdown r) as))
+    graft :: [(Ψ TR a, TSeq a)] -> UM a (NmMap (TSeq a, Ψ TS a))
+    graft ((Ψ a, r):ts)      = (fmap (pushdown r) a `alt`) <$> graft ts
+    graft ((Lb (TR t), _):_) = throwError (PM t)
+    graft []                 = pure Nm.empty
+
+    pushdown :: TSeq a -> (TSeq a, Ψ TR a) -> (TSeq a, Ψ TS a)
+    pushdown r (ts, Lb (TR l)) = (ts, Lb (TS (reverse l) r))
+    pushdown r (ts, Ψ as)      = (ts, Ψ (fmap (pushdown r) as))
 
     lψ = lT (ars c)
 
 pad :: a -> Int -> UM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
-tally :: [([(Nm a, TSeq a)], TS a)] -> Nm.NmMap [TS a]
-tally = foldl' (\z (ns,TS l r) -> thread [Nm.insertWith (++) n [TS (l++υ) r] | (n,υ) <- ns] z) Nm.empty
-
-ψ :: Nt a -> [TS a] -> UM a (Nm.NmMap [TS a])
-ψ c tss = do
-    n <- minimum <$> traverse g sl
-    when (n==0) $ throwError (PM (head$map tlefts tss))
-    forks <- traverse (p n) sl
-    h <- traverse (l n) sl
-    let tss' = zipWith TS (map reverse h) (map trights tss)
-    -- TODO: fuse with p below
-    pure (tally (zip forks tss'))
-    where sl=map (reverse.tlefts) tss
-
-    -- counts, punches hole, picks out "pivot name" all separately...
-    -- probably should map this one or two traversals...
-    --
-    -- also maybe "count by arity backwards" mishandles just⁻¹ drop `true⁻¹
-          l :: Int -> [T a] -> UM a [T a]
-          l 1 (_:ts)           = pure ts
-          l n (t@Σ{}:ts)       = (t:) <$> l (n-1) ts
-          l n (t@(TT _ tt):ts) = do {k <- lψ tt; (t:).(take k ts++) <$> l (n-1) ts}
-          -- TODO: UU?
-          l n (t:ts)           = (t:) <$> l n ts
-
-          p :: Int -> [T a] -> UM a [(Nm a, TSeq a)]
-          p n ts = cs =<< (ts!*n) where cs = \case
-                                            TT _ nm -> pure [(nm,[])] -- FIXME: we don't pad tags but we DO pad constructors... this can probably be simplified!
-                                            Σ x σ -> traverse (\nm -> do {k <- lψ nm; υ <- pad (loc nm) k; pure (nm,υ)}) (Nm.keys σ x)
-                                            t | Just{} <- unA t -> error (show t)
-                                            _ -> throwError (PM ts)
-
-          (t:_) !* 1          = pure t
-          (Σ{}:ts) !* n       = ts!*(n-1)
-          (TC{}:ts) !* n      = ts!*(n-1)
-          (TA{}:ts) !* n      = ts!*(n-1)
-          ((TT _ tt):ts) !* n = do {k <- lψ tt; drop k ts !* (n-1)}
-          (TP{}:ts) !* n      = ts!*n
-          (QT{}:ts) !* n      = ts!*n
-          (Ρ{}:ts) !* n       = ts!*n
-          (TV{}:ts) !* n      = ts!*n
-
-          g ((TT _ tt):ts) = do {n <- lψ tt; (1+) <$> g (drop n ts)}
-          g (Σ{}:ts)       = (1+) <$> g ts
-          g (TC{}:ts)      = (1+) <$> g ts -- TODO: is this right?
-          g (TA{}:ts)      = (1+) <$> g ts
-          g ([];[SV{}])    = pure 0
-          g (Ρ{}:ts)       = g ts
-          g (TV{}:ts)      = g ts
-          g (TP{}:ts)      = g ts
-          g (QT{}:ts)      = g ts
-
-          lψ=lT (ars c)
-
-{-# SCC dU #-}
-dU :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
-dU c s x tss = do
-    tψ <- ψ c =<< traverse (βt (tβ c)) tss
-    rϵ <- traverse (traverse (rwAr ar.trights)) tψ
-    let rm=maximum (l<$>concat rϵ)
-    ρ <- traverse (traverse (pad x.(rm-).l)) rϵ
-    let ψ' = Nm.intersectionWith (zipWith (\p (TS l_ r_) -> TS (tuck p l_) (tuck p r_))) ρ tψ
-        rs'= concatMap (map trights) ψ'
-    (al,s') <- srs s (Nm.toList x ψ')
-    (σ,ul) <- an (map (second tlefts) al)
-    (l',s'') <- urs s' ul; (r',s''') <- frs s'' rs'
-    pure (l'++[σ] --: r', s''')
-  where ar=ars c; lR=lT ar
-
-        l (SV{}:t) = length t; l t=length t
-
-        tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
-
-        srs sϵ []            = pure ([], sϵ)
-        srs sϵ ((n, [ts]):a) = first ((n,ts):) <$> srs sϵ a
-        srs _  ((_, []):_)   = ie
-        -- TODO: step without tuck/etc.
-        srs sϵ ((n, ts):a)   = do {(tϵ,s') <- dU c sϵ (loc n) ts; first ((n,tϵ):) <$> srs s' a}
-
-        frs sϵ [t]    = pure (t, sϵ)
-        frs sϵ (t:ts) = do {(tr,s0) <- frs sϵ ts; φsc c s0 tr t}
-
-        -- FIXME: this is not catching everything w/ `just⁻¹ drop True⁻¹ True (for instance)
-        urs sϵ [t]    = pure (t, sϵ)
-        urs sϵ (t:ts) = do {(tr,s0) <- urs sϵ ts; usc c s0 tr t}
-
-        an as = do
-            (tas, tls) <- unzip<$>traverse (\(nm,ts) -> do{n<-lR nm; when (n>length ts) ie $> (ts /| n)}) as
-            pure (Σ x (Nm.fromDistinctAscList (zip nms tls)), tas)
-          where nms=map fst as
-
-βt :: Cs a -> TS a -> UM a (TS a)
-βt c (TS l r) = TS <$> traverse q l <*> traverse q r
+-- fan out among lefts (as scoped...), rights :)
+tψ :: Nt a -> Subst a -> a -> Ψ TS a -> UM a (TS a, Subst a)
+tψ _ s _ (Lb (TS l r)) = pure (TS l r, s)
+tψ c s x (Ψ q)         = do
+      (ts',s0) <- nM (\sϵ (_,(_,ts)) -> tψ c sϵ x ts) s q
+      let (ls,rs) = unzip$map (tlefts &&& trights) ts'
+      (r',s1) <- rr s0 rs; (l',s2) <- ll s1 ls
+      pure (TS (l'++[lσ]) r', s2)
   where
-    q (TC _ n) = q =<< lC c n
-    q t | Just{} <- tun t = lΒ c t
-    q t = pure t
+    lσ=Σ x (fmap fst q)
+
+    rr sϵ [t]    = pure (t, sϵ)
+    rr sϵ (t:ts) = do {(tr,s0) <- rr sϵ ts; φsc c s0 tr t}
+
+    ll sϵ [t]    = pure (t, sϵ)
+    ll sϵ (t:ts) = do {(tr,s0) <- ll sϵ ts; ϙsc c s0 tr t}
+
+    nM f sϵ = mS f sϵ . Nm.toList x
 
 mS :: Monad m => (Subst a -> b -> m (c, Subst a)) -> Subst a -> [b] -> m ([c], Subst a)
 mS _ s []     = pure ([], s)
