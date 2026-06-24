@@ -17,7 +17,6 @@ import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import qualified Data.Text                        as T
-import           Data.Tuple                       (swap)
 import           G
 import           Nm
 import           Nm.Map                           (NmMap (NmMap), (!?))
