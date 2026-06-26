@@ -305,9 +305,9 @@ si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
 sv _ _ s [] [] = pure ([], s)
-sv u c s t0@(s0@(SV _ sn0):t0d) t1@(s1@(SV _ sn1):t1d) =
+sv u c s t0@(SV x sn0:t0d) t1@(s1@(SV _ sn1):t1d) =
     case n0?n1 of
-        EQ -> ctx'ize (sv u) c (iSV sn0 [s1] s) t0d t1d
+        EQ -> first (SV x sn0:) <$> ctx'ize (sv u) c (iSV sn0 [s1] s) t0d t1d
         GT -> let (uws, res) = t0/|n1 in do {ς <- si sn1 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) res t1d}
         LT -> let (uws, res) = t1/|n0 in do {ς <- si sn0 uws; first (uws++) <$> ctx'ize (sv u) c (ς s) t0d res}
   where
