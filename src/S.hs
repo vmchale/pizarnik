@@ -38,7 +38,6 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
     where bt l True= ta l
           bt l False = fa l
 
-
 ψ :: MC (TS a) a -> [ASeq (TS a)] -> S a -> S a
 ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
   where

@@ -9,7 +9,7 @@ module A ( A (..)
          , SL (..), ASeq
          , (--:)
          , faseq
-         , PT (..), p0
+         , PT (..), P0 (..)
          , ppt, psv
          , tun
          , am

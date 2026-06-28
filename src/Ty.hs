@@ -183,7 +183,7 @@ so (Ρ _ _ σ)             = foldMap (so@<>) σ
 occρ :: Nm a -> NmMap (TSeq a) -> Bool
 occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
 
-roll = foldr (\t₀ -> TA (tL t₀) t₀)
+roll = foldl (\t₀ -> TA (tL t₀) t₀)
 
 nv s n σ t e eo | n `NmSet.member` occ t = throwError eo
                 | Nm.null σ = pure (t, iTV n t s)
@@ -413,15 +413,28 @@ nρ n@(Nm t _ l) σ = do
 -- "pin"/intersect
 ϙ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
+ϙ _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = error"nyi" -- pure (t,s)
+ϙ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
+ϙ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+ϙ c s t₀ t₁ | Just (th@(TC _ n₀), a₀) <- tun t₀, Just (TC _ n₁, a₁) <- tun t₁, n₀==n₁ = do
+    (a,s') <- zS (ϙ c) s a₀ a₁
+    pure (roll th a, s')
+ϙ c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; ϙ c s t0' t1}
+ϙ c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; ϙ c s t0 t1'}
 ϙ _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
                                   | otherwise = ϙf t0 t1
 ϙ _ s t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure (t0,s)
                                 | otherwise = ϙf t0 t1
 ϙ c s t0@(Σ l a0) t1@(Σ _ a1) | eqKeys a0 a1 = first (Σ l) <$> ϙσ c s l a0 a1
                               | otherwise = ϙf t0 t1
-ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-ϙ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
-ϙ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
+ϙ c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
+                               | σ `Nm.isSubmapOf` as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
+                               | otherwise = ϙf t0 t1
+ϙ c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
+                               | σ `Nm.isSubmapOf` as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
+                               | otherwise = ϙf t0 t1
+ϙ c s t0 t1 = error (show (t0,t1))
+
 
 ϙs=sv ϙ;ϙsc=ctx'ize ϙs; ϙσ = uσ ϙs
 
@@ -768,7 +781,8 @@ tab c = (Ψ<$>) . graft <=< traverse tst
     viewL (Σ _ σ:ts)   = do
         l <- viewL ts
         pure (Ψ ((,l) <$> σ))
-    viewL (UU{}:ts)=error"nyi"
+    --    uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
+    viewL (UU x ts0:ts1)= do {ts0' <- uU (tβ c) x ts0; viewL (ts0':ts1)} -- error"nyi"
     -- viewL (t@TV{}:ts)=error"nyi"
     viewL (Ρ{}:ts)=error"nyi"
     viewL (t:ts) | Just{} <- tun t = do {t' <- lΒ (tβ c) t; viewL (t':ts)}
@@ -794,16 +808,28 @@ tab c = (Ψ<$>) . graft <=< traverse tst
 pad :: a -> Int -> UM a (TSeq a)
 pad l n = traverse (\i -> erv l ("ρ"<>pᵤ i)) [1..n]
 
--- fan out among lefts (as scoped...), rights :)
 tψ :: Nt a -> Subst a -> a -> Ψ TS a -> UM a (TS a, Subst a)
 tψ _ s _ (Lb (TS l r)) = pure (TS l r, s)
 tψ c s x (Ψ q)         = do
-      (ts',s0) <- nM (\sϵ (_,(_,ts)) -> tψ c sϵ x ts) s q
+      (ts',s0) <- mm (\sϵ (_,(_,ts)) -> tψ c sϵ x ts) s q
       let (ls,rs) = unzip$map (tlefts &&& trights) ts'
-      (r',s1) <- rr s0 rs; (l',s2) <- ll s1 ls
+          m=maximum (l<$>rs)
+      ρ <- traverse (pad x.(m-).l) rs
+      let rs' = zipWith tuck ρ rs; ls' = zipWith tuck ρ ls
+      (r',s1) <- rr s0 rs'; (l',s2) <- ll s1 ls'
+      -- padding = ugh
+      -- `odd → ([], 'A -- 'A)
+      -- `even → ([], 'A a -- 'A `even)
+      --
+      -- `nil → ([], 'A -- 'A ρ₁ ρ₂ `cons)
+      -- `cons → ([List(a), a], 'A -- 'A ρ₁ ρ₂ `cons)
       pure (TS (l'++[lσ]) r', s2)
   where
     lσ=Σ x (fmap fst q)
+
+    l (SV{}:y) = length y; l y = length y
+    tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
+    -- FIXME: tuck on 'A ['A -- b] yields 'A ρ ['A -- b] which is all wrong
 
     rr sϵ [t]    = pure (t, sϵ)
     rr sϵ (t:ts) = do {(tr,s0) <- rr sϵ ts; φsc c s0 tr t}
@@ -811,7 +837,7 @@ tψ c s x (Ψ q)         = do
     ll sϵ [t]    = pure (t, sϵ)
     ll sϵ (t:ts) = do {(tr,s0) <- ll sϵ ts; ϙsc c s0 tr t}
 
-    nM f sϵ = mS f sϵ . Nm.toList x
+    mm f sϵ = mS f sϵ . Nm.toList x
 
 mS :: Monad m => (Subst a -> b -> m (c, Subst a)) -> Subst a -> [b] -> m ([c], Subst a)
 mS _ s []     = pure ([], s)
