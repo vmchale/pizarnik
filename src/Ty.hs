@@ -212,7 +212,7 @@ uu c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
 uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
                                      | n1 `occρ` σ0 = throwError$O t1 t0
                                      | otherwise = do {(σ,s') <- ua c s l σ0 σ1; second ($s') <$> nρ n0 σ}
-uu _ s t0@(TP _ p0) t1@(TP _ p1) | p0==p1 = pure (t0,s)
+uu _ s t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure (t0,s)
                                  | otherwise = throwError$UF t0 t1
 uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
 uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
@@ -413,7 +413,7 @@ nρ n@(Nm t _ l) σ = do
 -- "pin"/intersect
 ϙ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-ϙ _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = error"nyi" -- pure (t,s)
+ϙ _ s t@(Ρ _ ρ₀ σ₀) (Ρ _ ρ₁ σ₁) | ρ₀==ρ₁&&Nm.null σ₀&&Nm.null σ₁ = pure (t,s)
 ϙ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 ϙ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 ϙ c s t₀ t₁ | Just (th@(TC _ n₀), a₀) <- tun t₀, Just (TC _ n₁, a₁) <- tun t₁, n₀==n₁ = do
@@ -433,8 +433,9 @@ nρ n@(Nm t _ l) σ = do
 ϙ c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
                                | otherwise = ϙf t0 t1
-ϙ c s t0 t1 = error (show (t0,t1))
-
+ϙ _ s te@(Ρ _ n σ) t = nv s n σ t (Ϙ te t) (O te t)
+ϙ _ s t te@(Ρ _ n σ) = nv s n σ t (Ϙ t te) (O t te)
+ϙ c s (QT x (TS l₀ r₀)) (QT _ (TS l₁ r₁)) = do {(l',s') <- ϙs c s l₀ l₁; (r',s'') <- ϙs c s' r₀ r₁; pure (QT x (l'--:r'), s'')}
 
 ϙs=sv ϙ;ϙsc=ctx'ize ϙs; ϙσ = uσ ϙs
 
@@ -730,7 +731,7 @@ ta _ s (L l (S p)) = do
     ns <- traverse (\_ -> ftv l "a") [1..gn p]
     pure (L (ns --: reverse (p `gp` reverse ns)) (S p), s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
-ta _ s (B l Un)        = do {n <- erv l "a"; pure (B ([n] --: []) Un, s)}
+ta _ s (B l Un)        = do {n <- erv l "ρ"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
 ta _ s (B l op@(Plus{};Minus{};Mul{};Div{};Rem{})) = pure (ib l op, s)
 ta _ s (B l r@(Eq{};Gt{};Lt{})) = pure (rel l r, s)
@@ -783,7 +784,7 @@ tab c = (Ψ<$>) . graft <=< traverse tst
         pure (Ψ ((,l) <$> σ))
     viewL (UU x ts0:ts1)= do {ts0' <- uU (tβ c) x ts0; viewL (ts0':ts1)} -- error"nyi"
     -- viewL (t@TV{}:ts)=error"nyi"
-    viewL (Ρ{}:ts)=error"nyi"
+    -- viewL (Ρ{}:ts)=error"nyi"
     viewL (t:ts) | Just{} <- tun t = do {t' <- lΒ (tβ c) t; viewL (t':ts)}
     viewL ts = pure (Lb (TR ts))
 
@@ -812,23 +813,10 @@ tψ _ s _ (Lb (TS l r)) = pure (TS l r, s)
 tψ c s x (Ψ q)         = do
       (ts',s0) <- mm (\sϵ (_,(_,ts)) -> tψ c sϵ x ts) s q
       let (ls,rs) = unzip$map (tlefts &&& trights) ts'
-          -- m=maximum (l<$>rs)
-      -- ρ <- traverse (pad x.(m-).l) rs
-      -- let rs' = zipWith tuck ρ rs; ls' = zipWith tuck ρ ls
       (l',s1) <- ll s0 ls; (r',s2) <- rr s1 rs;
-      -- padding = ugh
-      -- `odd → ([], 'A -- 'A)
-      -- `even → ([], 'A a -- 'A `even)
-      --
-      -- `nil → ([], 'A -- 'A ρ₁ ρ₂ `cons)
-      -- `cons → ([List(a), a], 'A -- 'A ρ₁ ρ₂ `cons)
       pure (TS (l'++[lσ]) r', s2)
   where
     lσ=Σ x (fmap fst q)
-
-    l (SV{}:y) = length y; l y = length y
-    tuck ts0 tse@(t@SV{}:QT{}:ts1) = error (show tse); tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
-    -- FIXME: tuck on 'A ['A -- b] yields 'A ρ ['A -- b] which is all wrong
 
     rr sϵ [t]    = pure (t, sϵ)
     rr sϵ (t:ts) = do {(tr,s0) <- rr sϵ ts; φsc c s0 tr t}
