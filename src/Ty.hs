@@ -730,7 +730,7 @@ ta _ s (L l (S p)) = do
     ns <- traverse (\_ -> ftv l "a") [1..gn p]
     pure (L (ns --: reverse (p `gp` reverse ns)) (S p), s)
 ta b s (V _ n)         = do {ts <- lA (fns b) n; pure (V ts (n$>ts), s)}
-ta _ s (B l Un)        = do {n <- ftv l "a"; pure (B ([n] --: []) Un, s)}
+ta _ s (B l Un)        = do {n <- erv l "a"; pure (B ([n] --: []) Un, s)}
 ta _ s (B l Dup)       = do {n <- ftv l "a"; pure (B ([n] --: [n,n]) Dup, s)}
 ta _ s (B l op@(Plus{};Minus{};Mul{};Div{};Rem{})) = pure (ib l op, s)
 ta _ s (B l r@(Eq{};Gt{};Lt{})) = pure (rel l r, s)
@@ -781,7 +781,6 @@ tab c = (Ψ<$>) . graft <=< traverse tst
     viewL (Σ _ σ:ts)   = do
         l <- viewL ts
         pure (Ψ ((,l) <$> σ))
-    --    uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
     viewL (UU x ts0:ts1)= do {ts0' <- uU (tβ c) x ts0; viewL (ts0':ts1)} -- error"nyi"
     -- viewL (t@TV{}:ts)=error"nyi"
     viewL (Ρ{}:ts)=error"nyi"
@@ -813,10 +812,10 @@ tψ _ s _ (Lb (TS l r)) = pure (TS l r, s)
 tψ c s x (Ψ q)         = do
       (ts',s0) <- mm (\sϵ (_,(_,ts)) -> tψ c sϵ x ts) s q
       let (ls,rs) = unzip$map (tlefts &&& trights) ts'
-          m=maximum (l<$>rs)
-      ρ <- traverse (pad x.(m-).l) rs
-      let rs' = zipWith tuck ρ rs; ls' = zipWith tuck ρ ls
-      (r',s1) <- rr s0 rs'; (l',s2) <- ll s1 ls'
+          -- m=maximum (l<$>rs)
+      -- ρ <- traverse (pad x.(m-).l) rs
+      -- let rs' = zipWith tuck ρ rs; ls' = zipWith tuck ρ ls
+      (l',s1) <- ll s0 ls; (r',s2) <- rr s1 rs;
       -- padding = ugh
       -- `odd → ([], 'A -- 'A)
       -- `even → ([], 'A a -- 'A `even)
@@ -828,7 +827,7 @@ tψ c s x (Ψ q)         = do
     lσ=Σ x (fmap fst q)
 
     l (SV{}:y) = length y; l y = length y
-    tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
+    tuck ts0 tse@(t@SV{}:QT{}:ts1) = error (show tse); tuck ts0 (t@SV{}:ts1) = t:ts0++ts1; tuck ts0 ts1=ts0++ts1
     -- FIXME: tuck on 'A ['A -- b] yields 'A ρ ['A -- b] which is all wrong
 
     rr sϵ [t]    = pure (t, sϵ)
