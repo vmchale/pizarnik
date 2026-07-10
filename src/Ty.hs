@@ -413,7 +413,7 @@ nρ n@(Nm t _ l) σ = do
 -- "pin"/intersect
 ϙ :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 ϙ _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
-ϙ _ s t@(Ρ _ ρ₀ σ₀) (Ρ _ ρ₁ σ₁) | ρ₀==ρ₁&&Nm.null σ₀&&Nm.null σ₁ = pure (t,s)
+ϙ _ s t@(Ρ _ ρ₀ σ₀) (Ρ _ ρ₁ σ₁) | ρ₀==ρ₁&&Nm.null σ₀&&Nm.null σ₁ = pure (t,s) -- TODO: not null probably ok?
 ϙ _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
 ϙ _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
 ϙ c s t₀ t₁ | Just (th@(TC _ n₀), a₀) <- tun t₀, Just (TC _ n₁, a₁) <- tun t₁, n₀==n₁ = do
@@ -747,8 +747,8 @@ ta b s (Pat l as)      = do
     (as', s0) <- mS (tseq b) s (aas as)
     let sigs = map (peekS s0.aLs) as'
     q <- tab (π b) sigs
-    (t, s) <- tψ (π b) s0 l q
-    pure (Pat t (SL t as'), s)
+    (t, s1) <- tψ (π b) s0 l q
+    pure (Pat t (SL t as'), s1)
 
 newtype TR a = TR [T a]
 data Ψ f a = Ψ (NmMap (TSeq a, Ψ f a)) | Lb (f a)
