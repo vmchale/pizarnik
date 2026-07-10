@@ -527,7 +527,6 @@ lt _ (TV _ n0) (TV _ n1) | n0==n1 = pure mempty
 lt _ t0@(TV _ n) t1 = c1 n t1 t0
 lt _ t0@(Ρ _ n σ) t1 | Nm.null σ = c1 n t1 t0
 lt _ t0 t1@TV{} = sf t0 t1
-lt _ t0@TV{} t1 = sf t0 t1
 -- [tag:expand]
 lt c t0 t1 | Just (TC _ n0, a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = ms lt c mempty a0 a1
 lt c (TC _ n) t1 = do {t0 <- lC (tβ c) n; lt c t0 t1}
@@ -724,7 +723,7 @@ ib l = B ([TP l Int, TP l Int] --: [TP l Int])
 rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
-ta b s (Ca x as) = first (\(SL t as) -> Ca t as)<$>tseq b s (SL x as)
+ta b s (Ca x as) = first (\(SL t a) -> Ca t a)<$>tseq b s (SL x as)
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do

@@ -2,7 +2,6 @@ module S ( MC, F, S, lm, r, stack ) where
 
 import           A
 import           B
-import           Control.Exception (throw)
 import           D
 import           Data.Functor      (($>))
 import qualified Data.IntMap       as IM
