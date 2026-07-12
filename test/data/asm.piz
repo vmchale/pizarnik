@@ -1,0 +1,27 @@
+@prelude/fn
+
+type Label = Str;
+type Reg = { `x0 ⊕ `x1 ⊕ `x2 ⊕ `x3 ⊕ `x4 ⊕ `x5 ⊕ `x6 ⊕ `x7 };
+type I = { Reg Reg `add ⊕ Reg Reg `sub ⊕ Reg Reg `mul ⊕ Reg Reg `div };
+type Asm = { Label `label ⊕ Label `jump } ∪ I;
+
+pReg : Reg -- Str
+     := [ { `x0⁻¹ "x0" & `x1⁻¹ "x1" & `x2⁻¹ "x2" & `x3⁻¹ "x3"
+          & `x4⁻¹ "x4" & `x5⁻¹ "x5" & `x6⁻¹ "x6" & `x7⁻¹ "x7"
+          }
+        ]
+
+pIsn : { Label `jump } ∪ I -- Str
+     := [ { `jump⁻¹ "jmp " swap strcat 
+          & `add⁻¹ pReg ", " strcat ["add "] dip strcat swap pReg strcat
+          & `sub⁻¹ pReg ", " strcat ["sub "] dip strcat swap pReg strcat
+          & `mul⁻¹ pReg ", " strcat ["mul "] dip strcat swap pReg strcat
+          & `div⁻¹ pReg ", " strcat ["div "] dip strcat swap pReg strcat
+          } 
+        ]
+
+pAsm : Asm -- Str
+     := [ { `label⁻¹ ":" strcat
+          & pIsn "    " strcat
+          } 
+        ]
