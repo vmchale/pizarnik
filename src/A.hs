@@ -220,9 +220,9 @@ instance P0 (T a) where
 pρ n [] = pretty n
 pρ n b  = parens (pretty n <+> "⊃" <+> braces (mconcat b))
 
-br'd = group.align.br
+br'd = group.br
   where
-    br x = flatAlt ("{ " <> x <#> "}") ("{" <> x <> "}")
+    br x = flatAlt (align ("{ " <> x <#> "}")) ("{" <> x <> "}")
 
 pΣ = br'd.concatWith (\x y -> x <> softline <> "⊕" <+> y)
 
