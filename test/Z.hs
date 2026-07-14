@@ -8,7 +8,7 @@ import           Test.Tasty.HUnit           (assertFailure, testCase, (@?=))
 
 main :: IO ()
 main = defaultMain $
-    testGroup "unit"
+    testGroup "u"
         [ testGroup "e"
           [ eEx ["test/data/list.piz"] "n sum" "6"
           , eEx ["lib/list.piz", "test/data/list.piz"] "n m concat" "{{{{{{`nil 1 `cons} 2 `cons} 3 `cons} 3 `cons} 4 `cons} 5 `cons}"
@@ -24,6 +24,7 @@ main = defaultMain $
           , eEx ["examples/fact.piz"] "7 fac" "5040"
           , eEx ["examples/peano.piz"] "`Z `S `S `Z `S `S `S mul toInt" "6"
           , eEx ["test/examples/cont.piz"] "7 fac" "5040"
+          -- TODO: eEx multi-repl
           , eEx ["examples/systemT.piz"] "`N `N `A `N `A printTy" "\"(ℕ → ℕ) → ℕ\""
           , eEx ["examples/systemT.piz"] "`N `N `N `A `A printTy" "\"ℕ → ℕ → ℕ\""
           , eEx ["test/examples/set.piz", "examples/set.piz"]
@@ -67,14 +68,10 @@ eEx fp src expected = testCase (ASCIIL.unpack src ++ " (" ++ head fp ++ ")") $
         Left e -> assertFailure (show e)
         Right e -> unwords (map show (reverse e)) @?= expected
 
+wf fp z = testCase fp $ rRepl (tMs ["."] [fp]) >>= z
+
 tE :: FilePath -> String -> TestTree
-tE fp expected = testCase fp $
-    rRepl (tMs ["."] [fp]) >>= \case
-        Right{} -> assertFailure "expected error."
-        Left e  -> show e @?= expected
+tE fp expected = wf fp h where h Right{} = assertFailure "expected error."; h (Left e) = show e @?= expected
 
 tF :: FilePath -> TestTree
-tF fp = testCase fp $ do
-    rRepl (tMs ["."] [fp]) >>= \case
-        Right{} -> pure ()
-        Left e  -> assertFailure (show e)
+tF fp = wf fp a where a Right{} = pure (); a (Left e) = assertFailure (show e)
