@@ -189,42 +189,6 @@ nv s n σ t e eo | n `NmSet.member` occ t = throwError eo
                 | Nm.null σ = pure (t, iTV n t s)
                 | otherwise = throwError e
 
-uu :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
-uu _ s t@(TV _ n₀) (TV _ n₁) | n₀==n₁ = pure (t,s)
-uu _ s t@(Ρ _ ρ₀ _) (Ρ _ ρ₁ _) | ρ₀==ρ₁ = pure (t,s)
-uu _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
-uu _ s t0 t1@(TV _ n) = (t0,) <$> ci n t0 t1 s
-uu c s t0 t1 | Just (th@(TC _ n0), a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = do
-    (a',s') <- zS (uu c) s a0 a1
-    pure (roll th a',s')
-uu c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; uu c s t0' t1}
-uu c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; uu c s t0 t1'}
-uu _ s t0@(TT _ tt₀) t1@(TT _ tt₁) | tt₀==tt₁ = pure (t0,s)
-                                   | otherwise = throwError$UF t0 t1
-uu c s t0@(Σ l as₀) t1@(Σ _ as₁) | eqKeys as₀ as₁ = first (Σ l) <$> ua c s l as₀ as₁ -- shouldn't have stack vars hm
-                                 | otherwise = throwError$UF t0 t1
-uu c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
-                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- ua c s l as σ; second ($s') <$> nρ n σ'}
-                                | otherwise = throwError$UF t0 t1
-uu c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
-                                | σ `Nm.isSubmapOf` as = do {(σ',s') <- ua c s l as σ; second ($s') <$> nρ n σ'}
-                                | otherwise = throwError$UF t0 t1
-uu c s t0@(Ρ l n0 σ0) t1@(Ρ _ n1 σ1) | n0 `occρ` σ1 = throwError$O t0 t1
-                                     | n1 `occρ` σ0 = throwError$O t1 t0
-                                     | otherwise = do {(σ,s') <- ua c s l σ0 σ1; second ($s') <$> nρ n0 σ}
-uu _ s t0@(TP _ p₀) t1@(TP _ p₁) | p₀==p₁ = pure (t0,s)
-                                 | otherwise = throwError$UF t0 t1
-uu c s (QT x (TS l0 r0)) (QT _ (TS l1 r1)) = do {(l',s') <- usc c s l0 l1; (r',s'') <- usc c s' r0 r1; pure (QT x (l'--:r'), s'')}
-uu c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; uu c s t0 t1}
-uu c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; uu c s t0 t1}
-uu _ s te@(Ρ _ n σ) t = nv s n σ t (UF te t) (O te t)
-uu _ s t te@(Ρ _ n σ) = nv s n σ t (UF t te) (O t te)
-uu _ _ t0@(TP{};QT{}) t1 = throwError$UF t0 t1
-uu _ _ t0 t1@(TP{};QT{}) = throwError$UF t0 t1
-uu _ _ SV{} _ = ie; uu _ _ _ SV{} = ie
-
-uus=sv uu;usc=ctx'ize uus;ua=uσ uus
-
 {-# SCC su #-}
 -- "subsumes" ≺
 su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
@@ -436,6 +400,11 @@ nρ n@(Nm t _ l) σ = do
 ϙ _ s te@(Ρ _ n σ) t = nv s n σ t (Ϙ te t) (O te t)
 ϙ _ s t te@(Ρ _ n σ) = nv s n σ t (Ϙ t te) (O t te)
 ϙ c s (QT x (TS l₀ r₀)) (QT _ (TS l₁ r₁)) = do {(l',s') <- ϙs c s l₀ l₁; (r',s'') <- ϙs c s' r₀ r₁; pure (QT x (l'--:r'), s'')}
+ϙ c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; ϙ c s t0 t1}
+ϙ c s t0 (UU x ts) = do {t1 <- uU (tβ c) x ts; ϙ c s t0 t1}
+ϙ _ _ t0@(TP{};QT{}) t1 = ϙf t0 t1
+ϙ _ _ t0 t1@(TP{};QT{}) = ϙf t0 t1
+ϙ _ _ SV{} _ = ie; ϙ _ _ _ SV{} = ie
 
 ϙs=sv ϙ;ϙsc=ctx'ize ϙs; ϙσ = uσ ϙs
 
