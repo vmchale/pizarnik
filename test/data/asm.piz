@@ -17,7 +17,7 @@ pIsn : { Label `jump } ∪ I -- Str
           & `sub⁻¹ pReg ", " strcat ["sub "] dip strcat swap pReg strcat
           & `mul⁻¹ pReg ", " strcat ["mul "] dip strcat swap pReg strcat
           & `div⁻¹ pReg ", " strcat ["div "] dip strcat swap pReg strcat
-          } 
+          }
         ]
 
 pAsm : Asm -- Str
