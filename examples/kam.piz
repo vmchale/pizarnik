@@ -1,0 +1,39 @@
+# Krivine Abstract Machine
+
+@prelude/fn
+@lib/pretty
+
+type Term = { Var `var ⊕ Term Term `ap ⊕ Var Term `abs };
+
+type Var = Str;
+
+type Env = { `empty ⊕ Env Var Closure `bind };
+
+type Closure = { Term Env `c };
+
+type Stack = { `empty ⊕ Stack Closure `push };
+
+type Proc = { Closure Stack `proc };
+
+# p. 38 Pédrot
+prettyTerm : Term -- Str
+           := [ { `var^ & `ap^ [prettyTerm parens] dip prettyTerm strcat & `abs^ [["λ"] dip strcat] dip prettyTerm strcat } ]
+
+prettyClo : Closure -- Str
+          := [ { `c^ [prettyTerm "," strcat] dip prettyEnv strcat parens } ]
+
+prettyEnv : Env -- Str
+          := [ { `empty^ "·" & `bind^ [[prettyEnv " + " strcat] dip " := " strcat strcat] dip prettyClo strcat } ]
+
+prettyStack : Stack -- Str
+            := [ { `empty^ "ε" & `push^ prettyClo "·" strcat [prettyStack] dip swap strcat } ]
+
+# reduce : Closure Stack -- Closure Stack
+       # := [ 
+
+# prettyProc : Closure Stack -- Str
+           # := [ prettyStack "⟩" ] # "⟨" ]
+
+# show call-cc/peirce by extending types :o
+
+# TRACING AS AN EFFECT: dialectica/counter-witness (?) allows tracking uses of (say) x BY THE UNDERLYING TERM (maybe important "resource logic"... one can imagine it guiding "logic programming" and indeed it is sorta backprop as in machine learning)
