@@ -5,7 +5,7 @@ import           Control.Monad                    (foldM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, withExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put, runStateT)
 import           D
 import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
@@ -57,14 +57,14 @@ naïve :: [Tree (MN Loc, M a (TS a), Cs a, Ar)] -> MC (TS a) a
 naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, IM.fromDistinctAscList [(-2,0),(-1,0)] <> foldMap (fth4@<>) c)
   where snd4 (_,y,_,_)=y; thd4 (_,_,z,_)=z; fth4 (_,_,_,w)=w
 
-ac :: Int -> Ext Loc -> S Loc -> (S Loc, Int)
-ac i c s = case rty i c Ret s of Left{}-> error"internal error?"; Right s'->s'
-
 rc :: Int -> MC (TS Loc) Loc -> S Loc -> ASeq Loc -> Either (E Loc) (S Loc, Int)
-rc i c s at = (\case ((TS (_:_:_) _,_),_) -> Left ES; ((_,a),u) -> Right (t (r c (aas a) s) u)) =<< first TyE (tAS i e s at)
+rc i c s at = flip runStateT i $ do
+    (t,a) <- mapStateT (first TyE) $ tAS e s at
+    case t of
+      (TS (_:_:_) _) -> throwError ES
+      _              -> pure (r c (aas a) s)
   where
     e = let (b,cϵ,a)=c in Ext (fmap aLs b) cϵ a
-    t sϵ j = ac j e sϵ
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
