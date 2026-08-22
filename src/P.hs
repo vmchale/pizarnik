@@ -59,12 +59,13 @@ naïve c = (foldMap ((lm.snd4)@<>) c, foldMap (thd4@<>) c, IM.fromDistinctAscLis
 
 rc :: Int -> MC (TS Loc) Loc -> S Loc -> ASeq Loc -> Either (E Loc) (S Loc, Int)
 rc i c s at = flip runStateT i $ do
-    (t,a) <- mapStateT (first TyE) $ tAS e s at
+    (t,a) <- μ $ tAS e s at
     case t of
       (TS (_:_:_) _) -> throwError ES
-      _              -> pure (r c (aas a) s)
+      _              -> μ $ r c (aas a) s
   where
     e = let (b,cϵ,a)=c in Ext (fmap aLs b) cϵ a
+    μ = mapStateT (first TyE)
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
