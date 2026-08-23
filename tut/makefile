@@ -1,6 +1,6 @@
 MAKEFLAGS += -j
 
-all: ne.html or.html perm.html inv.html exp.html err.html
+all: ne.html or.html perm.html inv.html exp.html err.html cat.html
 
 PANDOC_FLAGS := -s --citeproc --lua-filter=include-code-files.lua --mathjax --syntax-definition=../pandoc/pizarnik.xml
 PANDOC_FLAGS += --bibliography ty.bib

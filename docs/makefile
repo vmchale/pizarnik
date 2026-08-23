@@ -2,7 +2,7 @@ MAKEFLAGS += -j
 
 docs: index.html
 
-index.html: index.md perm.html inv.html ne.html or.html exp.html err.html
+index.html: index.md perm.html inv.html ne.html or.html exp.html err.html ast.html
 	pandoc -s $< -o $@
 	# minhtml --minify-css --minify-js $@ -o $@
 
@@ -22,4 +22,7 @@ inv.html: ../tut/inv.html
 	ln -f $< $@
 
 ne.html: ../tut/ne.html
+	ln -f $< $@
+
+ast.html: ../tut/ast.html
 	ln -f $< $@

@@ -52,6 +52,12 @@ we would be confronted with
 5:20: {a `just ⊕ `nothing} ⊀ {ρ₁ `just}
 ```
 
+p. 45 "Negative connectives are defined by the way they react to values." ... "functions, the negative objects by excellence, are opaque objects whose only rôle is to be applied."
+p. 45 pédrot "The interpretation of positive connectives is always of the form
+(A ⊙ B) LATEX HERE (for binary connectives) where ⊙ embodies the way we build values of
+that type (by union for the sum, and by product for the tensor) while negative
+are conversely defined by orthogonality over those values."
+
 <!-- first-class -->
 <!-- not precisely inverse but more orthogonal... -->
 <!-- constructors are associated with a particular arity but not a particular named type (structural pattern-match exhaustiveness checking) -->

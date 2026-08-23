@@ -2,6 +2,7 @@
 
   - [Non-Empty Lists](./ne.html)
   - [Solving the Expression Problem](./exp.html)
+  - [ASTs for Compiler Phases](./ast.html)
   - [Error Hierarchies](./err.html)
 
 # Theory

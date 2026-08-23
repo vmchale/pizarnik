@@ -47,7 +47,7 @@ which can be thought of as an or-pattern binding a variable.
 As Wadler [-@expression] puts it,
 
 > One can think of cases as
-> rows and functions as columns in a table.  In a functional language,
+> rows and functions as columns in a table. In a functional language,
 > the rows are fixed (cases in a datatype declaration) but it is easy to
 > add new columns (functions).  In an object-oriented language, the
 > columns are fixed (methods in a class declaration) but it is easy to
