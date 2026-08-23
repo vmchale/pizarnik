@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
+module Ty ( UM, TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
 
 import           A
 import           B
@@ -12,6 +12,7 @@ import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
+import           Data.Either                      (partitionEithers)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
@@ -70,7 +71,7 @@ instance Pretty a => Pretty (TE a) where
         p (Os n t)     = tn n$"occurs check failed:" <+> sq n <> "," <+> sqs t
         p (LF t0 t1)   = tc t0$pretty t0 <.> "⊀" <.> pretty t1
         p (ΦF t0 t1)   = tc t0$sq t0 <+> "not compatible with" <+> sq t1
-        p (CF t0 t1)   = tc t0$sq t0 <.> "is not an acceptable argument, expected" <.> sq t1
+        p (CF t0 t1)   = tc t0$sq t0 <+> "is not an acceptable argument, expected" <.> sq t1
         p (UF t0 t1)   = tc t0$"failed to unify" <+> sq t0 <+> "with" <+> sq t1
         p (Ϙ t0 t1)    = tc t0$sq t0 <> "," <+> sq t1 <+> "are disjoint"
         p (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
@@ -264,7 +265,7 @@ type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
 -- if we have A, B [B c -- A b] (say) then say A=0
-si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = throwError (Os n₀ t) --  if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
 si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
@@ -569,13 +570,13 @@ tD :: Ext a -> [D a a] -> UM a ([D a (TS a)], Ext a)
 tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b)) ds}
   -- where x₀@(Ext f₀ t₀ _) </> x₁@(Ext f₁ t₁ _) | IM.disjoint f₀ f₁ &&IM.disjoint t₀ t₁ = x₀<>x₁
 
-rty :: Int -> Ext a -> a -> [A (TS a)] -> Either (TE a) ([A (TS a)], Int)
-rty u b x s = flip runStateT u $ do
+rty :: Ext a -> a -> [A (TS a)] -> UM a [A (TS a)]
+rty b x s = do
     (t,s0) <- tseq b mempty (SL x (map ($>x) (reverse s)))
     pure (reverse (aas (faseq (s0@*) t)))
 
-tAS :: Int -> Ext a -> [A (TS a)] -> ASeq a -> Either (TE a) ((TS a, ASeq (TS a)), Int)
-tAS u b s a = flip runStateT u $ do
+tAS :: Ext a -> [A (TS a)] -> ASeq a -> UM a (TS a, ASeq (TS a))
+tAS b s a = do
     (t0,s0) <- sseq n (aLs a) mempty (reverse s)
     (t1,s1) <- tseq b s0 a
     (t2,s2) <- cat n s1 t0 (aLs t1)
@@ -613,45 +614,60 @@ sseq b l s as = do {ᴀ <- fsv l "A"; γ s ([ᴀ] --: [ᴀ]) as}
 data TN a = TN { can :: a } | TArm { can :: a, ρs :: [[TN a]] }
           | TQ { can :: a, qs :: [TN a] } deriving Functor
 
+-- data W a = CW (AP a) (W a) | WE (TE a) | WZ
+
 type AP a = (A a, Either (TE a) (TS a))
 
 tdbg :: Ext a -> ASeq a -> State Int [TN (AP a)]
-tdbg b aA = do {(a',s) <- dM mempty aA; pure (map (fmap (second ((s@*)<$>))) a')}
+tdbg b = fmap fst.d mempty
   where
-    c=π b
+    d s (SL l as) = do ᴀ <- fsv l "A"; iγ s ([ᴀ] --: [ᴀ]) [] as
 
-    dM s (SL l as) = do {ᴀ <- fsv l "A"; (t,s') <- dbg s ([ᴀ] --: [ᴀ]) as; pure (t, s')}
+    -- iγ :: Subst a -> [TN (AP a)] -> TS a -> [A a] -> State Int ([TN (AP a)], Subst a)
+    iγ sϵ _ τ [] = pure (τ,sϵ)
+    iγ sϵ t τ (a@(Q l (SL _ aq)):aa) = do
+        ᴀ <- fsv l "A"
+        (v₀,s₀) <- iγ sϵ ([ᴀ] --: [ᴀ]) [] aq
+        case snd (can (last v₀)) of
+            Left e   -> pure (τ++[TQ (a, Left e) v₀], s₀)
+            Right t₀ -> do
+                ᴄ <- fsv l "C"
+                v₁ <- eu$cat (π b) s₀ t ([ᴄ] --: [ᴄ, QT l t₀]) -- q
+                case v₁ of
+                    Left e        -> pure (τ++v₀++[TN (a, Left e)], s₀)
+                    Right (t₁,s₁) -> iγ s₁ t₁ (τ++[TQ (a, Right (s₁@*t₁)) v₀]) aa
+    iγ sϵ t τ (a@(Pat l (SL _ pa)):aa) = do
+        (p, s₀) <- mS d sϵ pa
+        case partitionEithers (map (snd.can.last) p) of
+            ([], sigs) -> do
+                v <- eu$ψ (π b) s₀ l sigs
+                case v of
+                    Left e        -> pure (τ++[TArm (a, Left e) p], s₀)
+                    Right (t₁,s₁) -> do
+                        v₁ <- eu$cat (π b) s₁ t t₁
+                        case v₁ of
+                            Left e        -> pure (τ++[TArm (a, Right (s₁@*t₁)) p, TN (a, Left e)], s₁)
+                            Right (t₂,s₂) -> iγ s₂ t₂ (τ++[TArm (a, Right (s₁@*t₁)) p, TN (a, Right (s₂@*t₂))]) aa
+            (es@(e:_), _) -> pure (τ++[TN (a, Left eϵ) | eϵ <- es]++[TArm (a, Left e) p], s₀)
+    iγ sϵ t τ (a:aa) = do
+        v <- eu$tae b sϵ a
+        case v of
+            Left e -> pure ([TN (a, Left e)], sϵ)
+            Right (t₀,s₀) -> do
+                v₁ <- eu$cat (π b) s₀ t (aL t₀)
+                case v₁ of
+                    Left e        -> pure (τ++[TN (a, Right (s₀@*aL t₀)), TN (a, Left e)], s₀)
+                    Right (t₁,s₁) -> iγ s₁ t₁ (τ++[TN (a, Right (s₁@*t₁))]) aa
 
-    dbg sϵ _ []            = pure ([], sϵ)
-    dbg _ _ (Pat{}:_) = error "nyi"
-    dbg sϵ t (a@(Q l as₀):aa) = do
-        (as',s) <- dM sϵ as₀
-        case χ (can<$>as') of
-              ([], a'')    -> do
-                  ᴀ <- fsv l "A"
-                  let qt = [ᴀ] --: [ᴀ,QT l (snd (last a''))]
-                  r (cat c s t qt)
-                      (\(t',s') -> first (TQ (a, Right t') as':) <$> dbg s' t' aa)
-                      ((,s).lq a as')
-                                  -- this ends up with e.g. [1+] : ['A Int -- 'A Int] rather than padding...
-              ((_,e):_, _) -> pure (lq a as' e, s)
-    dbg sϵ t (a:aa)         =
-            -- TODO: if we fail at cat rather than tae we could pass substitution from tae forward
-        r (do {(a',s) <- tae b sϵ a; cat c s t (aL a')})
-            (\(t',s) -> first (TN (a, Right t'):) <$> dbg s t' aa)
-            ((,sϵ).ls a)
+    eu :: UM a x -> State Int (Either (TE a) x)
+    eu x = state (\i -> let v = runStateT x i in case v of Right (y,j) -> (Right y,j); Left e -> (Left e,i))
 
-    ls a e = [TN (a, Left e)]; lq a as' e = [TQ (a, Left e) as']
-
-    r :: UM a x -> (x -> State Int c) -> (TE a -> c) -> State Int c
-    r x act err = do {i <- get; let y=runStateT x i in case y of {Left e -> pure (err e); Right (z,j) -> put j *> act z}}
-
-    χ []                = ([],[])
-    χ ((a, Right t):as) = second ((a,t):) $ χ as
-    χ ((a, Left e):as)  = first ((a,e):) $ χ as
+        -- catchError :: m a -> (e -> m a) -> m a
+    -- e :: UM a x -> UM a [x] -> State Int [Either
+    -- "graft if not error or stop iteraton" yanno
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq b s (SL l as) = do {a <- fsv l "A"; (SL t x, s') <- tγ s (SL ([a] --: [a]) []) as; pure (SL t (reverse x), s')}
+tseq b s (SL l as) = do {ᴀ <- fsv l "A"; (SL t x, s') <- tγ s (SL ([ᴀ] --: [ᴀ]) []) as; pure (SL t (reverse x), s')}
   where
     tγ sϵ c []              = pure (c, sϵ)
     tγ sϵ (SL t al) (a:aa) = do
@@ -714,8 +730,7 @@ ta b s (C l tt)        = do
 ta b s (Pat l as)      = do
     (as', s0) <- mS (tseq b) s (aas as)
     let sigs = map (peekS s0.aLs) as'
-    q <- tab (π b) sigs
-    (t, s1) <- tψ (π b) s0 l q
+    (t, s1) <- ψ (π b) s0 l sigs
     pure (Pat t (SL t as'), s1)
 
 newtype TR a = TR [T a]
@@ -737,6 +752,9 @@ instance (PT (f a), P0 (f a)) => Pretty (Ψ f a) where
       p (Ψ as)  = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
 
 instance (PT (f a), P0 (f a)) => Show (Ψ f a) where show=show.pretty
+
+ψ :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
+ψ c s l sigs = do q <- tab c sigs; tψ c s l q
 
 tab :: Nt a -> [TS a] -> UM a (Ψ TS a)
 tab c = (Ψ<$>) . graft <=< traverse tst
