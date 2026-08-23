@@ -24,6 +24,7 @@ main = defaultMain $
           , eEx ["examples/fact.piz"] "7 fac" "5040"
           , eEx ["examples/peano.piz"] "`Z `S `S `Z `S `S `S mul toInt" "6"
           , eEx ["test/examples/cont.piz"] "7 fac" "5040"
+          , eEx ["examples/ast.piz"] "0 \"b\" `name `var 0 \"a\" `name `var `ap 0 \"a\" `name `lam printAST" "\"λa (a)b\""
           -- TODO: eEx multi-repl
           , eEx ["examples/systemT.piz"] "`N `N `A `N `A printTy" "\"(ℕ → ℕ) → ℕ\""
           , eEx ["examples/systemT.piz"] "`N `N `N `A `A printTy" "\"ℕ → ℕ → ℕ\""

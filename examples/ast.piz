@@ -43,8 +43,8 @@ brackets : Str -- Str
 
 printAbs : [a -- Str] AbsAST(a) -- Str
          := [ { `var⁻¹ printName nip
-              & `lam⁻¹ printName ["λ"] dip strcat "." strcat [swap $] dip swap strcat
-              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip swap strcat
+              & `lam⁻¹ printName ["λ"] dip strcat " " strcat [swap $] dip swap strcat
+              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip strcat
               }
             ]
 
