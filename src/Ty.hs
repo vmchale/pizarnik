@@ -77,7 +77,6 @@ instance Pretty a => Pretty (TE a) where
         p (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
         p (IS n)       = tn n (sq n <+> "not in scope.")
         p (Bare t)     = tc t$"Bare union:" <+> sq t
-instance Pretty a => Show (TE a) where show=show.pretty
 
 tn n p = pretty (Nm.loc n) <> ":" <+> p
 tc t p = pretty (tL t) <> ":" <+> p; tsc t p = pretty (tLs t) <> ":" <+> p
@@ -612,7 +611,7 @@ sseq b l s as = do {ᴀ <- fsv l "A"; γ s ([ᴀ] --: [ᴀ]) as}
     γ sϵ tl (a:aa) = do {(t',s') <- cat b sϵ tl (aL a); γ s' t' aa}
 
 data TN a = TN { can :: a } | TArm { can :: a, ρs :: [[TN a]] }
-          | TQ { can :: a, qs :: [TN a] } deriving Functor
+          | TQ { can :: a, qs :: [TN a] }
 
 -- data W a = CW (AP a) (W a) | WE (TE a) | WZ
 
@@ -736,12 +735,6 @@ ta b s (Pat l as)      = do
 newtype TR a = TR [T a]
 data Ψ f a = Ψ (NmMap (TSeq a, Ψ f a)) | Lb (f a)
 
-prs :: Ψ TS a -> [TSeq a]
-prs (Lb (TS _ r)) = [r]
-
-tl1 :: Ψ TS a -> [TSeq a]
-tl1 (Lb (TS l _)) = [l]
-
 instance PT (f a) => PT (Ψ f a) where
     pp (Lb ts) = Lb <$> pp ts
     pp (Ψ as)  = Ψ <$> traverse (\(a,t) -> (,) <$> traverse pp a <*> pp t) as
@@ -750,8 +743,6 @@ instance (PT (f a), P0 (f a)) => Pretty (Ψ f a) where
     pretty=p.ppt where
       p (Lb ts) = p0 ts
       p (Ψ as)  = vsep (map (\(nm, (tl, tr)) -> hsep (pretty nm : map p0 tl) <+> "--" <#> indent 4 (p tr)) (Nm.nmlist as))
-
-instance (PT (f a), P0 (f a)) => Show (Ψ f a) where show=show.pretty
 
 ψ :: Nt a -> Subst a -> a -> [TS a] -> UM a (TS a, Subst a)
 ψ c s l sigs = do q <- tab c sigs; tψ c s l q

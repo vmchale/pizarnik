@@ -35,8 +35,6 @@ data Rs = Rs { max_ :: !Int, ex :: !Ex, btv, bsv :: Bt }
 
 instance Pretty Ex where pretty (Ex v t a) = pBound v <##> pBound t <##> pBound a
 
-instance Show Ex where show=show.pretty
-
 data Lens a b = Lens { vw :: a -> b, set :: b -> a -> a }
 
 bfl,btl,bal :: Lens Ex Bd

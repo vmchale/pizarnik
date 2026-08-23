@@ -1,8 +1,6 @@
 module Nm.Map ( NmMap (..)
               , insert
               , member
-              , keys
-              , elems
               , lookup
               , (!?)
               , Nm.Map.null
@@ -10,7 +8,6 @@ module Nm.Map ( NmMap (..)
               , empty
               , intersectionWith
               , unionWith
-              , insertWith
               , isSubmapOf
               , fromList
               , nmlist
@@ -67,9 +64,6 @@ isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
 intersectionWith :: (a -> b -> c) -> NmMap a -> NmMap b -> NmMap c
 intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0 x1) (IM.intersection c0 c1)
 
-insertWith :: (b -> b -> b) -> Nm a -> b -> NmMap b -> NmMap b
-insertWith g (Nm t (U u) _) y (NmMap x c) = NmMap (IM.insertWith g u y x) (IM.insert u t c)
-
 unionWith :: (a -> a -> a) -> NmMap a -> NmMap a -> NmMap a
 unionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.unionWith f x0 x1) (c0<>c1)
 
@@ -86,12 +80,6 @@ instance Pretty a => Show (NmMap a) where show=show.pretty
 
 fromList :: [(Nm a, b)] -> NmMap b
 fromList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }
-
-keys :: NmMap a -> b -> [Nm b]
-keys (NmMap _ c) l = map (\(u,t) -> Nm t (U u) l) (IM.toList c)
-
-elems :: NmMap a -> [a]
-elems (NmMap x _) = IM.elems x
 
 fromDistinctAscList :: [(Nm a, b)] -> NmMap b
 fromDistinctAscList xs = NmMap { xx = IM.fromList [ (i,x) | (Nm _ (U i) _, x) <- xs ], context = IM.fromList (map ((unU.un) &&& text) (fst<$>xs)) }
