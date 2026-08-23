@@ -115,6 +115,7 @@ map1 : [a -- b] Both(a,c) -- Both(b,c)
 ## Examples
 
   - [Non-Empty Lists](https://vmchale.github.io/pizarnik/ne.html)
+  - [ASTs for Compiler Phases](https://vmchale.github.io/pizarnik/ast.html)
   - [Solving the Expression Problem](https://vmchale.github.io/pizarnik/exp.html)
   - [Error Hierarchies](https://vmchale.github.io/pizarnik/err.html)
 
