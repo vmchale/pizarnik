@@ -40,11 +40,10 @@ ib c rel (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,TS _ rs) <- i_ c a1; pure$bt (tL
           bt l False = fa l
 
 ψ :: MC (TS a) a -> [ASeq (TS a)] -> S a -> UM a (S a)
-ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
+ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c as₀ (k:as)
   where
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
-    u (Ca _ (C{}:cs)) = (cs++); u C{} = id
 
     (TT _ tt₀) ≺ (TT _ tt₁) = tt₀==tt₁
     (TT _ tt) ≺ (Σ _ σ)     = tt `Nm.member` σ
