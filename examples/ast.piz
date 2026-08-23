@@ -1,4 +1,5 @@
 @prelude/fn
+@lib/pretty
 
 type Name = { Int Str `name };
 type ResVar = { `x ⊕ `y };
@@ -20,8 +21,6 @@ dedfn : Int Name Name DExpr -- Int AST
            & `ap⁻¹ [dup2] dip2 (243) [dedfn] dip3 (45) dedfn (32) `ap
            } ]
 
-# TODO: "under" permutation... (23) [f] (32) for example
-
 desugar : Int Syn -- Int AST
         := [ { `dfn⁻¹ [fresh] dip dedfn
              & `lam⁻¹ [desugar] dip `lam
@@ -30,29 +29,34 @@ desugar : Int Syn -- Int AST
              }
            ]
 
+# "under" permutation? (23) [f] (32) for example
+
 # convert to IR?
 
 printName : Name -- Str
           := [ { `name⁻¹ nip } ]
 
-parens : Str -- Str
-       := [ ["("] dip strcat ")" strcat ]
-
 brackets : Str -- Str
          := [ ["["] dip strcat "]" strcat ]
+
+# anything that works on a Syn should work on an AST (e.g. stripping comments, pretty-printer...)
 
 printAbs : [a -- Str] AbsAST(a) -- Str
          := [ { `var⁻¹ printName nip
               & `lam⁻¹ printName ["λ"] dip strcat "." strcat [swap $] dip swap strcat
-              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip strcat
+              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip swap strcat
               }
             ]
+
+printAST : AST -- Str
+         := [ [[printAST]] dip printAbs ]
 
 printDExpr : DExpr -- Str
            := [ { `resVar⁻¹ { `x⁻¹ "x" & `y⁻¹ "y" }
                 & `dfn⁻¹ printDExpr brackets
+                # this is getting "picked" but drops the first... i.e. [[printDExpr]] ... bad!!
                 & [[printDExpr]] dip printAbs
                 }
               ]
 
-# anything that works on a Syn should work on an AST (e.g. stripping comments, pretty-printer...)
+# 0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printAST
