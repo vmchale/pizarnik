@@ -186,14 +186,14 @@ mkΣ = Nm.fromList
 iperm :: [[Int]] -> Sn
 iperm cs =
     let xn=sn (maximum (concat cs))
-    in thread (map zy cs) xn
+    in z xn cs
   where
     zy n@(i:_) = g n where
         g :: [Int] -> Sn -> Sn
         g [j] = setIx j i
         g (k:js@(j:_)) = g js.setIx k j
 
-    thread=foldr (.) id
+    z s (c:cs) = z (zy c s) cs; z s [] = s
 
 roll :: T a -> [T a] -> T a
 roll t []      = t
