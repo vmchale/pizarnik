@@ -6,4 +6,3 @@ language: Haskell2010
 extensions:
 - LambdaCase
 - OrPatterns
-- OverloadedStrings
