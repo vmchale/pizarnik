@@ -2,12 +2,10 @@ module S ( MC, F, S, lm, r, stack ) where
 
 import           A
 import           B
-import           Control.Monad ((<=<))
 import           D
 import           Data.Functor  (($>))
 import qualified Data.IntMap   as IM
 import           Data.List     (find)
-import           F
 import           G
 import           Nm
 import qualified Nm.Map        as Nm
@@ -21,10 +19,10 @@ type F a = IM.IntMap (ASeq a)
 type MC a b = (F a, Cs b, Ar)
 
 r :: MC (TS a) a -> [A (TS a)] -> S a -> UM a (S a)
-r e as = threadM (map (ι e) (reverse as))
+r e as v = s (pure v) as where s c [] = c; s c (a:aa) = s (ι e a =<< c) aa
 
 lm :: M b a -> F a
-lm (M _ ds) = thread (map b ds) IM.empty
+lm (M _ ds) = f ds where f [] = IM.empty; f (d:dd) = b d (f dd)
 
 b :: D b a -> F a -> F a
 b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
@@ -94,6 +92,3 @@ stack = p.reverse where
     p (l:ls) = pretty l <#> p ls
 
 ie s=error("internal error: "++s)
-
-threadM :: Monad m => [a -> m a] -> a -> m a
-threadM = foldr (<=<) pure
