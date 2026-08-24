@@ -1,5 +1,5 @@
 ---
-- ignore: {name: Replace case with fromMaybe, within: [Ty]}
+- ignore: {name: Use bimap, within: [TS]}
 
 - fixity: infixr 3 &&&
 - fixity: infixr 1 <=<
