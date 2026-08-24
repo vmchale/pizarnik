@@ -63,6 +63,7 @@ Anything that works on a `DExpr` should work on an `AST`, which is the case:
  0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printAST
 "λa (a)b"
  0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printDExpr
+"λa (a)b"
 ```
 
 And supplying a `DExpr` to `printAST` is a type error, viz.

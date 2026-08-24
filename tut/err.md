@@ -23,3 +23,5 @@ test/examples/errorHierarchy.piz:13:19: {`scope ⊕ `unificationFailed} ⊀ (ρ�
 
 Thus our scheme is safe; with extensible cases, we do not need to resort to the
 lens kludge.
+
+<!-- lenses... gödel counter-witnesses?? hmm -->

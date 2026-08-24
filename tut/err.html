@@ -264,12 +264,13 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb1-1"><
 <span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>                := [ { <span class="cn">`left</span>⁻¹ <span class="cn">`scope</span>⁻¹ 0 &amp; <span class="cn">`right</span>⁻¹ } ]</span></code></pre></div>
 <p>With <code>tyE</code> we can raise a <code>`scope</code> error while
 typechecking. <code>handleRewrite</code> allows us to (locally) handle a
-<code>`scope</code> error being forced to handle a
+<code>`scope</code> error without being forced to handle a
 <code>`unificationFailed</code> where it will not occur.</p>
 <p>Since <code>handleTypeError</code> is inexhaustive, however, we are
 faced with:</p>
 <pre><code>test/examples/errorHierarchy.piz:13:19: {`scope ⊕ `unificationFailed} ⊀ (ρ₁ ⊃ {`scope})</code></pre>
 <p>Thus our scheme is safe; with extensible cases, we do not need to
 resort to the lens kludge.</p>
+<!-- lenses... gödel counter-witnesses?? hmm -->
 </body>
 </html>
