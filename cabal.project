@@ -4,7 +4,7 @@ program-options
   alex-options: -g
   happy-options: -gcsa
 
-haddock-internal: true
+haddock-internal: True
 
 package pizarnik
   optimization: 2

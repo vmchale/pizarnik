@@ -1,5 +1,7 @@
 packages: ./
 
+with-compiler: ghc-9.14
+
 package pizarnik
   ghc-options: -fwrite-ide-info
 
