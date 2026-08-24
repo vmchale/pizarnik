@@ -20,4 +20,5 @@ branch : Finger(Int,a) Finger(Int,a) -- Finger(Int,a)
 at : Int Finger(Int,a) -- Maybe(a)
    := [ { `leaf⁻¹ nip swap 0 = { True⁻¹ `just & False⁻¹ drop `nothing }
         & `branch⁻¹ nip2 [dup [tag] dip] dip (13)(24) dup2 < { True^ drop nip2 & False^ - nip } swap at
-        } ]
+        }
+      ]
