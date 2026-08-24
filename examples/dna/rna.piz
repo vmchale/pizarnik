@@ -1,0 +1,13 @@
+@dna
+
+type Rna = { `a ⊕ `c ⊕ `g ⊕ `u };
+
+type Base = Dna ∪ Rna;
+
+complement : Base -- Dna
+           := [ { `a⁻¹ `t
+                & `c⁻¹ `g
+                & `g⁻¹ `c
+                & { `t⁻¹ & `u⁻¹ } `a
+                } 
+              ]

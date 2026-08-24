@@ -39,8 +39,6 @@ printName : Name -- Str
 brackets : Str -- Str
          := [ ["["] dip strcat "]" strcat ]
 
-# anything that works on a Syn should work on an AST (e.g. stripping comments, pretty-printer...)
-
 printAbs : [a -- Str] AbsAST(a) -- Str
          := [ { `var⁻¹ printName nip
               & `lam⁻¹ printName ["λ"] dip strcat " " strcat [swap $] dip swap strcat
@@ -54,9 +52,6 @@ printAST : AST -- Str
 printDExpr : DExpr -- Str
            := [ { `resVar⁻¹ { `x⁻¹ "x" & `y⁻¹ "y" }
                 & `dfn⁻¹ printDExpr brackets
-                # this is getting "picked" but drops the first... i.e. [[printDExpr]] ... bad!!
                 & [[printDExpr]] dip printAbs
                 }
               ]
-
-# 0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printAST

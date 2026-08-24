@@ -1,0 +1,14 @@
+@dna
+@compress
+
+# https://en.wikipedia.org/wiki/DNA_and_RNA_codon_tables#Inverse_RNA_codon_table
+ala : `g `c Dna -- 
+    := [n `c^ `g^]
+
+# arg : 
+# cgn agr
+# OR
+# cgy mgr
+
+ile : `a `t {`t ⊕ `c ⊕ `a} --
+    := [h `t^ `a^]

@@ -1,0 +1,17 @@
+@lib/list 
+
+# https://en.wikipedia.org/wiki/Adler-32#Example_implementation
+# b a
+step : UInt32 UInt32 UInt8 -- UInt32 UInt32
+     := [ + 65521 rem dup [+ 65521 rem] dip ]
+
+# b a UInt32 UInt32
+# b a a
+# UInt32 UInt32 UIntew
+
+# a = (a + d)%65521
+# b = (b + a)%65521
+
+# TODO: need (b << 16) | a at the end
+adler32 : List(UInt8) -- UInt32
+        := [ [0 1 step] dip foldl ]

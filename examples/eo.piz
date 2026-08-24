@@ -1,1 +1,6 @@
 type J r x = [[x -- r] -- x];
+type K r x = [[x -- r] -- r];
+
+# overline e = \p -> p(e p)
+# problem is QT only is [] --: 'A right now
+overline : J(r,x) -- K(r,x)

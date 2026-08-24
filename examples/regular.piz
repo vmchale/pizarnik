@@ -1,0 +1,31 @@
+@prelude/fn
+@lib/pretty
+
+type Re a = { `empty
+            ⊕ `epsilon 
+            ⊕ a `const
+            ⊕ Re(a) `complement
+            ⊕ Re(a) `kleeneStar 
+            ⊕ Re(a) Re(a) `cat
+            ⊕ Re(a) Re(a) `alt 
+            ⊕ Re(a) Re(a) `and 
+            };
+
+# pretty : Int Re(a) -- Str
+       # := [ swap { `empty⁻¹ "ø" 
+                 # & `epsilon⁻¹ "ε"
+                 # } ]
+
+kleeneStar : Re(a) -- Re(a)
+           := [ { `kleeneStar⁻¹ 
+                & `epsilon⁻¹ `epsilon
+                & `empty⁻¹ `epsilon
+# wildcard...
+                }
+              ]
+
+alt : Re(a) Re(a) -- Re(a)
+    := [ { `empty⁻¹ drop `empty
+         & `complement⁻¹ `empty⁻¹
+         }
+       ]
