@@ -8,6 +8,7 @@ main = defaultMain
         [ b fp | fp <- [ "test/examples/maybe.piz"
                        , "lib/fingertree.piz"
                        , "examples/vierergruppe.piz"
+                       , "examples/ast.piz"
                        ]
         ]
     , bgroup "e"
