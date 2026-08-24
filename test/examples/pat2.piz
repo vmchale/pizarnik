@@ -1,9 +1,16 @@
-@ prelude/fn
-@ lib/maybe
+type Maybe a = { a `just ⊕ `nothing };
+
+# swomething : Maybe(a) Bool -- Bool
+           # := [ { True^ `just^ _ True
+                # & False^ `nothing^ False
+                # & False^ `just^ _ False
+                # & True^ `nothing^ True
+                # } ]
 
 something : Bool Maybe(a) -- Bool
-          := [{`just⁻¹ drop True⁻¹ True &
+          := [{`just⁻¹ _ True⁻¹ True &
                `nothing⁻¹ False⁻¹ False &
-               `just⁻¹ drop False⁻¹ False &
+               `just⁻¹ _ False⁻¹ False &
                `nothing⁻¹ True⁻¹ True}]
           # TODO: justify eating past universal variables
+          # (we can think of polarity... patterns. hm

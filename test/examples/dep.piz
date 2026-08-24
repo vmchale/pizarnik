@@ -1,6 +1,10 @@
 @prelude/bool
 @lib/list
 
+# basically w/ foldl... if we have a universal variable e.g. from stack variable 'B in
+# 'B ['B a -- 'B] List(a) -- 'B
+# but then variables aren't permeable on the right?
+
 ands : List(Bool) -- Bool
      := [ [True [and]] dip foldl ]
 

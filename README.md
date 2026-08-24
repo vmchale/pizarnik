@@ -77,15 +77,12 @@ will fail, viz.
        List( Unit ) Unit `cons}’ is not an acceptable argument, expected ‘{List( a ) a `cons}’
 ```
 
-<!-- related to extensibility + atomicity of each _arm_ rather than tying each clause to the sum type decl... (constructors have arity buuut independent from the other sum typeys -->
+<!-- related to extensibility + atomicity of each _arm_ rather than tying each clause to the sum type decl... (constructors have arity buuut independent from the other sum types -->
 
 # Solving the Expression Problem
 
 [Extensible cases](https://dl.acm.org/doi/10.1145/1159803.1159836) put forward
 by Blume, Acar, and Chae solve the expression problem:
-
-<!-- properly solved, expression problem is one of polarity, (sum types that are disjuncts demand disjunctive products?) not analogy -->
-<!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (contravariantly) -->
 
 ```pizarnik
 @prelude/fn
@@ -109,6 +106,11 @@ map1 : [a -- b] Both(a,c) -- Both(b,c)
           & `both⁻¹ [swap $] dip `both }
         ]
 ```
+
+The expression problem, properly posed, is one of polarity: sum types are disjunctive
+and thus require disjunctive products to handle them (i.e. not the multiplicative conjunctions already provided by tuples).
+We do not extend types; rather, extensible cases allow us to extend functions contravariantly.
+<!-- not hierarchies of metaphysical genera. -->
 
 # Justification
 

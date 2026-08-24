@@ -1,0 +1,10 @@
+@prelude/fn
+@lib/maybe
+
+type These a b = { a `left ⊕ b `right ⊕ a b `both };
+
+left : { a `left ⊕ a b `both } -- a
+     := [ { `left⁻¹ & `both⁻¹ nip } ]
+
+maybeLeft : These(a,b) -- Maybe(a)
+          := [ { left `just } ]
