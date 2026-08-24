@@ -1,7 +1,0 @@
-# Simpson 98
-
-type Two = { `zero ⊕ `one };
-
-type Three = { `zero ⊕ `one ⊕ `two };
-
-# EXAMPLE like group embedded in another Z2 Z3 idk
