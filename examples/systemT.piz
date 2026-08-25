@@ -1,12 +1,11 @@
 @prelude/fn
 @lib/pretty
 
-# except we should be able to apply `S to a variable
-type Nat = { `Z ⊕ Nat `S };
+type Nat a  = { `Z ⊕ a `S };
 
 type Var = Str;
 
-type Term = Nat ∪ { Var `var ⊕ Term Term `ap ⊕ Term Var `lam ⊕ Nat Term Term `rec };
+type Term = Nat(Term) ∪ { Var `var ⊕ Term Term `ap ⊕ Term Var `lam ⊕ Nat(Term) Term Term `rec };
 
 type Ty = { `N ⊕ Ty Ty `A };
 
@@ -29,6 +28,5 @@ prettyTerm : Term Int -- Str
                      }
               ]
 
-# "x" `var `S `ap "x" `lam printTerm
 printTerm : Term -- Str
           := [ 0 prettyTerm ]

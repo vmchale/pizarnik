@@ -366,10 +366,9 @@ nρ n@(Nm t _ l) σ = do
     (l',s') <- ϙs c s l0 l1
     (r',s'') <- φsc c s' r0 r1
     pure (QT x (l' --: r'), s'')
-φ _ _ t0@TP{} t1 = φf t0 t1
-φ _ _ t0 t1@TP{} = φf t0 t1
-φ _ _ t0@TT{} t1@QT{} = φf t0 t1
-φ _ _ t0@QT{} t1@TT{} = φf t0 t1
+φ _ _ t0@TP{} t1 = φf t0 t1; φ _ _ t0 t1@TP{} = φf t0 t1
+φ _ _ t0@TT{} t1@QT{} = φf t0 t1; φ _ _ t0@QT{} t1@TT{} = φf t0 t1
+φ _ _ t0@QT{} t1@Σ{} = φf t0 t1; φ _ _ t0@Σ{} t1@QT{} = φf t0 t1
 φ _ _ SV{} _ = ie; φ _ _ _ SV{} = ie
 
 φs=sv φ;φsc=ctx'ize φs; φσ = uσ φsc
@@ -622,7 +621,6 @@ tdbg b = fmap fst.d mempty
   where
     d s (SL l as) = do ᴀ <- fsv l "A"; iγ s ([ᴀ] --: [ᴀ]) [] as
 
-    -- iγ :: Subst a -> [TN (AP a)] -> TS a -> [A a] -> State Int ([TN (AP a)], Subst a)
     iγ sϵ _ τ [] = pure (τ,sϵ)
     iγ sϵ t τ (a@(Q l (SL _ aq)):aa) = do
         ᴀ <- fsv l "A"
@@ -660,10 +658,6 @@ tdbg b = fmap fst.d mempty
 
     eu :: UM a x -> State Int (Either (TE a) x)
     eu x = state (\i -> let v = runStateT x i in case v of Right (y,j) -> (Right y,j); Left e -> (Left e,i))
-
-        -- catchError :: m a -> (e -> m a) -> m a
-    -- e :: UM a x -> UM a [x] -> State Int [Either
-    -- "graft if not error or stop iteraton" yanno
 
 tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
 tseq b s (SL l as) = do {ᴀ <- fsv l "A"; (SL t x, s') <- tγ s (SL ([ᴀ] --: [ᴀ]) []) as; pure (SL t (reverse x), s')}
