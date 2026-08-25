@@ -260,22 +260,13 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-res
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Syn</span> = <span class="dt">AbsAST</span>(<span class="dt">Syn</span>) ∪ { <span class="dt">DExpr</span> <span class="cn">`dfn</span> };</span>
 <span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">fresh</span> : <span class="dt">Int</span> -- <span class="dt">Int</span> <span class="dt">Name</span> <span class="dt">Name</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      := [ 1 + <span class="fu">dup</span> 1 + <span class="fu">dup</span> [&quot;<span class="fu">x</span>&quot; <span class="cn">`name</span>] <span class="bu">dip</span> &quot;<span class="fu">y</span>&quot; <span class="cn">`name</span> ]</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a>      := [ 1 + <span class="fu">dup</span> [&quot;<span class="fu">x</span>&quot; <span class="cn">`name</span>] <span class="bu">dip</span> 1 + <span class="fu">dup</span> &quot;<span class="fu">y</span>&quot; <span class="cn">`name</span> (23) ]</span>
 <span id="cb1-15"><a href="#cb1-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-16"><a href="#cb1-16" aria-hidden="true" tabindex="-1"></a><span class="fu">dedfn</span> : <span class="dt">Int</span> <span class="dt">Name</span> <span class="dt">Name</span> <span class="dt">DExpr</span> -- <span class="dt">Int</span> <span class="dt">AST</span></span>
 <span id="cb1-17"><a href="#cb1-17" aria-hidden="true" tabindex="-1"></a>      := [ { <span class="cn">`resVar</span>⁻¹ { <span class="cn">`x</span>⁻¹ <span class="fu">drop</span> &amp; <span class="cn">`y</span>⁻¹ <span class="fu">nip</span> } <span class="cn">`var</span></span>
 <span id="cb1-18"><a href="#cb1-18" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`lam</span>⁻¹ [<span class="fu">dedfn</span>] <span class="bu">dip</span> <span class="cn">`lam</span></span>
 <span id="cb1-19"><a href="#cb1-19" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`var</span>⁻¹ <span class="fu">drop2</span> <span class="cn">`var</span></span>
-<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`dfn</span>⁻¹ [<span class="fu">drop2</span> <span class="fu">fresh</span>] <span class="bu">dip</span> <span class="fu">dedfn</span></span>
-<span id="cb1-21"><a href="#cb1-21" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">dup2</span>] <span class="bu">dip</span>2 (243) [<span class="fu">dedfn</span>] <span class="bu">dip</span>3 (45) <span class="fu">dedfn</span> (32) <span class="cn">`ap</span></span>
-<span id="cb1-22"><a href="#cb1-22" aria-hidden="true" tabindex="-1"></a>           } ]</span>
-<span id="cb1-23"><a href="#cb1-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-24"><a href="#cb1-24" aria-hidden="true" tabindex="-1"></a><span class="fu">desugar</span> : <span class="dt">Int</span> <span class="dt">Syn</span> -- <span class="dt">Int</span> <span class="dt">AST</span></span>
-<span id="cb1-25"><a href="#cb1-25" aria-hidden="true" tabindex="-1"></a>        := [ { <span class="cn">`dfn</span>⁻¹ [<span class="fu">fresh</span>] <span class="bu">dip</span> <span class="fu">dedfn</span></span>
-<span id="cb1-26"><a href="#cb1-26" aria-hidden="true" tabindex="-1"></a>             &amp; <span class="cn">`lam</span>⁻¹ [<span class="fu">desugar</span>] <span class="bu">dip</span> <span class="cn">`lam</span></span>
-<span id="cb1-27"><a href="#cb1-27" aria-hidden="true" tabindex="-1"></a>             &amp; <span class="cn">`var</span>⁻¹ <span class="cn">`var</span></span>
-<span id="cb1-28"><a href="#cb1-28" aria-hidden="true" tabindex="-1"></a>             &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">desugar</span>] <span class="bu">dip</span> (32) <span class="fu">desugar</span> (23) <span class="cn">`ap</span></span>
-<span id="cb1-29"><a href="#cb1-29" aria-hidden="true" tabindex="-1"></a>             }</span></code></pre></div>
+<span id="cb1-20"><a href="#cb1-20" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`dfn</span>⁻¹ [<span class="fu">drop2</span> <span class="fu">fresh</span>] <span class="bu">dip</span> <span class="fu">dedfn</span></span></code></pre></div>
 <p>This does check pattern-match exhaustiveness; if we had written</p>
 <div class="sourceCode" id="cb2"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">dedfn</span> : <span class="dt">Int</span> <span class="dt">Name</span> <span class="dt">Name</span> <span class="dt">DExpr</span> -- <span class="dt">Int</span> <span class="dt">AST</span></span>
@@ -299,41 +290,42 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`var</span>⁻¹ <span class="fu">drop2</span> <span class="cn">`var</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`dfn</span>⁻¹ <span class="cn">`dfn</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">dup2</span>] <span class="bu">dip</span>2 (243) [<span class="fu">dedfn</span>] <span class="bu">dip</span>3 (45) <span class="fu">dedfn</span> (32) <span class="cn">`ap</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>           } ]</span></code></pre></div>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>           } </span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>         ]</span></code></pre></div>
 <p>it would fail with</p>
 <pre><code>examples/ast.piz:65:65: occurs check failed: ‘&#39;A’, ‘&#39;A Int ρ₁’</code></pre>
 <p>We can define e.g. pretty-printers on AST variants without needlessly
 repeating ourselves like so:</p>
-<div class="sourceCode" id="cb6" data-startFrom="36"><pre
-class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 35;"><span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a><span class="fu">printName</span> : <span class="dt">Name</span> -- <span class="dt">Str</span></span>
-<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>          := [ { <span class="cn">`name</span>⁻¹ <span class="fu">nip</span> } ]</span>
-<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a><span class="fu">brackets</span> : <span class="dt">Str</span> -- <span class="dt">Str</span></span>
-<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>         := [ [&quot;[&quot;] <span class="bu">dip</span> <span class="fu">strcat</span> &quot;]&quot; <span class="fu">strcat</span> ]</span>
-<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a><span class="fu">printAbs</span> : [<span class="fu">a</span> -- <span class="dt">Str</span>] <span class="dt">AbsAST</span>(<span class="fu">a</span>) -- <span class="dt">Str</span></span>
-<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>         := [ { <span class="cn">`var</span>⁻¹ <span class="fu">printName</span> <span class="fu">nip</span></span>
-<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>              &amp; <span class="cn">`lam</span>⁻¹ <span class="fu">printName</span> [&quot;<span class="fu">λ</span>&quot;] <span class="bu">dip</span> <span class="fu">strcat</span> &quot; &quot; <span class="fu">strcat</span> [<span class="fu">swap</span> $] <span class="bu">dip</span> <span class="fu">swap</span> <span class="fu">strcat</span></span>
-<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>              &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>2 (24) [$] <span class="bu">dip</span>2 (13) [$ <span class="fu">parens</span>] <span class="bu">dip</span> <span class="fu">strcat</span></span>
-<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>              }</span>
-<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>            ]</span>
-<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a><span class="fu">printAST</span> : <span class="dt">AST</span> -- <span class="dt">Str</span></span>
-<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>         := [ [[<span class="fu">printAST</span>]] <span class="bu">dip</span> <span class="fu">printAbs</span> ]</span>
-<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a><span class="fu">printDExpr</span> : <span class="dt">DExpr</span> -- <span class="dt">Str</span></span>
-<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>           := [ { <span class="cn">`resVar</span>⁻¹ { <span class="cn">`x</span>⁻¹ &quot;<span class="fu">x</span>&quot; &amp; <span class="cn">`y</span>⁻¹ &quot;<span class="fu">y</span>&quot; }</span>
-<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>                &amp; <span class="cn">`dfn</span>⁻¹ <span class="fu">printDExpr</span> <span class="fu">brackets</span></span>
-<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>                &amp; [[<span class="fu">printDExpr</span>]] <span class="bu">dip</span> <span class="fu">printAbs</span></span>
-<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>                }</span>
-<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>              ]</span></code></pre></div>
+<div class="sourceCode" id="cb6" data-startFrom="34"><pre
+class="sourceCode pizarnik"><code class="sourceCode pizarnik" style="counter-reset: source-line 33;"><span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a><span class="fu">printName</span> : <span class="dt">Name</span> -- <span class="dt">Str</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>          := [ { <span class="cn">`name</span>⁻¹ <span class="fu">nip</span> } ]</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a><span class="fu">brackets</span> : <span class="dt">Str</span> -- <span class="dt">Str</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>         := [ [&quot;[&quot;] <span class="bu">dip</span> <span class="fu">strcat</span> &quot;]&quot; <span class="fu">strcat</span> ]</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a><span class="fu">printAbs</span> : [<span class="fu">a</span> -- <span class="dt">Str</span>] <span class="dt">AbsAST</span>(<span class="fu">a</span>) -- <span class="dt">Str</span></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>         := [ { <span class="cn">`var</span>⁻¹ <span class="fu">printName</span> <span class="fu">nip</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>              &amp; <span class="cn">`lam</span>⁻¹ <span class="fu">printName</span> [&quot;<span class="fu">λ</span>&quot;] <span class="bu">dip</span> <span class="fu">strcat</span> &quot;.&quot; <span class="fu">strcat</span> [<span class="fu">swap</span> $] <span class="bu">dip</span> <span class="fu">swap</span> <span class="fu">strcat</span></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>              &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">dup</span>] <span class="bu">dip</span>2 (142) [$] <span class="bu">dip</span>2 (13) [$ <span class="fu">parens</span>] <span class="bu">dip</span> <span class="fu">strcat</span></span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>              }</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>            ]</span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a><span class="fu">printAST</span> : <span class="dt">AST</span> -- <span class="dt">Str</span></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>         := [ [[<span class="fu">printAST</span>]] <span class="bu">dip</span> <span class="fu">printAbs</span> ]</span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a><span class="fu">printDExpr</span> : <span class="dt">DExpr</span> -- <span class="dt">Str</span></span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>           := [ { <span class="cn">`resVar</span>⁻¹ { <span class="cn">`x</span>⁻¹ &quot;<span class="fu">x</span>&quot; &amp; <span class="cn">`y</span>⁻¹ &quot;<span class="fu">y</span>&quot; }</span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>                &amp; <span class="cn">`dfn</span>⁻¹ <span class="fu">printDExpr</span> <span class="fu">brackets</span></span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>                &amp; [[<span class="fu">printDExpr</span>]] <span class="bu">dip</span> <span class="fu">printAbs</span></span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>                }</span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>              ]</span></code></pre></div>
 <p>Anything that works on a <code>DExpr</code> should work on an
 <code>AST</code>, which is the case:</p>
 <div class="sourceCode" id="cb7"><pre
 class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a> 0 &quot;<span class="fu">b</span>&quot; <span class="cn">`name</span> <span class="cn">`var</span> 0 &quot;<span class="fu">a</span>&quot; <span class="cn">`name</span> <span class="cn">`var</span> <span class="cn">`ap</span> 0 &quot;<span class="fu">a</span>&quot; <span class="cn">`name</span> <span class="cn">`lam</span> <span class="fu">printAST</span></span>
-<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span> (<span class="fu">a</span>)<span class="fu">b</span>&quot;</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span>.(<span class="fu">a</span>)<span class="fu">b</span>&quot;</span>
 <span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a> 0 &quot;<span class="fu">b</span>&quot; <span class="cn">`name</span> <span class="cn">`var</span> 0 &quot;<span class="fu">a</span>&quot; <span class="cn">`name</span> <span class="cn">`var</span> <span class="cn">`ap</span> 0 &quot;<span class="fu">a</span>&quot; <span class="cn">`name</span> <span class="cn">`lam</span> <span class="fu">printDExpr</span></span>
-<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span> (<span class="fu">a</span>)<span class="fu">b</span>&quot;</span></code></pre></div>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span>.(<span class="fu">a</span>)<span class="fu">b</span>&quot;</span></code></pre></div>
 <p>And supplying a <code>DExpr</code> to <code>printAST</code> is a type
 error, viz.</p>
 <div class="sourceCode" id="cb8"><pre
@@ -341,7 +333,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb8-1"><
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>1:12: ‘{ (<span class="fu">ρ₁</span> ⊃ {<span class="cn">`resVar</span>: (<span class="fu">ρ₁</span> ⊃ {<span class="cn">`x</span>})}) <span class="cn">`dfn</span></span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>       }’ <span class="fu">is</span> <span class="fu">not</span> <span class="fu">an</span> <span class="fu">acceptable</span> <span class="fu">argument</span>, <span class="fu">expected</span></span>
 <span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>‘{<span class="fu">a</span> <span class="fu">a</span> <span class="cn">`ap</span> ⊕ <span class="fu">a</span> (<span class="fu">ρ₂</span> ⊃ {<span class="cn">`name</span>: <span class="dt">Int</span> <span class="dt">Str</span>}) <span class="cn">`lam</span> ⊕ (<span class="fu">ρ₁</span> ⊃ {<span class="cn">`name</span>: <span class="dt">Int</span> <span class="dt">Str</span>}) <span class="cn">`var</span>}’</span>
-<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span> (<span class="fu">a</span>)<span class="fu">b</span>&quot;</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>&quot;<span class="fu">λa</span>.(<span class="fu">a</span>)<span class="fu">b</span>&quot;</span>
 <span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a> <span class="cn">`x</span> <span class="cn">`resVar</span> <span class="cn">`dfn</span> <span class="fu">printDExpr</span></span>
 <span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>&quot;[<span class="fu">x</span>]&quot;</span></code></pre></div>
 </body>

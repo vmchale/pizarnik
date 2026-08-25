@@ -8,7 +8,7 @@ smaller subset of cases.
 
 Consider desugaring; suppose the syntax `[max x^2+max y]` means `λx.λy. max x^2 + max y`; `x` and `y` are implicitly the bound variables.
 
-```{.pizarnik include="../examples/ast.piz" startLine=3 endLine=29}
+```{.pizarnik include="../examples/ast.piz" startLine=3 endLine=20}
 ```
 
 This does check pattern-match exhaustiveness; if we had written
@@ -40,7 +40,8 @@ dedfn : Int Name Name DExpr -- Int AST
            & `var⁻¹ drop2 `var
            & `dfn⁻¹ `dfn
            & `ap⁻¹ [dup2] dip2 (243) [dedfn] dip3 (45) dedfn (32) `ap
-           } ]
+           }
+         ]
 ```
 
 it would fail with
@@ -54,16 +55,16 @@ We can define e.g. pretty-printers on AST variants without needlessly repeating
 ourselves like so:
 
 
-```{.pizarnik include="../examples/ast.piz" startLine=36 endLine=57}
+```{.pizarnik include="../examples/ast.piz" startLine=34 endLine=55}
 ```
 
 Anything that works on a `DExpr` should work on an `AST`, which is the case:
 
 ```pizarnik
  0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printAST
-"λa (a)b"
+"λa.(a)b"
  0 "b" `name `var 0 "a" `name `var `ap 0 "a" `name `lam printDExpr
-"λa (a)b"
+"λa.(a)b"
 ```
 
 And supplying a `DExpr` to `printAST` is a type error, viz.
@@ -73,7 +74,7 @@ And supplying a `DExpr` to `printAST` is a type error, viz.
 1:12: ‘{ (ρ₁ ⊃ {`resVar: (ρ₁ ⊃ {`x})}) `dfn
        }’ is not an acceptable argument, expected
 ‘{a a `ap ⊕ a (ρ₂ ⊃ {`name: Int Str}) `lam ⊕ (ρ₁ ⊃ {`name: Int Str}) `var}’
-"λa (a)b"
+"λa.(a)b"
  `x `resVar `dfn printDExpr
 "[x]"
 ```
