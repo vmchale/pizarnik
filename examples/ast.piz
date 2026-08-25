@@ -11,7 +11,7 @@ type DExpr = AbsAST(DExpr) ∪ { DExpr `dfn ⊕ ResVar `resVar };
 type Syn = AbsAST(Syn) ∪ { DExpr `dfn };
 
 fresh : Int -- Int Name Name
-      := [ 1 + dup 1 + dup ["x" `name] dip "y" `name ]
+      := [ 1 + dup ["x" `name] dip 1 + dup "y" `name (23) ]
 
 dedfn : Int Name Name DExpr -- Int AST
       := [ { `resVar⁻¹ { `x⁻¹ drop & `y⁻¹ nip } `var
@@ -22,7 +22,7 @@ dedfn : Int Name Name DExpr -- Int AST
            } ]
 
 desugar : Int Syn -- Int AST
-        := [ { `dfn⁻¹ [fresh] dip dedfn
+        := [ { `dfn⁻¹ [fresh dup2] dip (645) dedfn (2431) `lam (12) `lam
              & `lam⁻¹ [desugar] dip `lam
              & `var⁻¹ `var
              & `ap⁻¹ [desugar] dip (32) desugar (23) `ap
@@ -41,8 +41,8 @@ brackets : Str -- Str
 
 printAbs : [a -- Str] AbsAST(a) -- Str
          := [ { `var⁻¹ printName nip
-              & `lam⁻¹ printName ["λ"] dip strcat " " strcat [swap $] dip swap strcat
-              & `ap⁻¹ [dup] dip2 (24) [$] dip2 (13) [$ parens] dip strcat
+              & `lam⁻¹ printName ["λ"] dip strcat "." strcat [swap $] dip swap strcat
+              & `ap⁻¹ [dup] dip2 (142) [$] dip2 (13) [$ parens] dip strcat
               }
             ]
 
