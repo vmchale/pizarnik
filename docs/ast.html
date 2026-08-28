@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
   <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
+  <meta name="generator" content="pandoc 3.10.2" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <meta name="author" content="V. E. McHale" />
   <title>One AST, Several Phases</title>
@@ -42,7 +42,6 @@
       body {
         background-color: transparent;
         color: black;
-        font-size: 12pt;
       }
       p, h2, h3 {
         orphans: 3;
@@ -157,8 +156,12 @@
       text-decoration: none;
     }
     span.smallcaps{font-variant: small-caps;}
-    div.columns{display: flex; gap: min(4vw, 1.5em);}
-    div.column{flex: auto; overflow-x: auto;}
+    div.columns{display: flex; gap: 1.5em;}
+    div.column{flex: auto;}
+    @media screen {
+    div.columns{gap: min(4vw, 1.5em);}
+    div.column{overflow-x: auto;}
+    }
     div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
     /* The extra [class] is a hack that increases specificity enough to
        override a similar rule in reveal.js */
@@ -290,7 +293,7 @@ class="sourceCode pizarnik"><code class="sourceCode pizarnik"><span id="cb4-1"><
 <span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`var</span>⁻¹ <span class="fu">drop2</span> <span class="cn">`var</span></span>
 <span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`dfn</span>⁻¹ <span class="cn">`dfn</span></span>
 <span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>           &amp; <span class="cn">`ap</span>⁻¹ [<span class="fu">dup2</span>] <span class="bu">dip</span>2 (243) [<span class="fu">dedfn</span>] <span class="bu">dip</span>3 (45) <span class="fu">dedfn</span> (32) <span class="cn">`ap</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>           } </span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>           }</span>
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>         ]</span></code></pre></div>
 <p>it would fail with</p>
 <pre><code>examples/ast.piz:65:65: occurs check failed: ‘&#39;A’, ‘&#39;A Int ρ₁’</code></pre>
