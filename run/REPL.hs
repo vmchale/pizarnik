@@ -53,7 +53,7 @@ runRepl fp x = do
                 runInputT (setComplete (c `fallbackCompletion` completeFilename) (defaultSettings { historyFile = Just h })) x
   where
     c (":", "")    = pure (":", strC ["ty","st","i"])
-    c ("t:", "")   = pure ("i:", strC [""])
+    c ("i:", "")   = pure ("i:", strC [""])
     c (" i:", "")  = do {ns <- names; pure (" i:", strC ns)}
     c ("t:", "")   = pure ("t:", strC ["y"])
     c ("yt:", "")  = pure ("yt:", strC [""])
@@ -103,7 +103,6 @@ try src = do
     case pAtoms l (bytesl src) of
         Left err -> pE err
         Right ((i,_,_,_),at) ->
-            -- liftIO $ print (aas at)
             let tyctx=Ext (aLs<$>b) c ar
                 (steps,_)=runState (tdbg tyctx (na at)) i
             in po$pTs steps
