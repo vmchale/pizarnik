@@ -19,7 +19,6 @@ type MC a b = (F a, Cs b, Ar)
 
 r :: MC (TS a) a -> [A (TS a)] -> S a -> S a
 r e as v = s v as where s c [] = c; s c (a:aa) = s (ι e a c) aa
--- r e as = thread (map (ι e) (reverse as)) where thread = foldr (.) id
 
 lm :: M b a -> F a
 lm (M _ ds) = f ds where f [] = IM.empty; f (d:dd) = b d (f dd)
@@ -32,11 +31,6 @@ i_ c a | [L t (I i)] <- ι c a [] = (i,t); s_ c a | [L t (Str s)] <- ι c a [] =
 ta l=let nm=true l;t=TS [] [TT l nm] in C t (nm$>t)
 fa l=let nm=false l;t=TS [] [TT l nm] in C t (nm$>t)
 
--- i2 c op (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,t) <- i_ c a1; pure$L t (I$i1`op`i0):as
--- ib c rel (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,TS _ rs) <- i_ c a1; pure$bt (tL$head rs) (i1`rel`i0):as
-    -- where bt l True  = ta l
-          -- bt l False = fa l
-
 i2 c op (a0:a1:as) = let (i0,_)=i_ c a0;(i1,t)=i_ c a1 in L t (I$i1`op`i0):as
 ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs) (i1`rel`i0):as
     where bt l True  = ta l
@@ -44,7 +38,6 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
 
 ψ :: MC (TS a) a -> [ASeq (TS a)] -> S a -> S a
 ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c as₀ (k:as)
--- ψ c@(_,cϵ,_) aa (k:as) | t <- last (trights (aL k)), Just as₀ <- find (h t) (map aas aa) = r c (tail as₀) (u k as)
   where
     h t (a:_) | t' <- last (tlefts (aL a)), t ≺ t' = True
               | otherwise = False
