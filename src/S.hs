@@ -11,7 +11,7 @@ import           Nm
 import qualified Nm.Map        as Nm
 import           Pr
 import           Prettyprinter (Doc, pretty)
-import           Ty            (UM)
+import           Ty            (Ext (Ext), UM, rty)
 
 type S a = [A (TS a)]
 
@@ -34,7 +34,7 @@ fa l=let nm=false l;t=TS [] [TT l nm] in C t (nm$>t)
 
 i2 c op (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,t) <- i_ c a1; pure$L t (I$i1`op`i0):as
 ib c rel (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,TS _ rs) <- i_ c a1; pure$bt (tL$head rs) (i1`rel`i0):as
-    where bt l True= ta l
+    where bt l True  = ta l
           bt l False = fa l
 
 ψ :: MC (TS a) a -> [ASeq (TS a)] -> S a -> UM a (S a)
@@ -49,6 +49,12 @@ ib c rel (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,TS _ rs) <- i_ c a1; pure$bt (tL
     t₀ ≺ t₁ | Just (TC _ n, s) <- tun t₁, Right t₁' <- β cϵ n s = t₀ ≺ t₁'
     _ ≺ _                   = False
 
+st :: MC (TS a) a -> [A (TS a)] -> UM a [A (TS a)]
+st c = rty (ext c) undefined
+  where
+    ext :: MC (TS a) a -> Ext a
+    ext (f,cϵ,a) = Ext (fmap aLs f) cϵ a
+
 ι :: MC (TS a) a -> A (TS a) -> S a -> UM a (S a)
 ι _ (B _ Dup) (a:as)       = pure (a:a:as)
 ι _ (B _ Un) (_:as)        = pure as
@@ -62,7 +68,7 @@ ib c rel (a0:a1:as) = do (i0,_) <- i_ c a0; (i1,TS _ rs) <- i_ c a1; pure$bt (tL
 ι c (B _ Lt) as            = ib c (<) as
 ι c (B _ Cat) (a0:a1:as)   = do (s0,_) <- s_ c a0; (s1,t) <- s_ c a1; pure$L t (Str$s1<>s0):as
 ι c (B _ Ap) (Q _ a:as)    = r c (aas a) as
-ι c (B _ Dip) (Q _ f:a:as) = (a:) <$> r c (aas f) as -- FIXME: e.g. 15 5 nip leaves 5 on stack but with type 'A Int -- 'A Int Int...
+ι c (B _ Dip) (Q _ f:a:as) = st c.(a:) =<< r c (aas f) as
 ι _ (L _ (S p)) a          = let n = gn p; (x,a_)=splitAt n a in pure (gp p x++a_)
 ι _ a@L{} as               = pure (a:as)
 ι _ a@Q{} as               = pure (a:as)
