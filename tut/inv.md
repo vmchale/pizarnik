@@ -52,14 +52,17 @@ we would be confronted with
 5:20: {a `just ⊕ `nothing} ⊀ {ρ₁ `just}
 ```
 
-p. 45 "Negative connectives are defined by the way they react to values." ... "functions, the negative objects by excellence, are opaque objects whose only rôle is to be applied."
-p. 45 pédrot "The interpretation of positive connectives is always of the form
-(A ⊙ B) LATEX HERE (for binary connectives) where ⊙ embodies the way we build values of
-that type (by union for the sum, and by product for the tensor) while negative
-are conversely defined by orthogonality over those values."
+On the logical side, Pédrot writes:
+
+<!-- p. 45 "Negative connectives are defined by the way they react to values." ... "functions, the negative objects by excellence, are opaque objects whose only rôle is to be applied." -->
+> The interpretation of positive connectives is always of the form
+> $(A \odot B)^{\perp\!\!\!\!\perp}$ (for binary connectives) where $\odot$ embodies the way we build values of
+> that type (by union for the sum, and by product for the tensor) while negative
+> are conversely defined by orthogonality over those values."
+
+[-@pédrot, p. 45]
 
 <!-- first-class -->
-<!-- not precisely inverse but more orthogonal... -->
 <!-- constructors are associated with a particular arity but not a particular named type (structural pattern-match exhaustiveness checking) -->
 <!-- properly solved, expression problem is one of polarity, (sum types that are disjuncts demand disjunctive products?) not analogy -->
 <!-- maybe it's not that OO "extends types" it's that extensible cases extend _functions_ (or contravariantly) -->
