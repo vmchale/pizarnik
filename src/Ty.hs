@@ -9,7 +9,7 @@ import           Control.Arrow                    ((&&&))
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, modifyM, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
 import           Data.Either                      (partitionEithers)
@@ -48,6 +48,7 @@ data TE a = BE (BE a) | O (T a) (T a) | Os (Nm a) (TSeq a)
           | LF (T a) (T a) | ΦF (T a) (T a) | CF (T a) (T a)
           | UF (T a) (T a) | MF (T a) (T a) | Ϙ (T a) (T a)
           | Bare (T a) | AM (Nm a) | IS (Nm a)
+          | CA (T a)
           deriving Functor
 
 instance PT (TE a) where
@@ -56,7 +57,7 @@ instance PT (TE a) where
     pp (LE ts₀ ts₁) = LE <$> traverse pp ts₀ <*> traverse pp ts₁
     pp (LF t₀ t₁) = LF <$> pp t₀ <*> pp t₁; pp (ΦF t₀ t₁) = ΦF <$> pp t₀ <*> pp t₁
     pp (CF t₀ t₁) = CF <$> pp t₀ <*> pp t₁; pp (MF t₀ t₁) = MF <$> pp t₀ <*> pp t₁
-    pp e@(AM{};IS{};Bare{};PM{};BE{}) = pure e
+    pp e@(AM{};IS{};Bare{};PM{};BE{};CA{}) = pure e
 
 tLs :: TSeq a -> a
 tLs = tL.head
@@ -77,6 +78,7 @@ instance Pretty a => Pretty (TE a) where
         p (MF t0 t1)   = tc t1$"could not match" <+> sq t0 <+> "against" <+> sq t1
         p (IS n)       = tn n (sq n <+> "not in scope.")
         p (Bare t)     = tc t$"Bare union:" <+> sq t
+        p (CA t)       = tc t"Type declaration includes tag with conflicting arity"
 
 tn n p = pretty (Nm.loc n) <> ":" <+> p
 tc t p = pretty (tL t) <> ":" <+> p; tsc t p = pretty (tLs t) <> ":" <+> p
@@ -102,6 +104,19 @@ iSV n t = mapSV (IM.insert (unU$un n) t); iTV n t = mapTV (IM.insert (unU$un n) 
 sTV (Nm _ (U u) _) t = Subst (IM.singleton u t) IM.empty
 
 (\-) s u = mapTV (IM.delete u) s
+
+lC :: Cs a -> Nm a -> UM a (T a)
+lC c n@(Nm _ (U i) l) | Just ([],t) <- c IM.!? i = pure (t$>l) | otherwise = throwError$IS n
+
+lA :: IM.IntMap (TS a) -> Nm a -> UM a (TS a)
+lA c n@(Nm _ (U i) l) | Just ts <- c IM.!? i = (l<$) <$> liftClone ts | otherwise = throwError$IS n
+
+lT :: Ar -> Nm a -> UM a Int
+lT ar n@(Nm _ (U u) _) | Just i <- ar IM.!? u = pure i
+                       | otherwise = throwError$AM n
+
+liftClone :: TS a -> UM a (TS a)
+liftClone ts = StateT $ \u -> let (w, ts') = cloneSig u ts in Right (ts',w)
 
 c1 :: Nm a -> T a -> T a -> UM a (Subst a)
 c1 (Nm _ (U u) _) t te | u `IS.member` occ t = throwError $ O te t
@@ -335,7 +350,6 @@ nρ n@(Nm t _ l) σ = do
         Just [] -> pure (t1,s)
         Just _  -> φf t0 t1
         _ -> do
-            -- FIXME: propagates back too much?
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ _ s t0@(Ρ _ n σ) t1@(TT _ tt) =
@@ -343,7 +357,6 @@ nρ n@(Nm t _ l) σ = do
         Just [] -> pure (t0,s)
         Just _  -> φf t0 t1
         _ -> do
-            -- FIXME: propagates back too much?
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ c s t0 t1 | Just (th@(TC _ n0), a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = do
@@ -355,7 +368,6 @@ nρ n@(Nm t _ l) σ = do
 φ c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; φ c s t0 t1'}
 φ c s (Ρ x n σ0) t@(Ρ _ _ σ1) = do
     (ς, s') <- φσ c s x σ0 σ1
-    -- FIXME: propagates back too much?
     (n',g) <- ρc n (σ0<>σ1<>ς) t
     pure (n', g s')
 φ c s (UU x ts) t1 = do {t0 <- uU (tβ c) x ts; φ c s t0 t1}
@@ -407,7 +419,7 @@ nρ n@(Nm t _ l) σ = do
 
 ϙs=sv ϙ;ϙsc=ctx'ize ϙs; ϙσ = uσ ϙs
 
--- TODO: eat into stack var when present?
+-- FIXME eat into stack var when present
 rwAr :: Ar -> TSeq a -> UM a (TSeq a)
 rwAr ar = under (fmap reverse . g . reverse)
     where g ((TT x n):ts) = do {k <- lT ar n; if length ts>=k then let (a,r)=splitAt k ts in (Σ x (Nm.singleton n (reverse a)):)<$>g r else ie}
@@ -422,7 +434,7 @@ mc u c s = ms u c s `onM` (rwAr (ars c).peek s)
 -- 'A ['A ρ₂ -- 'A] {`nil ⊕ ρ₁ ρ₂ `cons}
 -- 'B ['B a -- 'B] List(a)
 --
--- same length... then tieing off 'A=ø is sus...
+-- same length... then tieing off 'A=ø is ???
 ms :: (Nt a -> T a -> T a -> UM a (Subst a))
    -> Nt a -> Subst a
    -> TSeq a -- ^ inferred
@@ -531,7 +543,7 @@ uU c x ts = Σ x <$> foldMapM f ts where
     f (TC _ n)    = f =<< lC c n
     f t           | Just{} <- tun t = f =<< lΒ c t
     f (UU _ ts_)  = foldMapM f ts_
-    -- FIXME: unions on variables? (could end up being instantiated wrong...)
+    -- FIXME: unions on variables? (would they be instantiated wrong?)
     f (SV{};Ρ{})  = ie
     f (TP{};QT{}) = throwError$Bare (UU x ts)
 
@@ -540,26 +552,11 @@ uU c x ts = Σ x <$> foldMapM f ts where
         -> TS a -- ^ signature
         -> UM a (Subst a)
 μs c s (TS l0 r0) (TS l1 r1) = do {s' <- mc μ c s l0 l1; mc μ c s' r0 r1}
-lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc lt c s r0 r1; mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s' l0 l1} -- right must substitute first to "fill out" ρ
+lts c s (TS l0 r0) (TS l1 r1) = do {s' <- mc lt c s r0 r1; mc (\cϵ t0 t1 -> lt cϵ t1 t0) c s' l0 l1} -- right first to "fill out" ρ
 
 {-# SCC mtsc #-}
 mtsc :: Nt a -> Subst a -> TS a -> TS a -> UM a (Subst a)
 mtsc c s ts0 ts1 = do {s' <- μs c s ts0 ts1; lts c s' ts0 ts1}
-
-liftClone :: TS a -> UM a (TS a)
-liftClone ts = StateT $ \u -> let (w, ts') = cloneSig u ts in Right (ts',w)
-
-lC :: Cs a -> Nm a -> UM a (T a)
-lC c n@(Nm _ (U i) l) | Just ([],t) <- c IM.!? i = pure (t$>l)
-                      | otherwise = throwError$IS n
-
-lT :: Ar -> Nm a -> UM a Int
-lT ar n@(Nm _ (U u) _) | Just i <- ar IM.!? u = pure i
-                       | otherwise = throwError$AM n
-
-lA :: IM.IntMap (TS a) -> Nm a -> UM a (TS a)
-lA c n@(Nm _ (U i) l) | Just ts <- c IM.!? i = (l<$) <$> liftClone ts
-                      | otherwise = throwError$IS n
 
 tM :: Ext a -> M a a -> UM a (M a (TS a), Ext a)
 tM b (M is ds) = first (M is) <$> tD b ds
@@ -596,11 +593,11 @@ tD1 c (F _ n ts as) = do
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
 iTD (Nm _ (U i) _) vs t = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f (IM.insert i (vs,t) c) a))
 
-cA :: T a -> TM b ()
+cA :: T a -> TM a ()
 cA (UU _ ts) = traverse_ cA ts
-cA (Σ _ t) = modify (\(TSt m (Ext f c a)) -> TSt m (Ext f c (fmap length (Nm.xx t)</>a)))
-    where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = x<>y
-                    | otherwise = error"sum declaration includes tag with conflicting arity"
+cA te@(Σ _ t) = modifyM (\(TSt m (Ext f c a)) -> TSt m.Ext f c <$> (fmap length (Nm.xx t)</>a))
+    where (</>) x y | rs <- IM.intersectionWith (,) x y, all (uncurry (==)) rs = pure (x<>y)
+                    | otherwise = Left (CA te)
 cA _=pure ()
 
 sseq :: Nt a -> a -> Subst a -> [A (TS a)] -> UM a (TS a, Subst a)
@@ -611,8 +608,6 @@ sseq b l s as = do {ᴀ <- fsv l "A"; γ s ([ᴀ] --: [ᴀ]) as}
 
 data TN a = TN { can :: a } | TArm { can :: a, ρs :: [[TN a]] }
           | TQ { can :: a, qs :: [TN a] }
-
--- data W a = CW (AP a) (W a) | WE (TE a) | WZ
 
 type AP a = (A a, Either (TE a) (TS a))
 
@@ -717,7 +712,6 @@ ta b s (Q l as)        = do {(as', s') <- tseq b s as; pure (Q ([] --: [QT l (aL
 ta b s (Inv _ a)       = do {(a', s') <- ta b s a; let TS l r = aL a' in pure (Inv (r--:l) a', s')}
 ta b s (C l tt)        = do
     p <- lT (arit b) tt
-    -- TODO: pad beginning not-inverse constructors with a₀ etc. not ρ₀?
     ρ <- pad l p
     let ts=TS ρ (ρ++[TT l tt]) in pure (C ts (tt$>ts), s)
 ta b s (Pat l as)      = do
@@ -753,9 +747,7 @@ tab c = (Ψ<$>) . graft <=< traverse tst
     viewL (Σ _ σ:ts)   = do
         l <- viewL ts
         pure (Ψ ((,l) <$> σ))
-    viewL (UU x ts0:ts1)= do {ts0' <- uU (tβ c) x ts0; viewL (ts0':ts1)} -- error"nyi"
-    -- viewL (t@TV{}:ts)=error"nyi"
-    -- viewL (Ρ{}:ts)=error"nyi"
+    viewL (UU x ts0:ts1)= do {ts0' <- uU (tβ c) x ts0; viewL (ts0':ts1)}
     viewL (t:ts) | Just{} <- tun t = do {t' <- lΒ (tβ c) t; viewL (t':ts)}
     viewL ts = pure (Lb (TR ts))
 
