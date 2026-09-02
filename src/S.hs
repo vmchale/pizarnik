@@ -22,8 +22,6 @@ r e as v = s v as where s c [] = c; s c (a:aa) = s (ι e a c) aa
 
 lm :: M b a -> F a
 lm (M _ ds) = f ds where f [] = IM.empty; f (d:dd) = b d (f dd)
-
-b :: D b a -> F a -> F a
 b (F _ (Nm _ (U i) _) _ as) = IM.insert i as; b TD{} = id
 
 i_ c a | [L t (I i)] <- ι c a [] = (i,t); s_ c a | [L t (Str s)] <- ι c a [] = (s,t)
@@ -74,17 +72,12 @@ ib c rel (a0:a1:as) = let (i0,_)=i_ c a0;(i1,TS _ rs)=i_ c a1 in bt (tL$head rs)
 ι _ (Inv _ (C _ tt₀)) (C _ tt₁:as) | tt₀==tt₁ = as
 ι c a₀@Inv{} (a₁@Inv{}:as) = r c [a₀,a₁] as
 
-lA :: MC a b -> Nm a -> Int
-lA (_,_,a) (Nm _ (U u) _) | Just ar <- a IM.!? u = ar
-                          | otherwise = ie"arity not found"
-
-lV :: MC a b -> Nm a -> ASeq a
-lV (c,_,_) n@(Nm _ (U u) _) | Just a <- c IM.!? u = a
-                            | otherwise = ie("variable " ++ show n ++ " not found.")
+lA (_,_,a) (Nm _ (U u) _) = im"arity not found" u a
+lV (c,_,_) n@(Nm _ (U u) _) = im ("variable " ++ show n ++ " not found.") u c
 
 stack :: S a -> Doc ann
 stack = p.reverse where
     p []     = "----"
     p (l:ls) = pretty l <#> p ls
 
-ie s=error("internal error: "++s)
+im s = IM.findWithDefault (error ("internal error: "++s))
