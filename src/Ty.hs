@@ -493,8 +493,7 @@ mσ u c σ0 σ1 =
 μ _ (TT _ n0) (TT _ n1) | n0==n1 = pure mempty
 μ _ t0@(Σ _ σ) t1@(TT _ n) | [(n₀,[])] <- Nm.toList undefined σ, n==n₀ = pure mempty
                            | otherwise = mf t0 t1
-μ _ t0 t1@TP{} = mf t0 t1; μ _ t0 t1@QT{} = mf t0 t1
-μ _ t0 t1@Σ{} = mf t0 t1; μ _ t0 t1@TT{} = mf t0 t1
+μ _ t0 t1@(TP{};QT{};Σ{};TT{}) = mf t0 t1
 μ _ SV{} _ = ie; μ _ _ SV{} = ie
 
 -- ≺
