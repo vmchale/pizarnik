@@ -20,8 +20,9 @@ import qualified Data.IntSet                      as IS
 import qualified Data.Text                        as T
 import           G
 import           Nm
-import           Nm.Map                           (NmMap (NmMap), (!?))
+import           Nm.Map                           (NmMap (NmMap), (!?), (⊂))
 import qualified Nm.Map                           as Nm
+import           Nm.Set                           ((∈))
 import qualified Nm.Set                           as NmSet
 import           Pr
 import           Prettyprinter                    (Pretty (pretty), hsep, indent, vsep, (<+>))
@@ -196,11 +197,11 @@ so (Σ _ a)               = foldMap (so@<>) a
 so (Ρ _ _ σ)             = foldMap (so@<>) σ
 
 occρ :: Nm a -> NmMap (TSeq a) -> Bool
-occρ n σ = n `NmSet.member` foldMap (occ@<>) σ
+occρ n σ = n ∈ foldMap (occ@<>) σ
 
 roll = foldl (\t₀ -> TA (tL t₀) t₀)
 
-nv s n σ t e eo | n `NmSet.member` occ t = throwError eo
+nv s n σ t e eo | n ∈ occ t = throwError eo
                 | Nm.null σ = pure (t, iTV n t s)
                 | otherwise = throwError e
 
@@ -226,8 +227,7 @@ su c s (TC _ n) t1 = do {t0 <- lC (tβ c) n; su c s t0 t1}
 su c s t0 (TC _ n) = do {t1 <- lC (tβ c) n; su c s t0 t1}
 su c s t0 t1 | Just{} <- tun t0 = do {t0' <- lΒ (tβ c) t0; su c s t0' t1}
 su c s t0 t1 | Just{} <- tun t1 = do {t1' <- lΒ (tβ c) t1; su c s t0 t1'}
-su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 `Nm.isSubmapOf` σ1 = do
-    -- TODO propagate back?
+su c s t0@(Ρ _ n σ0) t1@(Σ x σ1) | σ0 ⊂ σ1 = do
     (ς,s') <- sσ c s x σ0 σ1
     (n',g) <- ρc n (σ0<>σ1<>ς) t0
     pure (n',g s')
@@ -250,7 +250,7 @@ su _ s t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure (t0, s)
                                    | otherwise = cf t0 t1
 su _ s t0@(TP _ l0) t1@(TP _ l1) | l0==l1 = pure (t0, s)
                                  | otherwise = cf t0 t1
-su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 `Nm.isSubmapOf` a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
+su c s t0@(Σ x a0) t1@(Σ _ a1) | a0 ⊂ a1 = do {(ς,s') <- sσ c s x a0 a1; pure (Σ x ς, s')}
                                | otherwise = cf t0 t1
                               -- TODO: should we check TT has arity 0?
 su _ _ t0@(TT _ n) t1@(Σ _ σ) | Just [] <- σ!?n = pure (t0, mempty)
@@ -272,14 +272,14 @@ uσ u c s l σ0 σ1 =
     us sϵ []              = pure (Nm.empty, sϵ)
     us sϵ ((n,(x,y)):xys) = do {(xy,s') <- u c sϵ x y; first (Nm.insert n xy) <$> us s' xys}
 
-sus=sv su;susc=ctx'ize sus; sσ = uσ susc
+sus=sv su;susc=ctx'ize sus;sσ=uσ susc
 
 type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 
 si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
 -- if we have A, B [B c -- A b] (say) then say A=0
-si n₀ t@(SV _ n₁:_) | n₀ `NmSet.member` so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+si n₀ t@(SV _ n₁:_) | n₀ ∈ so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
 si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
@@ -403,10 +403,10 @@ nρ n@(Nm t _ l) σ = do
 ϙ c s t0@(Σ l a0) t1@(Σ _ a1) | eqKeys a0 a1 = first (Σ l) <$> ϙσ c s l a0 a1
                               | otherwise = ϙf t0 t1
 ϙ c s t0@(Σ _ as) t1@(Ρ l n σ) | n `occρ` as = throwError$O t0 t1
-                               | σ `Nm.isSubmapOf` as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
+                               | σ ⊂ as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
                                | otherwise = ϙf t0 t1
 ϙ c s t0@(Ρ l n σ) t1@(Σ _ as) | n `occρ` as = throwError$O t0 t1
-                               | σ `Nm.isSubmapOf` as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
+                               | σ ⊂ as = do {(σ',s') <- ϙσ c s l as σ; second ($s') <$> nρ n σ'}
                                | otherwise = ϙf t0 t1
 ϙ _ s te@(Ρ _ n σ) t = nv s n σ t (Ϙ te t) (O te t)
 ϙ _ s t te@(Ρ _ n σ) = nv s n σ t (Ϙ t te) (O t te)
@@ -498,7 +498,7 @@ mσ u c σ0 σ1 =
 
 -- ≺
 lt :: Nt a -> T a -> T a -> UM a (Subst a)
-lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+lt c t0@(Σ _ σ0) t1@(Σ _ σ1) | σ0 ⊂ σ1 = mσ lt c σ0 σ1
                              | otherwise = sf t0 t1
 lt _ t0@(TT _ tt0) t1@(TT _ tt1) | tt0==tt1 = pure mempty
                                  | otherwise = sf t0 t1
@@ -519,17 +519,17 @@ lt _ (TP _ l0) (TP _ l1) | l0==l1 = pure mempty
 lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
     | occρ n σ1 = throwError$O t0 t1
     -- [tag:right]
-    | σ0 `Nm.isSubmapOf` σ1 = iTV n t1 <$> mσ lt c σ0 σ1
+    | σ0 ⊂ σ1 = iTV n t1 <$> mσ lt c σ0 σ1
     | otherwise = sf t0 t1
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
 lt _ t0@(Σ _ a) t1@(TT _ n) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
                                -- FIXME: [ref:right] binds a variable hm
-                               | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                               | σ0 ⊂ σ1 = mσ lt c σ0 σ1
                                | otherwise = sf t0 t1
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
-                                   | σ0 `Nm.isSubmapOf` σ1 = mσ lt c σ0 σ1
+                                   | σ0 ⊂ σ1 = mσ lt c σ0 σ1
                                    | otherwise = sf t0 t1
 lt _ t0@(TP{};QT{}) t1 = sf t0 t1; lt _ t0 t1@(TP{};QT{}) = sf t0 t1
 lt _ SV{} _ = ie; lt _ _ SV{} = ie

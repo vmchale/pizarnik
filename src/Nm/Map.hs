@@ -8,7 +8,7 @@ module Nm.Map ( NmMap (..)
               , empty
               , intersectionWith
               , unionWith
-              , isSubmapOf
+              , (⊂)
               , fromList
               , nmlist
               , toList
@@ -58,8 +58,8 @@ empty = NmMap IM.empty IM.empty
 null :: NmMap a -> Bool
 null (NmMap x _) = IM.null x
 
-isSubmapOf :: NmMap a -> NmMap b -> Bool
-isSubmapOf (NmMap x _) (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
+(⊂) :: NmMap a -> NmMap b -> Bool
+(NmMap x _) ⊂ (NmMap y _) = IM.isSubmapOfBy (\_ _ -> True) x y
 
 intersectionWith :: (a -> b -> c) -> NmMap a -> NmMap b -> NmMap c
 intersectionWith f (NmMap x0 c0) (NmMap x1 c1) = NmMap (IM.intersectionWith f x0 x1) (IM.intersection c0 c1)
