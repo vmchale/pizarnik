@@ -158,7 +158,7 @@ peekS s (TS l r) = TS (peek s l) (peek s r)
 
 (@~>) :: Subst a -> Nm a -> TSeq a
 (@~>) s v@(Nm _ (U i) x) =
-    case IM.lookup i (svs s) of
+    case svs s IM.!? i of
         Just ts -> mapSV (IM.delete i) s @@ ts
         Nothing -> [SV x v]
 
@@ -169,11 +169,11 @@ peekS s (TS l r) = TS (peek s l) (peek s r)
 (@>) s (QT x sig)         = QT x (s@*sig)
 (@>) s (UU x ts)          = UU x (map (s@>) ts)
 (@>) s t@(TV _ (Nm _ (U u) _)) =
-    case IM.lookup u (tvs s) of
+    case tvs s IM.!? u of
         Nothing -> t
         Just t' -> s\-u@>t'
 (@>) s (Ρ l n@(Nm _ (U u) _) a) =
-    case IM.lookup u (tvs s) of
+    case tvs s IM.!? u of
         Nothing -> Ρ l n (fmap (s@@) a)
         Just t' -> s\-u@>t'
 (@>) s (Σ x ts) = Σ x (fmap (s@@) ts)
@@ -237,8 +237,7 @@ su c s (Σ x σ0) t@(Ρ _ n σ1) = do
     (n',g) <- ρc n (σ0<>σ1<>ς) t
     pure (n',g s')
 su _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
-    case Nm.lookup tt σ of
-        -- don't propagate back?
+    case σ !? tt of
         Nothing -> do {(n',g) <- nρ n (Nm.insert tt [] σ); pure (n',g s)}
         Just [] -> pure (t1, s)
         Just _  -> sf t0 t1
@@ -346,14 +345,14 @@ nρ n@(Nm t _ l) σ = do
     (n',g) <- ρc n (σ<>as<>ς) t
     pure (n', g s')
 φ _ s t0@(TT _ tt) t1@(Ρ _ n σ) =
-    case Nm.lookup tt σ of
+    case σ !? tt of
         Just [] -> pure (t1,s)
         Just _  -> φf t0 t1
         _ -> do
             (n',g) <- nρ n (Nm.insert tt [] σ)
             pure (n',g s)
 φ _ s t0@(Ρ _ n σ) t1@(TT _ tt) =
-    case Nm.lookup tt σ of
+    case σ !? tt of
         Just [] -> pure (t0,s)
         Just _  -> φf t0 t1
         _ -> do
