@@ -34,7 +34,7 @@ as ands/foldl...
 
 
 importing lib/list (into examples/set), where `nil has the SAME arity as in examples/set, leads to problems!
-... we DO renames tags, so I assume that the lexer state in REPL then tries to
+... we DO rename tags, so I assume that the lexer state in REPL then tries to
 find `nil with the unique based on lib/list, which is properly invisible...
 (also our arity clash check may not be working...)
 
@@ -60,15 +60,5 @@ False
 1
 ----
  (132)
-1:1: ‘Int’ is not an acceptable argument, expected ‘{False}’
-```
-
-this is accepted...
-
-```
-h : { `a ⊕ `c ⊕ `t } --
-  := [{ `a^ & `c^ & `t^ }]
-
-uhOh : {`t ⊕ `c ⊕ `g} --
-     := [h]
+1:1: occurs check failed: ‘'A’, ‘'A Int’
 ```

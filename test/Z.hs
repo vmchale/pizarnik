@@ -44,6 +44,7 @@ main = defaultMain $
             : tE "test/data/permeable.piz" "test/data/permeable.piz:21:8: ‘{ `nil ⊕ List(Unit) Unit `cons\n                               }’ is not an acceptable argument, expected\n‘{List(a) a `cons}’"
             : tE "test/data/badList.piz" "test/data/badList.piz:4:14: {List(a) a `cons ⊕ `nil} ⊀ {List(a) a `cons}"
             : tE "test/data/both.piz" "test/data/both.piz:12:5: { {True ⊕ False} `left ⊕ Int `right ⊕ { True ⊕ False\n                                                               } Int `both\n                         } ⊀ {{True ⊕ False} `left ⊕ Int `right}"
+            : tE "test/data/badDna.piz" "test/data/badDna.piz:6:9: {`c ⊕ `g ⊕ `t} ⊀ {`a ⊕ `c ⊕ `t}"
             : map tF [ "lib/list.piz"
                      , "lib/either.piz"
                      , "lib/both.piz"
