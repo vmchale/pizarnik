@@ -28,8 +28,8 @@ import           Nm
 import           Nm.Map                           (NmMap, nmlist)
 import qualified Nm.Map                           as Nm
 import           Pr
-import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, fillSep, flatAlt, group, hardline, hsep, parens, punctuate,
-                                                   softline, space, (<+>))
+import           Prettyprinter                    (Doc, Pretty (..), align, braces, brackets, concatWith, dquotes, flatAlt, group, hardline, hsep, indent, parens, punctuate,
+                                                   softline, space, vsep, (<+>))
 
 infixl 9 <:>
 infixr 0 --:
@@ -89,15 +89,16 @@ data A a = B { aL :: a, builtin :: !B } | Q { aL :: a, aqs :: ASeq a }
          | Pat { aL :: a, arms :: SL a (ASeq a) } | Ca { aL :: a, acs :: [A a] }
 
 aT :: SL b (A (TS a)) -> Doc ann
-aT = align.fillSep.map ana.aas
+aT = align.vsep.map ana.aas
 
-(<:>) x y = x <+> ":" <+> y
+(<:>) x y = group (flatAlt (x <+> ":" <#> indent 2 y) (x <+> ":" <+> y))
 
 ana :: A (TS b) -> Doc ann
-ana (B t a) = parens (pretty a <:> p0 t); ana (L t a) = parens (pretty a <:> p0 t)
-ana (C t a) = parens (pretty a <:> p0 t); ana (V t a) = parens (pretty a <:> p0 t)
-ana (Inv t a) = parens (pretty a <> "⁻¹" <:> p0 t); ana (Q t a) = parens (brackets (aT a) <:> p0 t)
-ana (Pat t a) = group (braces (align (pA (map aT (aas a))))) <:> p0 t
+ana (B t a) = pretty a <:> p0 t; ana (L t a) = pretty a <:> p0 t
+ana (C t a) = pretty a <:> p0 t; ana (V t a) = pretty a <:> p0 t
+ana (Inv t a) = pretty a <> "⁻¹" <:> p0 t; ana (Q t a) = align (brackets (aT a) <:> p0 t)
+ana (Pat t a) = br'd (concatWith la (map aT (aas a))) <:> p0 t
+  where la x y = group (flatAlt (x <#> "&" <+> y) (x <+> "&" <+> y))
 
 faseq :: (a -> b) -> ASeq a -> ASeq b
 faseq f (SL x xs) = SL (f x) (map (f<$>) xs)
