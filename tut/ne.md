@@ -5,7 +5,7 @@
 In Pizarnik, we can define functions on lists and they will work on
 non-empty lists.
 
-```{.pizarnik include="../lib/list.piz" startLine=3 endLine=10}
+```{.pizarnik include="../lib/list.piz" startLine=3 endLine=11}
 ```
 
 ```{.pizarnik include="../test/data/permeable.piz" startLine=4 endLine=10}
@@ -15,7 +15,7 @@ non-empty lists.
 
 Non-empty lists enforce the same safety as in Haskell:
 
-```{.pizarnik include="../lib/list.piz" startLine=11 endLine=12}
+```{.pizarnik include="../lib/list.piz" startLine=13 endLine=14}
 ```
 
 Had we tried to write `head : List(a) -- a`:
