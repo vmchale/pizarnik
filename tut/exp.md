@@ -4,7 +4,7 @@
 
 Suppose we have
 
-```{.pizarnik include="../lib/either.piz" startLine=3 endLine=8}
+```{.pizarnik include="../lib/either.piz" startLine=3 endLine=9}
 ```
 
 Then we can define

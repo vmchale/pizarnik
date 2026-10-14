@@ -8,7 +8,7 @@ smaller subset of cases.
 
 Consider desugaring; suppose the syntax `[max x^2+max y]` means `λx.λy. max x^2 + max y`; `x` and `y` are implicitly the bound variables.
 
-```{.pizarnik include="../examples/ast.piz" startLine=3 endLine=20}
+```{.pizarnik include="../examples/ast.piz" startLine=3 endLine=22}
 ```
 
 This does check pattern-match exhaustiveness; if we had written
