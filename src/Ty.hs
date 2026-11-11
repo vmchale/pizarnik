@@ -210,6 +210,7 @@ nv s n σ t e eo | n ∈ occ t = throwError eo
 su :: Nt a -> Subst a -> T a -> T a -> UM a (T a, Subst a)
 su _ s t@(TV _ n0) (TV _ n1) | n0==n1 = pure (t,s)
 su _ s t@(Ρ _ n0 _) (Ρ _ n1 _) | n0==n1 = pure (t,s)
+-- FIXME we have a special case for `tag and a (universal var) but we fumble subsumption w.r.t. stack variables...
 su c s (TT l tt) (TV _ n) = do {r <- lT (ars c) tt; ρ <- pad l r; (n',g) <- nρ n (Nm.singleton tt ρ); pure (n',g s)}
 su _ s (Σ _ σ) (TV _ n) = do {(n',g) <- nρ n σ; pure (n',g s)}
 su _ s t0@(TV _ n) t1 = (t1,) <$> ci n t1 t0 s
@@ -278,7 +279,8 @@ type UC v a = Nt a -> Subst a -> v -> v -> UM a (v, Subst a)
 si :: Nm a -> TSeq a -> UM a (Subst a -> Subst a)
 si n₀ [SV _ n₁] | n₀==n₁ = pure id
 -- if we have A, B [B c -- A b] (say) then say A=0
-si n₀ t@(SV _ n₁:_) | n₀ ∈ so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+-- si n₀ t@(SV _ n₁:_) | n₀ ∈ so@<>t = if n₀==n₁ then throwError (Os n₀ t) else pure (iSV n₀ [])
+-- TODO: prove/investigate stuff related to occurs check/stack variables
 si n t = pure (iSV n t)
 
 sv :: UC (T a) a -> UC (TSeq a) a
@@ -291,7 +293,6 @@ sv u c s t0@(SV x sn0:t0d) t1@(s1@(SV _ sn1):t1d) =
   where
     n0=length t0d; n1=length t1d
 sv u c s t0@(SV _ sn0:t0d) t1
-    -- TODO: why iSV vs. ς?
     | n1>=n0 = let (uws,res) = t1/|n0 in first (uws++) <$> ctx'ize (sv u) c (iSV sn0 uws s) t0d res
     | otherwise = throwError$LE t0 t1
 
@@ -433,7 +434,7 @@ mc u c s = ms u c s `onM` (rwAr (ars c).peek s)
 -- 'A ['A ρ₂ -- 'A] {`nil ⊕ ρ₁ ρ₂ `cons}
 -- 'B ['B a -- 'B] List(a)
 --
--- same length... then tieing off 'A=ø is ???
+-- same length... then tying off 'A=ø is ???
 ms :: (Nt a -> T a -> T a -> UM a (Subst a))
    -> Nt a -> Subst a
    -> TSeq a -- ^ inferred
@@ -478,7 +479,7 @@ mσ u c σ0 σ1 =
                               | otherwise = mf t0 t1
 μ _ t0 t1@TV{} = throwError$MF t0 t1
 μ c (Σ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1
-μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later
+μ c (Ρ _ _ σ0) (Σ _ σ1) = mσ μ c σ0 σ1 -- find universality but do not substitute so we can check case coverage later TODO: substitute later for sake of clearer annotations
 -- TODO: this proceeds the same as [ref:expand] in expanding constants...
 μ c t0 t1 | Just (TC _ n0, a0) <- tun t0, Just (TC _ n1, a1) <- tun t1, n0==n1 = ms μ c mempty a0 a1
 μ c (TC _ n) t1 = do {t0 <- lC (tβ c) n; μ c t0 t1}
@@ -523,8 +524,8 @@ lt c t0@(Ρ _ n σ0) t1@(Σ _ σ1)
 lt _ t0@(TT _ n) t1@(Σ _ a) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
 lt _ t0@(Σ _ a) t1@(TT _ n) | Just [] <- a !? n = pure mempty | otherwise = sf t0 t1
 lt c t0@(Σ _ σ0) t1@(Ρ _ n σ1) | occρ n σ0 = throwError$O t1 t0
-                               -- FIXME: [ref:right] binds a variable hm
-                               | σ0 ⊂ σ1 = mσ lt c σ0 σ1
+                               -- [ref:right] at one point we didn't bind a variable here for some test
+                               | σ0 ⊂ σ1 = iTV n t0 <$> mσ lt c σ0 σ1
                                | otherwise = sf t0 t1
 lt c t0@(Ρ _ n0 σ0) t1@(Ρ _ n1 σ1) | occρ n0 σ1 = throwError$O t0 t1
                                    | occρ n1 σ0 = throwError$O t1 t0
@@ -541,7 +542,7 @@ uU c x ts = Σ x <$> foldMapM f ts where
     f (TC _ n)    = f =<< lC c n
     f t           | Just{} <- tun t = f =<< lΒ c t
     f (UU _ ts_)  = foldMapM f ts_
-    -- FIXME: unions on variables? (would they be instantiated wrong?)
+    -- TODO would unions on variables be instantiated wrong?
     f (SV{};Ρ{})  = ie
     f (TP{};QT{}) = throwError$Bare (UU x ts)
 
@@ -561,7 +562,6 @@ tM b (M is ds) = first (M is) <$> tD b ds
 
 tD :: Ext a -> [D a a] -> UM a ([D a (TS a)], Ext a)
 tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b)) ds}
-  -- where x₀@(Ext f₀ t₀ _) </> x₁@(Ext f₁ t₁ _) | IM.disjoint f₀ f₁ &&IM.disjoint t₀ t₁ = x₀<>x₁
 
 rty :: Ext a -> a -> [A (TS a)] -> UM a [A (TS a)]
 rty b x s = do
@@ -753,7 +753,6 @@ tab c = (Ψ<$>) . graft <=< traverse tst
 
     alt :: NmMap (TSeq a, Ψ TS a) -> NmMap (TSeq a, Ψ TS a) -> NmMap (TSeq a, Ψ TS a)
     alt = Nm.unionWith f where f (l0, Ψ q0) (_, Ψ q1) = (l0, Ψ$alt q0 q1)
-    -- TODO: does this work with depth three..
 
     graft :: [(Ψ TR a, TSeq a)] -> UM a (NmMap (TSeq a, Ψ TS a))
     graft ((Ψ a, r):ts)      = (fmap (pushdown r) a `alt`) <$> graft ts
