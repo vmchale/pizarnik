@@ -1,11 +1,11 @@
-module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rDoc, naïve ) where
+module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rDoc, naïve, iC ) where
 
 import           A
 import           Control.Monad                    (foldM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, withExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put, runStateT)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put, runState, runStateT, state)
 import           D
 import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
@@ -62,10 +62,25 @@ rc i c s at = flip runStateT i $ do
     (t,a) <- mapStateT (first TyE) $ tAS e s at
     case t of
       (TS (_:_:_) _) -> throwError ES
-      _              -> μ.rty e (aLs at) $ r c (aas a) s
+      _              -> μ.rty e (aLs at) $ r c (aas a) s -- FIXME: is there something more elegant than rty? it is triggered in particular with nip/dip...
   where
     e = let (b,cϵ,a)=c in Ext (fmap aLs b) cϵ a
     μ = mapStateT (first TyE)
+
+iC :: [FilePath] -> [FilePath] -> RIO [(MN Loc, [(Nm Loc, [TN (AP Loc)])])]
+iC incls fp = do
+    (i,c,mns) <- rMs incls fp
+    (u,_,_,_) <- get
+    let roots = [ (c `ul` n, mns `ul` n) | n <- i ]
+        tr (m@(M is _), mn) = Node (mn, m) (tr.(\n -> let uϵ=mU n in (c `ul` uϵ, mns `ul` uϵ))<$>is)
+    lift $ except $ bimap TyE id (evalStateT (traverse (ti (mempty :: Ext Loc).tr) roots) u)
+  where
+    ul x (U i) = x IM.! i
+
+    ti c (Node (mn,n) ns) = do
+        ms <- traverse (tg c) ns
+        let ctx = foldMap (thd3.rootLabel) ms
+        state $ \u -> let (d,m) = runState (iD ctx n) u in ((mn,d),m)
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do
@@ -75,14 +90,13 @@ tMs incls fp = do
         tr (m@(M is _), mn) = Node (mn, m) (tr.(\n -> let uϵ=mU n in (c `ul` uϵ, mns `ul` uϵ))<$>is)
     lift $ except $ bimap TyE (map (fmap (\(n,x,t)->(n,x,tds t,arit t)))) (evalStateT (traverse (tg (mempty :: Ext Loc).tr) roots) u)
   where
-    tg c (Node (mn,n) ns) = do
-        ms <- traverse (tg c) ns
-        let ctx = foldMap (thd3.rootLabel) ms
-        (mT,cϵ) <- tM ctx n
-        pure (Node (mn,mT,cϵ) ms)
-      where
-        thd3 (_,_,z)=z
     ul x (U i) = x IM.! i
+
+tg c (Node (mn,n) ns) = do
+    ms <- traverse (tg c) ns
+    let ctx = foldMap (thd3.rootLabel) ms
+    (mT,cϵ) <- tM ctx n
+    pure (Node (mn,mT,cϵ) ms)
 
 rMs :: [FilePath] -- ^ Include dirs
     -> [FilePath] -- ^ Root modules
@@ -123,3 +137,5 @@ exs n = foldM mx (Ex IM.empty IM.empty IM.empty)
     mx (Ex bv0 bc0 a0) (Ex bv1 bc1 a1) = Ex <$> mi bv0 bv1 MDF <*> mi bc0 bc1 MDC <*> mi a0 a1 MDT
       where
         mi b0 b1 e | IM.disjoint b0 b1 = pure (b0<>b1) | otherwise = throwError (e n)
+
+thd3 (_,_,z)=z

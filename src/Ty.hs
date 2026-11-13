@@ -1,6 +1,6 @@
 {-# LANGUAGE TupleSections #-}
 
-module Ty ( UM, TE, Ext (..), tM, rty, tAS, tdbg, TN (..) ) where
+module Ty ( UM, TE, Ext (..), tM, rty, tAS, TN (..), AP, tdbg, iD ) where
 
 import           A
 import           B
@@ -17,6 +17,7 @@ import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
+import           Data.Maybe                       (catMaybes)
 import qualified Data.Text                        as T
 import           G
 import           Nm
@@ -586,6 +587,11 @@ tD1 c (F _ n ts as) = do
     (as', s) <- tseq c mempty as
     s' <- mtsc (π c) s (aLs as') ts
     pure (F ts (n$>ts) ts (faseq (s'@*) as'))
+
+iD :: Ext a -> M a a -> State Int [(Nm a, ASeq a, [TN (AP a)])]
+iD b (M _ ds) = catMaybes<$>traverse i ds where
+  i TD{}         = pure Nothing
+  i (F _ n _ as) = Just.(n,as,) <$> tdbg b as
 
 -- TODO check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))

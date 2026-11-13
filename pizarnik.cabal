@@ -43,6 +43,7 @@ library
         Pr
         S
         Ty
+        Ty.D
 
     other-modules:
         B
