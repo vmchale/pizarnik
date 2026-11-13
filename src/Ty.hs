@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Ty ( UM, TE, Ext (..), tM, rty, tAS, TN (..), AP, tdbg, iD ) where
 
 import           A
@@ -9,12 +7,13 @@ import           Control.Arrow                    ((&&&))
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, modifyM, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, runState, modify, modifyM, put, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
 import           Data.Either                      (partitionEithers)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
+import           Data.Functor.Identity            (runIdentity)
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.Maybe                       (catMaybes)
@@ -588,10 +587,13 @@ tD1 c (F _ n ts as) = do
     s' <- mtsc (π c) s (aLs as') ts
     pure (F ts (n$>ts) ts (faseq (s'@*) as'))
 
-iD :: Ext a -> M a a -> State Int [(Nm a, ASeq a, [TN (AP a)])]
-iD b (M _ ds) = catMaybes<$>traverse i ds where
-  i TD{}         = pure Nothing
-  i (F _ n _ as) = Just.(n,as,) <$> tdbg b as
+iD :: Ext a -> M a a -> UM a [(Nm a, [TN (AP a)])]
+iD b (M _ ds) = do (_,c) <- liftTM (traverse_ tD0 ds); l (catMaybes<$>traverse (i (c<>b)) ds) where
+  i _ TD{}         = pure Nothing
+  i c (F _ n _ as) = Just.(n,) <$> tdbg c as
+
+  l :: State Int x -> UM a x
+  l x = StateT (Right . runState x)
 
 -- TODO check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))

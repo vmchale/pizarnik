@@ -6,13 +6,15 @@ import           Data.Functor              (void)
 import           Dbg
 import           Options.Applicative       (HasCompleter, Mod, Parser, ParserInfo, argument, bashCompleter, command, completer, execParser, fullDesc, header, help, helper,
                                             hsubparser, info, metavar, progDesc, str)
-import           Prettyprinter             (Pretty (pretty), defaultLayoutOptions, hardline, layoutPretty)
+import           Pr
+import           Prettyprinter             (Pretty (pretty), defaultLayoutOptions, hardline, indent, layoutPretty, vsep)
 import           Prettyprinter.Render.Text (renderIO)
 import           REPL
 import           System.Exit               (exitFailure)
 import           System.IO                 (stderr, stdout)
+import           Ty.D
 
-data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath | Repl [FilePath]
+data Cmd = TC !FilePath | An !FilePath | Fmt !FilePath | Repl [FilePath] | I !FilePath
 
 pComplete :: HasCompleter f => Mod f a
 pComplete = completer . bashCompleter $ "file -X '!*.piz -o plusdirs"
@@ -21,10 +23,11 @@ cmd :: Parser Cmd
 cmd = hsubparser
     (command "tc" (info tcP (progDesc "Type-check"))
     <> command "an" (info anP (progDesc "Display type annotations"))
+    <> command "i" (info iP (progDesc "Display type inference tree"))
     <> command "repl" (info replP (progDesc "Enter a REPL"))
     <> command "fmt" (info fmtP (progDesc "Format")))
   where
-    tcP = TC<$>src; fmtP=Fmt<$>src; anP=An<$>src; replP=Repl<$>many src
+    tcP = TC<$>src; fmtP=Fmt<$>src; anP=An<$>src; replP=Repl<$>many src; iP=I<$>src
 
 src :: Parser FilePath
 src = argument str
@@ -40,9 +43,12 @@ wrapper = info (helper <*> cmd)
 
 main = run =<< execParser wrapper
 
+pF = vsep.map (\(n,as) -> pretty n <> ":" <#> indent 2 (pTs as))
+
 run :: Cmd -> IO ()
 run (Fmt fp)   = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt fp contents)}
 run (TC fp)    = do {res <- rRepl $ void $ tMs ["."] [fp]; fIO res}
+run (I fp)     = do {[(_,t)] <- fIO =<< (rRepl $ iC ["."] [fp]); rDoc (pF t)}
 run (An fp)    = adbg ["."] [fp]
 run (Repl fps) = repl fps
 

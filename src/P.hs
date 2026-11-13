@@ -5,7 +5,7 @@ import           Control.Monad                    (foldM)
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
 import           Control.Monad.Trans.Except       (ExceptT, except, runExceptT, withExceptT)
-import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put, runState, runStateT, state)
+import           Control.Monad.Trans.State.Strict (StateT, evalStateT, get, mapStateT, put, runStateT)
 import           D
 import           Data.Bifunctor                   (bimap, first, second)
 import qualified Data.ByteString.Lazy             as BSL
@@ -80,7 +80,7 @@ iC incls fp = do
     ti c (Node (mn,n) ns) = do
         ms <- traverse (tg c) ns
         let ctx = foldMap (thd3.rootLabel) ms
-        state $ \u -> let (d,m) = runState (iD ctx n) u in ((mn,d),m)
+        (mn,) <$> iD ctx n
 
 tMs :: [FilePath] -> [FilePath] -> RIO [Tree (MN Loc, M Loc (TS Loc), Cs Loc, Ar)]
 tMs incls fp = do

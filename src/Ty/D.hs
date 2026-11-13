@@ -1,14 +1,13 @@
 module Ty.D ( pTs ) where
 
-import           A
 import           Loc
 import           Pr
 import           Prettyprinter (Doc, Pretty (pretty), flatAlt, group, hardline, hsep, indent, vsep, (<+>))
 import           Ty
 
+pTs :: [TN (AP Loc)] -> Doc x
 pTs = vsep.pT []
 
-pT :: [A Loc] -> [TN (AP Loc)] -> [Doc x]
 pT _ []                                 = []
 pT c (TN (a, Right t):TN (_, Left e):_) = let c'= c++[a] in [pan [a] t, pan c' e]
 pT c (TN (a, Right t):ts)               = let c'=c++[a] in pan c' t:pT c' ts
