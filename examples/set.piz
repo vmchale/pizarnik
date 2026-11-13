@@ -3,6 +3,28 @@
 
 type Set o = { `nil +. Set(o) o Set(o) `branch };
 
+delete : Int Set(Int) -- Set(Int)
+       := [ { `nil^ drop `nil
+            & `branch^ (14) dup2 cmpInt
+                { `eq^ drop2 merge
+                & `gt^ (123) delete (13) `branch
+                & `lt^ (124) delete (23) `branch
+                }
+            }
+          ]
+
+merge : Set(Int) Set(Int) -- Set(Int)
+      := [ { `nil^
+           & `branch^ (4123) { `nil^
+                             & `branch^ (5213) dup2 cmpInt
+                                  { `eq^ drop (132) merge [merge] dip2
+                                  & `gt^ (14) [`branch merge] dip2
+                                  & `lt^ (1243)(56) [`branch merge] dip2
+                                  }
+                             } `branch
+           }
+         ]
+
 insert : Int Set(Int) -- Set(Int)
        := [ { `nil^ [`nil] dip `nil `branch
             & `branch^ (14) dup2 cmpInt
