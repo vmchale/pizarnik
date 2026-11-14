@@ -7,13 +7,12 @@ import           Control.Arrow                    ((&&&))
 import           Control.Monad                    (foldM, when, (<=<))
 import           Control.Monad.Except             (liftEither, throwError)
 import           Control.Monad.Trans.Class        (lift)
-import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, runState, modify, modifyM, put, runStateT, state)
+import           Control.Monad.Trans.State.Strict (State, StateT (StateT), execStateT, get, modify, modifyM, put, runState, runStateT, state)
 import           D
 import           Data.Bifunctor                   (first, second)
-import           Data.Either                      (partitionEithers)
+import           Data.Either                      (isLeft, partitionEithers)
 import           Data.Foldable                    (traverse_)
 import           Data.Functor                     (($>))
-import           Data.Functor.Identity            (runIdentity)
 import qualified Data.IntMap                      as IM
 import qualified Data.IntSet                      as IS
 import           Data.Maybe                       (catMaybes)
@@ -588,12 +587,14 @@ tD1 c (F _ n ts as) = do
     pure (F ts (n$>ts) ts (faseq (s'@*) as'))
 
 iD :: Ext a -> M a a -> UM a [(Nm a, [TN (AP a)])]
-iD b (M _ ds) = do (_,c) <- liftTM (traverse_ tD0 ds); l (catMaybes<$>traverse (i (c<>b)) ds) where
+iD b (M _ ds) = do (_,c) <- liftTM (traverse_ tD0 ds); e (catMaybes<$>traverse (i (c<>b)) ds) where
   i _ TD{}         = pure Nothing
-  i c (F _ n _ as) = Just.(n,) <$> tdbg c as
+  i c (F _ n _ as) = j <$> tdbg c as <*> pure n
 
-  l :: State Int x -> UM a x
-  l x = StateT (Right . runState x)
+  e :: State Int x -> UM a x
+  e x = StateT (Right . runState x)
+
+  j t | any (isLeft.snd.can) t = \n -> Just (n,t) | otherwise = \_ -> Nothing
 
 -- TODO check that user-supplied signatures have at most one stack variable, and that it occurs at the leftmost
 iFn (Nm _ (U i) _) ts = modify (\(TSt m (Ext f c a)) -> TSt m (Ext (IM.insert i ts f) c a))
