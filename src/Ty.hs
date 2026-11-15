@@ -703,7 +703,7 @@ ib l = B ([TP l Int, TP l Int] --: [TP l Int])
 rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
-ta b s (Ca x as) = first (\(SL t a) -> Ca t a)<$>tseq b s (SL x as)
+ta b s (Ca x as) = first (\(SL t a) -> Ca t (reverse a))<$>tseq b s (SL x (reverse as))
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do
