@@ -23,11 +23,12 @@ import           System.Console.Haskeline         (InputT, Settings (historyFile
                                                    simpleCompletion)
 import           System.Directory                 (getHomeDirectory)
 import           System.Info                      (os)
+import           System.IO                        (Handle)
 import           Ty
 import           Ty.D
 
-repl :: [FilePath] -> IO ()
-repl fps = runRepl fps loop
+repl :: Handle -> [FilePath] -> IO ()
+repl h fps = runRepl fps (loop h)
 
 data X = X !AlexUserState (S Loc) (MC (TS Loc) Loc)
 
@@ -71,61 +72,61 @@ strC = map simpleCompletion
 pNs :: Pretty a => M.Map T.Text a -> Doc ann
 pNs = vsep.map pB.M.toList
 
-loop :: Repl ()
-loop = do
+loop :: Handle -> Repl ()
+loop h = do
     inp <- getInputLine " "
     case words <$> inp of
-        Just (":ty":e) -> printT (unwords e) *> loop
-        Just (":i":e)  -> try (unwords e) *> loop
-        Just [":alex"] -> (po.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop
-        Just [":dump"] -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop
-        Just [":st"]   -> do {(X _ s _) <- ll; dbg s; loop}
-        Just e         -> printA (unwords e) *> loop
+        Just (":ty":e) -> printT h (unwords e) *> loop h
+        Just (":i":e)  -> try h (unwords e) *> loop h
+        Just [":alex"] -> (po h.pNs =<< lg (\(X (_,n,_,_) _ _) -> n)) *> loop h
+        Just [":dump"] -> (liftIO . uncurry db =<< lg (\(X l _ m) -> (l,m))) *> loop h
+        Just [":st"]   -> do {(X _ s _) <- ll; dbg h s; loop h}
+        Just e         -> printA h (unwords e) *> loop h
         Nothing        -> pure ()
 
 na = faseq no
 
-try :: String -> Repl ()
-try src = do
+try :: Handle -> String -> Repl ()
+try h src = do
     (X l _ (b,c,ar)) <- ll
     case pAtoms l (bytesl src) of
-        Left err -> pE err
+        Left err -> pE h err
         Right ((i,_,_,_),at) ->
             let tyctx=Ext (aLs<$>b) c ar
                 (steps,_)=runState (tdbg tyctx (na at)) i
-            in po$pTs steps
+            in po h$pTs steps
 -- https://www.compart.com/en/unicode/block/U+2500
 
-printA, printT :: String -> Repl ()
-printT src = do
+printA, printT :: Handle -> String -> Repl ()
+printT h src = do
     (X l _ (b,c,ar)) <- ll
     case pAtoms l (bytesl src) of
-        Left err -> pE err
+        Left err -> pE h err
         Right ((i,_,_,_),at) -> do
             let tyctx = Ext (aLs<$>b) c ar
             case runStateT (tAS tyctx [] (na at)) i of
-                Right ((_, SL a _),_) -> pE a
-                Left err              -> pE err
+                Right ((_, SL a _),_) -> pE h a
+                Left err              -> pE h err
 
-printA src = do
+printA h src = do
     (X l s c) <- ll
     case pAtoms l (bytesl src) of
-        Left err -> pE err
+        Left err -> pE h err
         Right ((i,ii,ti,m),at) -> do
             case rc i c s (na at) of
                 Right (s',i') -> do
                     lift $ put (X (i',ii,ti,m) s' c)
-                    stackpp s'
-                Left err -> pE err
+                    stackpp h s'
+                Left err -> pE h err
 
-dbg = po.d.reverse where
+dbg h = po h.d.reverse where
     d = vsep.map (\a -> pretty a <+> ":" <+> pretty (aL a))
 
-stackpp=po.stack
+stackpp h=po h.stack
 
-pE :: Pretty a => a -> Repl ()
-pE = po.pretty
-po = liftIO.rDoc.(<>hardline)
+pE :: Pretty a => Handle -> a -> Repl ()
+pE h = po h.pretty
+po h = liftIO.rh h.(<>hardline)
 
 bytesl = encodeUtf8 . TL.pack
 

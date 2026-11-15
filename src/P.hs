@@ -1,4 +1,4 @@
-module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rDoc, naïve, iC ) where
+module P ( Cs, fmt, rMs, tMs, rc, e1, rRepl, db, rh, rDoc, naïve, iC ) where
 
 import           A
 import           Control.Monad                    (foldM)
@@ -39,7 +39,8 @@ db (_,_,n,_) = rDoc.(<>hardline).pBoundT
     pBoundT :: (IM.IntMap (ASeq (TS a)), b, c) -> Doc ann
     pBoundT (aa,_,_) = vsep (map (\(i,a) -> pretty (n IM.! i) <+> "→" <+> pASeq a) (IM.toList aa))
 
-rDoc = renderIO stdout.layoutSmart defaultLayoutOptions
+rDoc = rh stdout
+rh h = renderIO h.layoutSmart defaultLayoutOptions
 
 e1 :: [FilePath] -> [FilePath]
    -> BSL.ByteString

@@ -50,7 +50,7 @@ run (Fmt fp)   = do {contents <- BSL.readFile fp; renderIO stdout =<< fIO (fmt f
 run (TC fp)    = do {res <- rRepl $ void $ tMs ["."] [fp]; fIO res}
 run (I fp)     = do {[(_,t)] <- fIO =<< (rRepl $ iC ["."] [fp]); rDoc (pF t)}
 run (An fp)    = adbg ["."] [fp]
-run (Repl fps) = repl fps
+run (Repl fps) = repl stdout fps
 
 fIO :: Pretty e => Either e a -> IO a
 fIO (Right x)  = pure x
