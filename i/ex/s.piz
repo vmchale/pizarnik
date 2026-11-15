@@ -1,0 +1,2 @@
+"x" `var "x" `lam
+"x" `var "x" `lam printTerm
