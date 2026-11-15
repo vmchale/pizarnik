@@ -1,0 +1,14 @@
+{{{`nil 1 `nil `branch} 4 `nil `branch} 6 `nil `branch}
+----
+{{`nil 1 `nil `branch} 4 {`nil 6 `nil `branch} `branch}
+----
+{`nil 1 {`nil 4 {`nil 6 `nil `branch} `branch} `branch}
+----
+1:4: ‘(ρ₁ ⊃ {`nil})’ is not an acceptable argument, expected
+‘{Set(o) o Set(o) `branch}’
+{{`nil 1 `nil `branch} 4 {`nil 6 `nil `branch} `branch}
+----
+{{{`nil 1 `nil `branch} 4 `nil `branch} 6 `nil `branch}
+----
+1:4: ‘(ρ₃ ⊃ {`nil})’ is not an acceptable argument, expected
+‘{Set(Int) Int Set(Int) `branch}’
