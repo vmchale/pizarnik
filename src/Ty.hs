@@ -564,8 +564,8 @@ tD b ds = do {(_,c) <- liftTM (traverse_ tD0 ds); (,c) <$> traverse (tD1 (c<>b))
 
 rty :: Ext a -> a -> [A (TS a)] -> UM a [A (TS a)]
 rty b x s = do
-    (t,s0) <- tseq b mempty (SL x (map ($>x) (reverse s)))
-    pure (reverse (aas (faseq (s0@*) t)))
+    (_,a,s0) <- tr b mempty (SL x (map ($>x) (reverse s)))
+    pure (map ((s0@*)<$>) a)
 
 tAS :: Ext a -> [A (TS a)] -> ASeq a -> UM a (TS a, ASeq (TS a))
 tAS b s a = do
@@ -661,14 +661,17 @@ tdbg b = fmap fst.d mempty
     eu :: UM a x -> State Int (Either (TE a) x)
     eu x = state (\i -> let v = runStateT x i in case v of Right (y,j) -> (Right y,j); Left e -> (Left e,i))
 
-tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
-tseq b s (SL l as) = do {ᴀ <- fsv l "A"; (SL t x, s') <- tγ s (SL ([ᴀ] --: [ᴀ]) []) as; pure (SL t (reverse x), s')}
+tr :: Ext a -> Subst a -> ASeq a -> UM a (TS a, [A (TS a)], Subst a)
+tr b s (SL l as) = do {ᴀ <- fsv l "A"; (SL t x, s') <- tγ s (SL ([ᴀ] --: [ᴀ]) []) as; pure (t,x,s')}
   where
     tγ sϵ c []              = pure (c, sϵ)
     tγ sϵ (SL t al) (a:aa) = do
         (a',s0) <- tae b sϵ a
         (t',s1) <- cat (π b) s0 t (aL a')
         tγ s1 (SL t' (a':al)) aa
+
+tseq :: Ext a -> Subst a -> ASeq a -> UM a (ASeq (TS a), Subst a)
+tseq b s ts = do (t,x,s') <- tr b s ts; pure (SL t (reverse x), s')
 
 (/|) :: [a] -> Int -> ([a], [a])
 xs /| n | nl <- length xs = splitAt (nl-n) xs
@@ -703,7 +706,7 @@ ib l = B ([TP l Int, TP l Int] --: [TP l Int])
 rel l = B ([TP l Int, TP l Int] --: [ʙ l])
 
 ta :: Ext a -> Subst a -> A a -> UM a (A (TS a), Subst a)
-ta b s (Ca x as) = first (\(SL t a) -> Ca t (reverse a))<$>tseq b s (SL x (reverse as))
+ta b s (Ca x as) = (\(t,a,s) -> (Ca t a,s))<$>tr b s (SL x (reverse as))
 ta _ s (L l lit@I{})   = pure (L ([] --: [TP l Int]) lit, s)
 ta _ s (L l lit@Str{}) = pure (L ([] --: [TP l StrT]) lit, s)
 ta _ s (L l (S p)) = do
